@@ -26,8 +26,8 @@ export default function Battle() {
 
   useEffect(() => {
     // 서버 연결 이벤트
-    const onHello = (m: any) => setLog(l => [`서버 연결: ${m.id}`, ...l])
-    const onFound = (m: any) => setLog(l => [`매칭: ${JSON.stringify(m)}`, ...l])
+    const onHello = (m: { id: string }) => setLog(l => [`서버 연결: ${m.id}`, ...l])
+    const onFound = (m: unknown) => setLog(l => [`매칭: ${JSON.stringify(m)}`, ...l])
     socket.on('server.hello', onHello)
     socket.on('match.found', onFound)
     return () => { socket.off('server.hello', onHello); socket.off('match.found', onFound) }

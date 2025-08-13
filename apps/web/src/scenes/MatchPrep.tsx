@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { socket } from '../lib/socket'
+import { socket } from '../lib/socket.ts'
 
 export default function MatchPrep() {
   const navigate = useNavigate()

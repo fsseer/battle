@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { socket } from '../lib/socket'
+import { socket } from '../lib/socket.ts'
 
 type Role = 'ATTACK' | 'DEFENSE'
 type Skill = { id: string, name: string, role: Role | 'ANY' }
@@ -26,9 +26,11 @@ export default function Battle() {
 
   useEffect(() => {
     // 서버 연결 이벤트
-    socket.on('server.hello', (m) => setLog(l => [`서버 연결: ${m.id}`, ...l]))
-    socket.on('match.found', (m) => setLog(l => [`매칭: ${JSON.stringify(m)}`, ...l]))
-    return () => { socket.off('server.hello'); socket.off('match.found') }
+    const onHello = (m: any) => setLog(l => [`서버 연결: ${m.id}`, ...l])
+    const onFound = (m: any) => setLog(l => [`매칭: ${JSON.stringify(m)}`, ...l])
+    socket.on('server.hello', onHello)
+    socket.on('match.found', onFound)
+    return () => { socket.off('server.hello', onHello); socket.off('match.found', onFound) }
   }, [])
 
   useEffect(() => {

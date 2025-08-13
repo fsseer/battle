@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { socket } from '../lib/socket.ts'
 
@@ -48,7 +48,7 @@ export default function Battle() {
     return () => { if (timerRef.current) window.clearInterval(timerRef.current) }
   }, [round])
 
-  const resolveRound = (self: string, opp: string) => {
+  const resolveRound = useCallback((self: string, opp: string) => {
     // 더미 상성 규칙: 베기>패링, 견제>가드, 가드>베기, 패링>견제, 동일=무승부
     const beats: Record<string, string> = { slash: 'parry', feint: 'block', block: 'slash', parry: 'feint' }
     let result = '무승부'
@@ -60,7 +60,7 @@ export default function Battle() {
     setRound(r => r + 1)
     setChoice(null)
     setOpponentChoice(null)
-  }
+  }, [round])
 
   const onSelect = (id: string) => {
     setChoice(id)
@@ -76,7 +76,7 @@ export default function Battle() {
     }
     socket.on('battle.resolve', onResolved)
     return () => { socket.off('battle.resolve', onResolved) }
-  }, [])
+  }, [resolveRound])
 
   return (
     <div style={{ padding: 24 }}>

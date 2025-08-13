@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { socket } from '../lib/socket'
 
 type Role = 'ATTACK' | 'DEFENSE'
 type Skill = { id: string, name: string, role: Role | 'ANY' }
@@ -22,6 +23,13 @@ export default function Battle() {
   const timerRef = useRef<number | null>(null)
 
   const available = useMemo(() => SKILLS.filter(s => s.role === 'ANY' || s.role === role), [role])
+
+  useEffect(() => {
+    // 서버 연결 이벤트
+    socket.on('server.hello', (m) => setLog(l => [`서버 연결: ${m.id}`, ...l]))
+    socket.on('match.found', (m) => setLog(l => [`매칭: ${JSON.stringify(m)}`, ...l]))
+    return () => { socket.off('server.hello'); socket.off('match.found') }
+  }, [])
 
   useEffect(() => {
     // 라운드 타이머
@@ -54,19 +62,19 @@ export default function Battle() {
 
   const onSelect = (id: string) => {
     setChoice(id)
+    // 서버에 선택 전송
+    socket.emit('battle.choose', id)
   }
 
   useEffect(() => {
-    // 더미: 상대 선택은 1초 뒤 랜덤
-    if (!choice) return
-    const t = setTimeout(() => {
-      const opp = available[Math.floor(Math.random() * available.length)]?.id ?? 'block'
-      setOpponentChoice(opp)
-      resolveRound(choice, opp)
-    }, 1000)
-    return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [choice])
+    const onResolved = (m: { round: number; self: string; opp: string; result: 'WIN'|'LOSE'|'DRAW'; nextRole: Role }) => {
+      setOpponentChoice(m.opp)
+      resolveRound(m.self, m.opp)
+      setRole(m.nextRole)
+    }
+    socket.on('battle.resolve', onResolved)
+    return () => { socket.off('battle.resolve', onResolved) }
+  }, [])
 
   return (
     <div style={{ padding: 24 }}>

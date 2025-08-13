@@ -5,9 +5,24 @@ import { socket } from '../lib/socket'
 export default function MatchPrep() {
   const navigate = useNavigate()
   useEffect(() => {
-    const onFound = () => navigate('/battle')
+    const onFound = (m: unknown) => {
+      console.log('match.found', m)
+      navigate('/battle')
+    }
+    const onHello = (m: unknown) => console.log('server.hello', m)
+    const onConnect = () => console.log('socket connected', socket.id)
+    const onError = (e: unknown) => console.error('socket error', e)
+
+    socket.on('connect', onConnect)
+    socket.on('server.hello', onHello)
     socket.on('match.found', onFound)
-    return () => { socket.off('match.found', onFound) }
+    socket.on('connect_error', onError)
+    return () => {
+      socket.off('connect', onConnect)
+      socket.off('server.hello', onHello)
+      socket.off('match.found', onFound)
+      socket.off('connect_error', onError)
+    }
   }, [navigate])
 
   return (

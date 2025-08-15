@@ -80,8 +80,12 @@ fastify.post('/auth/login', async (request, reply) => {
 fastify.get('/me', async (request, reply) => {
   const loginId = parseLoginIdFromToken(request.headers.authorization)
   if (!loginId) return reply.code(401).send({ ok: false })
+  request.log.info({ route: '/me', loginId }, 'me request')
   const user = await prisma.user.findUnique({ where: { loginId }, include: { characters: { include: { proficiencies: true } } } })
-  if (!user) return reply.code(404).send({ ok: false })
+  if (!user) {
+    request.log.warn({ route: '/me', loginId }, 'user not found')
+    return reply.code(404).send({ ok: false })
+  }
   return { ok: true, user: { id: user.loginId, name: user.name, characters: user.characters } }
 })
 
@@ -108,12 +112,16 @@ fastify.get('/skills', async (request) => {
 fastify.post('/train/proficiency', async (request, reply) => {
   const loginId = parseLoginIdFromToken(request.headers.authorization)
   if (!loginId) return reply.code(401).send({ ok: false })
+  request.log.info({ route: '/train/proficiency', loginId }, 'train request')
   const body = request.body as { kind: any; xp?: number }
   const kind = body?.kind
   if (!kind) return reply.code(400).send({ ok: false })
   const user = await prisma.user.findUnique({ where: { loginId }, include: { characters: true } })
   const ch = user?.characters?.[0]
-  if (!ch) return reply.code(404).send({ ok: false })
+  if (!ch) {
+    request.log.warn({ route: '/train/proficiency', loginId }, 'character not found')
+    return reply.code(404).send({ ok: false })
+  }
   const xpGain = body.xp ?? 100
   const prof = await prisma.weaponProficiency.upsert({
     where: { characterId_kind: { characterId: ch.id, kind } },
@@ -127,6 +135,12 @@ fastify.post('/train/proficiency', async (request, reply) => {
   }
   const all = await prisma.weaponProficiency.findMany({ where: { characterId: ch.id } })
   return { ok: true, proficiencies: all }
+})
+
+// Debug: echo who the server sees from the Authorization header
+fastify.get('/debug/whoami', async (request) => {
+  const loginId = parseLoginIdFromToken(request.headers.authorization)
+  return { loginId }
 })
 // Registration endpoint
 fastify.post('/auth/register', async (request, reply) => {

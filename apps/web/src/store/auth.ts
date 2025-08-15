@@ -1,6 +1,13 @@
 import { create } from 'zustand'
 
-type User = { id: string, name: string }
+export type Character = {
+  id: string
+  name: string
+  level: number
+  stats: { str: number; agi: number; sta: number }
+}
+
+export type User = { id: string; name: string; token?: string; characters?: Character[] }
 
 type AuthState = {
   user: User | null

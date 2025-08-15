@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/auth'
 import '../styles/theme.css'
 import { useI18n } from '../i18n/useI18n'
 import type { Language } from '../i18n/locales'
+import { loginRequest } from '../lib/api'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -21,9 +22,17 @@ export default function Login() {
     setIdErr(idValid ? '' : t('login.error.id'))
     setPwErr(pwValid ? '' : t('login.error.pw'))
     if (!idValid || !pwValid) return
-    // TODO: 서버 연동 전까지는 더미 인증 성공 처리
-    setUser({ id, name: id })
-    navigate('/lobby')
+    // 서버 인증 연동
+    loginRequest(id, password)
+      .then((r) => {
+        if (r.ok && r.user && r.token) {
+          setUser({ id: r.user.id, name: r.user.name, token: r.token, characters: r.user.characters })
+          navigate('/lobby')
+        } else {
+          setPwErr(t('login.error.auth'))
+        }
+      })
+      .catch(() => setPwErr(t('login.error.auth')))
   }
 
   return (
@@ -44,9 +53,9 @@ export default function Login() {
             </select>
           </div>
           <form onSubmit={onSubmit} className="grid" style={{ gridTemplateColumns: '1fr' }}>
-            <input className={`control${idErr ? ' invalid' : ''}`} placeholder={t('login.id')} value={id} maxLength={24} onChange={(e) => { setId(e.target.value); if (idErr) setIdErr('') }} required />
+            <input className={`control${idErr ? ' invalid' : ''}`} placeholder={t('login.id')} value={id} maxLength={24} onChange={(e) => { const v = e.target.value; if (/\s/.test(v)) return; setId(v); if (idErr) setIdErr('') }} required />
             {idErr ? <div className="error-text">{idErr}</div> : null}
-            <input className={`control${pwErr ? ' invalid' : ''}`} placeholder={t('login.pw')} type="password" value={password} maxLength={24} onChange={(e) => { setPassword(e.target.value); if (pwErr) setPwErr('') }} required />
+            <input className={`control${pwErr ? ' invalid' : ''}`} placeholder={t('login.pw')} type="password" value={password} maxLength={24} onChange={(e) => { const v = e.target.value; if (/\s/.test(v)) return; setPassword(v); if (pwErr) setPwErr('') }} required />
             {pwErr ? <div className="error-text">{pwErr}</div> : null}
             <div className="actions">
               <button type="submit" className="gold-btn" style={{ width: '100%' }}>{t('login.enter')}</button>

@@ -12,6 +12,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'login.pw': '비밀번호',
     'login.enter': '루두스로 입장',
     'login.lang': '언어',
+    'login.error.id': '아이디는 4~24자여야 합니다.',
+    'login.error.pw': '비밀번호는 4~24자여야 합니다.',
+    'login.error.auth': '아이디 또는 비밀번호가 올바르지 않습니다.',
 
     'lobby.title': '카스트룸 글라디아토룸',
     'lobby.subtitle': '{name} 님, 오늘의 훈련과 시합을 선택하세요.',
@@ -38,6 +41,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'login.pw': 'Password',
     'login.enter': 'Enter Ludus',
     'login.lang': 'Language',
+    'login.error.id': 'ID must be 4–24 characters.',
+    'login.error.pw': 'Password must be 4–24 characters.',
+    'login.error.auth': 'Invalid ID or password.',
 
     'lobby.title': 'Castrum Gladiatorum',
     'lobby.subtitle': '{name}, choose today’s training and match.',
@@ -64,6 +70,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'login.pw': 'パスワード',
     'login.enter': 'ルドゥスに入場',
     'login.lang': '言語',
+    'login.error.id': 'IDは4～24文字で入力してください。',
+    'login.error.pw': 'パスワードは4～24文字で入力してください。',
+    'login.error.auth': 'IDまたはパスワードが正しくありません。',
 
     'lobby.title': 'カストルム・グラディアトルム',
     'lobby.subtitle': '{name} さん、本日の訓練と試合を選んでください。',

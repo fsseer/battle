@@ -96,8 +96,10 @@ html, body, #root {
 }
 .control::placeholder { color: #7a6a59; opacity: .9; }
 .control:focus { outline: 2px solid #ad7b3b; box-shadow: 0 0 0 3px rgba(173,123,59,.25); }
+.control.invalid { border-color: #b93838; outline: none; box-shadow: 0 0 0 3px rgba(185,56,56,.18); }
 
 .actions { display: flex; gap: 8px; }
+.error-text { color: #b93838; font-size: 12px; margin-top: 4px; }
 
 /* Language switch at top-right */
 .lang-switch {

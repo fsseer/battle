@@ -3,6 +3,7 @@ import cors from '@fastify/cors'
 import { Server } from 'socket.io'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { evaluateSkills, evaluateTraits, type StatKey } from './skills.registry'
 
 const fastify = Fastify({ logger: true })
 await fastify.register(cors, { origin: ['http://127.0.0.1:5173','http://localhost:5173'] })
@@ -64,6 +65,27 @@ fastify.post('/auth/login', async (request, reply) => {
   }
 })
 
+// Skills/Traits evaluation (temporary, using registry + basic mapping)
+fastify.get('/skills', async (request) => {
+  // NOTE: demo: single character of current user
+  // In production, use auth token
+  const demoLoginId = 'fsseer'
+  const user = await prisma.user.findUnique({ where: { loginId: demoLoginId }, include: { characters: { include: { proficiencies: true } } } })
+  const ch = user?.characters?.[0]
+  const stats: Record<StatKey, number> = {
+    str: ch?.str ?? 5,
+    agi: ch?.agi ?? 5,
+    int: (ch as any)?.int ?? 5,
+    luck: (ch as any)?.luck ?? 5,
+    fate: (ch as any)?.fate ?? 0,
+  }
+  const profs = Object.fromEntries((ch?.proficiencies ?? []).map(p => [p.kind, p.level])) as any
+  // naive equipped kinds until equipment model exists
+  const equippedKinds: any[] = ['ONE_HAND']
+  const weaponSkills = evaluateSkills({ stats, profs, equippedKinds })
+  const traits = evaluateTraits({ stats, profs })
+  return { weaponSkills, characterSkills: weaponSkills.filter(w => w.skill.category !== 'WEAPON'), traits }
+})
 // Registration endpoint
 fastify.post('/auth/register', async (request, reply) => {
   try {

@@ -27,6 +27,66 @@ model Character {
   level     Int      @default(1)
   str       Int      @default(5)
   agi       Int      @default(5)
+  int       Int      @default(5)
+  luck      Int      @default(5)
+  fate      Int      @default(0)
   sta       Int      @default(5)
   createdAt DateTime @default(now())
+  proficiencies WeaponProficiency[]
+  skills     CharacterSkill[]
+  traits     CharacterTrait[]
+}
+
+enum WeaponKind {
+  ONE_HAND
+  TWO_HAND
+  SHIELD
+  DAGGER
+  SPEAR
+  AXE
+}
+
+model WeaponProficiency {
+  id          String     @id @default(cuid())
+  character   Character  @relation(fields: [characterId], references: [id])
+  characterId String
+  kind        WeaponKind
+  xp          Int        @default(0)
+  level       Int        @default(0)
+  @@unique([characterId, kind])
+}
+
+model Skill {
+  id          String   @id
+  name        String
+  category    String   // WEAPON | CHARACTER | SPECIAL
+  weaponKind  WeaponKind?
+  itemId      String?  // special weapon skill lock
+  description String?
+  owners      CharacterSkill[]
+}
+
+model Trait {
+  id          String  @id
+  name        String
+  description String?
+  owners      CharacterTrait[]
+}
+
+model CharacterSkill {
+  id          String    @id @default(cuid())
+  character   Character @relation(fields: [characterId], references: [id])
+  characterId String
+  skill       Skill     @relation(fields: [skillId], references: [id])
+  skillId     String
+  source      String    // EVENT | ITEM | GRANT
+}
+
+model CharacterTrait {
+  id          String    @id @default(cuid())
+  character   Character @relation(fields: [characterId], references: [id])
+  characterId String
+  trait       Trait     @relation(fields: [traitId], references: [id])
+  traitId     String
+  source      String
 }

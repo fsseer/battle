@@ -1,5 +1,8 @@
 @echo off
-setlocal
+setlocal EnableExtensions EnableDelayedExpansion
+
+rem ensure node/npx on PATH for this session
+set "PATH=%APPDATA%\npm;%ProgramFiles%\nodejs;%ProgramFiles(x86)%\nodejs;%PATH%"
 
 cd /d "%~dp0"
 
@@ -12,12 +15,18 @@ if not exist node_modules (
 if not exist .env (
 	echo DATABASE_URL=file:./prisma/dev.db> .env
 ) else (
-	findstr /b /c:"DATABASE_URL=" .env >nul || (echo DATABASE_URL=file:./prisma/dev.db>> .env)
+	rem fix malformed DATABASE_URL lines and ensure correct value
+	for /f "delims=" %%A in ('type .env ^| findstr /v /b "DATABASE_URL="') do (
+		set "LINE=%%A"
+		echo !LINE!>> .env.tmp
+	)
+	echo DATABASE_URL=file:./prisma/dev.db>> .env.tmp
+	move /y .env.tmp .env >nul
 )
 echo [server] Applying migrations...
-npx --yes prisma migrate deploy >nul 2>&1
+call npx --yes prisma migrate deploy || (echo [server][ERROR] Prisma migrate failed. Press any key to exit.& pause>nul & goto :eof)
 echo [server] Generating prisma client...
-npx --yes prisma generate >nul 2>&1
+call npx --yes prisma generate || (echo [server][ERROR] Prisma generate failed. Press any key to exit.& pause>nul & goto :eof)
 echo [server] Starting dev server (port 5174)...
 start "battle-server-dev" cmd /k "npm run dev"
 popd
@@ -58,4 +67,5 @@ echo [open] Opening browser: %URL%
 start "" %URL%
 
 endlocal
+pause
 

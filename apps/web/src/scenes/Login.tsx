@@ -18,7 +18,7 @@ export default function Login() {
   const [pwErr, setPwErr] = useState<string>('')
   const [idHint, setIdHint] = useState<string>('')
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const idValid = id.length >= 4 && id.length <= 24
     const pwValid = password.length >= 4 && password.length <= 24
@@ -29,6 +29,16 @@ export default function Login() {
     if (mode === 'register') {
       // basic front validation
       if (password !== confirm) { setPwErr(t('login.error.confirm')); return }
+      // check duplicate before submit
+      if (id.length >= 4 && id.length <= 24) {
+        try {
+          const res = await checkIdAvailability(id)
+          if (res.ok && res.available === false) {
+            setIdErr(t('login.error.duplicate'))
+            return
+          }
+        } catch { /* ignore */ }
+      }
       registerRequest(id, password, confirm)
         .then((r) => {
           if (r.ok && r.user && r.token) {
@@ -37,7 +47,12 @@ export default function Login() {
           } else if (r.error === 'DUPLICATE_ID') {
             setIdErr(t('login.error.duplicate'))
           } else if (r.error === 'INVALID_INPUT') {
-            setPwErr(t('login.error.input'))
+            // @ts-ignore
+            const d = (r as any).errorDetails
+            if (d?.idLength || d?.idWhitespace) setIdErr(t('login.error.id'))
+            if (d?.pwLength || d?.pwWhitespace) setPwErr(t('login.error.pw'))
+            if (d?.mismatch) setPwErr(t('login.error.confirm'))
+            if (!d) setPwErr(t('login.error.input'))
           } else {
             setPwErr(t('login.error.auth'))
           }

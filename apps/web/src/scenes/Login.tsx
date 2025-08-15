@@ -38,8 +38,8 @@ export default function Login() {
             </select>
           </div>
           <form onSubmit={onSubmit} className="grid" style={{ gridTemplateColumns: '1fr' }}>
-            <input className="control" placeholder={t('login.id')} value={id} onChange={(e) => setId(e.target.value)} required />
-            <input className="control" placeholder={t('login.pw')} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <input className="control" placeholder={t('login.id')} value={id} maxLength={24} onChange={(e) => setId(e.target.value)} required />
+            <input className="control" placeholder={t('login.pw')} type="password" value={password} maxLength={24} onChange={(e) => setPassword(e.target.value)} required />
             <div className="actions">
               <button type="submit" className="gold-btn" style={{ width: '100%' }}>{t('login.enter')}</button>
             </div>

@@ -76,6 +76,7 @@ html, body, #root {
   border: 1px solid rgba(255,255,255,0.18);
   border-radius: 10px;
   padding: 10px 12px;
+  box-sizing: border-box;
 }
 .control::placeholder { color: #7a6a59; opacity: .9; }
 .control:focus { outline: 2px solid #ad7b3b; box-shadow: 0 0 0 3px rgba(173,123,59,.25); }

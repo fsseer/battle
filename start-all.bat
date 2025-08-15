@@ -40,10 +40,10 @@ if not exist node_modules (
 	npm install
 )
 echo [web] Starting dev server (port 5173)...
-start "battle-web-dev" cmd /c "npm run dev -- --strictPort --port 5173"
+start "battle-web-dev" cmd /c "npm run dev -- --host 127.0.0.1 --strictPort --port 5173"
 popd
 
-set URL=http://localhost:5173
+set URL=http://127.0.0.1:5173
 echo [web] Waiting for %URL% ...
 for /l %%i in (1,1,60) do (
 	powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing -Uri '%URL%' -Method Get -TimeoutSec 2; if ($r.StatusCode -eq 200) { exit 0 } else { exit 1 } } catch { exit 1 }"

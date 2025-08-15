@@ -15,10 +15,10 @@ if not exist node_modules (
 
 rem Start Vite dev server on fixed port in a new window
 echo [web] Starting dev server (port 5173)...
-start "battle-web-dev" cmd /c "npm run dev -- --strictPort --port 5173"
+start "battle-web-dev" cmd /c "npm run dev -- --host 127.0.0.1 --strictPort --port 5173"
 
 rem Wait for web to be ready and open browser
-set URL=http://localhost:5173
+set URL=http://127.0.0.1:5173
 echo [web] Waiting for %URL% to be ready...
 
 for /l %%i in (1,1,60) do (

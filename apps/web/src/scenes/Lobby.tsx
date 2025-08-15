@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useAuthStore } from '../store/auth'
 import '../styles/theme.css'
 import { useI18n } from '../i18n/useI18n'
@@ -8,6 +8,7 @@ export default function Lobby() {
   const navigate = useNavigate()
   const { user, clear, setUser } = useAuthStore()
   const { t } = useI18n()
+  const pollingRef = useRef<number | null>(null)
 
   useEffect(() => {
     const token = (user as any)?.token
@@ -21,6 +22,23 @@ export default function Lobby() {
       })
       .catch(() => {})
   }, [])
+
+  // AP 자동 반영: 주기적으로 /me 폴링
+  useEffect(() => {
+    const token = (user as any)?.token
+    if (!token) return
+    if (pollingRef.current) window.clearInterval(pollingRef.current)
+    const id = window.setInterval(() => {
+      fetch('http://127.0.0.1:5174/me', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then((m) => {
+          if (m?.ok) setUser({ id: m.user.id, name: m.user.name, token, characters: m.user.characters })
+        })
+        .catch(() => {})
+    }, 3000) // dev: 3s; prod: can be increased
+    pollingRef.current = id
+    return () => { if (pollingRef.current) window.clearInterval(pollingRef.current) }
+  }, [(user as any)?.token])
 
   return (
     <div className="arena-frame">

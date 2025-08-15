@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/auth'
 import '../styles/theme.css'
 import { useI18n } from '../i18n/useI18n'
 import type { Language } from '../i18n/locales'
-import { loginRequest, registerRequest } from '../lib/api'
+import { loginRequest, registerRequest, checkIdAvailability } from '../lib/api'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -16,6 +16,7 @@ export default function Login() {
   const [confirm, setConfirm] = useState('')
   const [idErr, setIdErr] = useState<string>('')
   const [pwErr, setPwErr] = useState<string>('')
+  const [idHint, setIdHint] = useState<string>('')
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -78,12 +79,27 @@ export default function Login() {
             </select>
           </div>
           <form onSubmit={onSubmit} className="grid" style={{ gridTemplateColumns: '1fr' }}>
-            <input className={`control${idErr ? ' invalid' : ''}`} placeholder={t('login.id')} value={id} maxLength={24} onChange={(e) => { const v = e.target.value; if (/\s/.test(v)) return; setId(v); if (idErr) setIdErr('') }} required />
-            {idErr ? <div className="error-text">{idErr}</div> : null}
-            <input className={`control${pwErr ? ' invalid' : ''}`} placeholder={t('login.pw')} type="password" value={password} maxLength={24} onChange={(e) => { const v = e.target.value; if (/\s/.test(v)) return; setPassword(v); if (pwErr) setPwErr('') }} required />
+            <input className={`control${idErr ? ' invalid' : ''}`} placeholder={t('login.id')} value={id} maxLength={24} onChange={async (e) => {
+              const v = e.target.value
+              if (/\s/.test(v)) return
+              setId(v)
+              if (idErr) setIdErr('')
+              if (mode === 'register' && v.length >= 4 && v.length <= 24) {
+                try {
+                  const r = await checkIdAvailability(v)
+                  if (r.ok && typeof r.available !== 'undefined') {
+                    setIdHint(r.available ? '사용 가능한 아이디입니다.' : '이미 사용 중입니다.')
+                  }
+                } catch { /* ignore */ }
+              } else {
+                setIdHint('')
+              }
+            }} required />
+            {idErr ? <div className="error-text">{idErr}</div> : idHint ? <div className="text-sm" style={{ color: idHint.includes('사용') ? '#2a8f2a' : '#b93838' }}>{idHint}</div> : null}
+            <input className={`control${pwErr ? ' invalid' : ''}`} placeholder={t('login.pw')} type="password" value={password} maxLength={24} onChange={(e) => { const v = e.target.value; if (/\s/.test(v)) return; setPassword(v); if (mode === 'register' && confirm && v !== confirm) setPwErr(t('login.error.confirm')); else setPwErr('') }} required />
             {pwErr ? <div className="error-text">{pwErr}</div> : null}
             {mode === 'register' ? (
-              <input className={`control${pwErr ? ' invalid' : ''}`} placeholder={t('login.pwConfirm')} type="password" value={confirm} maxLength={24} onChange={(e) => { const v = e.target.value; if (/\s/.test(v)) return; setConfirm(v) }} required />
+              <input className={`control${pwErr ? ' invalid' : ''}`} placeholder={t('login.pwConfirm')} type="password" value={confirm} maxLength={24} onChange={(e) => { const v = e.target.value; if (/\s/.test(v)) return; setConfirm(v); if (password && v !== password) setPwErr(t('login.error.confirm')); else setPwErr('') }} required />
             ) : null}
             <div className="actions">
               <button type="submit" className="gold-btn" style={{ width: '100%' }}>

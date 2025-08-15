@@ -69,8 +69,15 @@ fastify.post('/auth/register', async (request, reply) => {
     const id = (body?.id ?? '').trim()
     const pw = body?.password ?? ''
     const confirm = body?.confirm ?? ''
-    const invalid = !id || !pw || !confirm || id.length < 4 || id.length > 24 || pw.length < 4 || pw.length > 24 || /\s/.test(id) || /\s/.test(pw) || pw !== confirm
-    if (invalid) return reply.code(400).send({ ok: false, error: 'INVALID_INPUT' })
+    const invalidLenId = id.length < 4 || id.length > 24
+    const invalidLenPw = pw.length < 4 || pw.length > 24
+    const invalidWsId = /\s/.test(id)
+    const invalidWsPw = /\s/.test(pw)
+    if (!id || !pw || !confirm || invalidLenId || invalidLenPw || invalidWsId || invalidWsPw || pw !== confirm) {
+      return reply.code(400).send({ ok: false, error: 'INVALID_INPUT', errorDetails: {
+        idLength: invalidLenId, pwLength: invalidLenPw, idWhitespace: invalidWsId, pwWhitespace: invalidWsPw, mismatch: pw !== confirm
+      } })
+    }
     const exists = await prisma.user.findUnique({ where: { loginId: id } })
     if (exists) return reply.code(409).send({ ok: false, error: 'DUPLICATE_ID' })
     const pwHash = await bcrypt.hash(pw, 10)
@@ -96,6 +103,22 @@ fastify.post('/auth/register', async (request, reply) => {
   } catch (e) {
     request.log.error(e)
     return reply.code(500).send({ ok: false, error: 'SERVER_ERROR' })
+  }
+})
+
+// Check ID availability
+fastify.post('/auth/check-id', async (request, reply) => {
+  try {
+    const body = request.body as { id?: string }
+    const id = (body?.id ?? '').trim()
+    if (!id || id.length < 4 || id.length > 24 || /\s/.test(id)) {
+      return reply.code(400).send({ ok: false, error: 'INVALID_ID' })
+    }
+    const exists = await prisma.user.findUnique({ where: { loginId: id } })
+    return { ok: true, available: !exists }
+  } catch (e) {
+    request.log.error(e)
+    return reply.code(500).send({ ok: false })
   }
 })
 

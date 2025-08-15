@@ -25,4 +25,13 @@ export async function registerRequest(id: string, password: string, confirm: str
   return res.json()
 }
 
+export async function checkIdAvailability(id: string): Promise<{ ok: boolean; available?: boolean }> {
+  const res = await fetch('http://localhost:5174/auth/check-id', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id })
+  })
+  return res.json()
+}
+
 

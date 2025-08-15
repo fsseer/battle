@@ -10,9 +10,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'login.subtitle': '로마의 검투사 양성소에 오신 것을 환영합니다.',
     'login.id': '코그나멘(아이디)',
     'login.pw': '암구(비밀번호)',
-    'login.autofill': '임시채움',
     'login.enter': '루두스로 입장',
-    'login.hint': '계정 생성은 추후 진행됩니다. 지금은 임시 입장으로 로비에 들어갈 수 있습니다.',
     'login.lang': '언어',
 
     'lobby.title': '카스트룸 글라디아토룸',
@@ -38,9 +36,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'login.subtitle': 'Welcome to the Roman gladiator training school.',
     'login.id': 'Cognomen (ID)',
     'login.pw': 'Secret Phrase (Password)',
-    'login.autofill': 'Autofill',
     'login.enter': 'Enter Ludus',
-    'login.hint': 'Account creation will be added later. Use temporary entry to reach the lobby.',
     'login.lang': 'Language',
 
     'lobby.title': 'Castrum Gladiatorum',
@@ -66,9 +62,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'login.subtitle': 'ローマの剣闘士養成所へようこそ。',
     'login.id': 'コグノーメン（ID）',
     'login.pw': '合言葉（パスワード）',
-    'login.autofill': '自動入力',
     'login.enter': 'ルドゥスに入場',
-    'login.hint': 'アカウント作成は後日追加されます。今は仮入場でロビーへ。',
     'login.lang': '言語',
 
     'lobby.title': 'カストルム・グラディアトルム',

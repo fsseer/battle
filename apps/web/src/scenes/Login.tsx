@@ -38,14 +38,12 @@ export default function Login() {
             </select>
           </div>
           <form onSubmit={onSubmit} className="grid" style={{ gridTemplateColumns: '1fr' }}>
-            <input className="control" placeholder={t('login.id')} value={id} onChange={(e) => setId(e.target.value)} />
-            <input className="control" placeholder={t('login.pw')} type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            <div className="actions" style={{ justifyContent: 'space-between' }}>
-              <button type="button" className="ghost-btn" onClick={() => { setId('Maximus'); setPassword('test'); }}>{t('login.autofill')}</button>
-              <button type="submit" className="gold-btn">{t('login.enter')}</button>
+            <input className="control" placeholder={t('login.id')} value={id} onChange={(e) => setId(e.target.value)} required />
+            <input className="control" placeholder={t('login.pw')} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <div className="actions">
+              <button type="submit" className="gold-btn" style={{ width: '100%' }}>{t('login.enter')}</button>
             </div>
           </form>
-          <div className="section" style={{ fontSize: 14 }}>{t('login.hint')}</div>
         </div>
       </div>
     </div>

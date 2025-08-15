@@ -163,33 +163,9 @@ export default function Battle() {
                     g.endFill()
                   }}
                 />
-                {/* 좌/우 캐릭터 더미 */}
-                <Graphics
-                  x={80}
-                  y={120}
-                  draw={g => {
-                    g.clear()
-                    g.beginFill(0x6b4f2a)
-                    g.drawCircle(0, 0, 16) // 머리
-                    g.endFill()
-                    g.lineStyle(4, 0x6b4f2a)
-                    g.moveTo(0, 0)
-                    g.lineTo(0, 30) // 몸통
-                  }}
-                />
-                <Graphics
-                  x={280}
-                  y={120}
-                  draw={g => {
-                    g.clear()
-                    g.beginFill(0x2a4f6b)
-                    g.drawCircle(0, 0, 16)
-                    g.endFill()
-                    g.lineStyle(4, 0x2a4f6b)
-                    g.moveTo(0, 0)
-                    g.lineTo(0, 30)
-                  }}
-                />
+                {/* 좌/우 캐릭터 임시 스프라이트 */}
+                <Sprite image={'/sprites/fighter_red.svg'} x={64} y={88} width={64} height={64} anchor={0} />
+                <Sprite image={'/sprites/fighter_blue.svg'} x={260} y={88} width={64} height={64} anchor={0} />
                 {/* 간단한 타격/가드 표시 */}
                 {choice === 'slash' && (
                   <Graphics x={120} y={110} draw={g => { g.clear(); g.lineStyle(3, 0xaa0000); g.moveTo(0,0); g.lineTo(50,-20) }} />

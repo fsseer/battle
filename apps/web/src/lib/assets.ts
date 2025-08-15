@@ -7,11 +7,9 @@ const manifest = {
     {
       name: 'core',
       assets: [
-        // 예시 자산 경로 (없으면 무시). 추후 실제 스프라이트 추가 예정
-        // { alias: 'fighter_red', src: '/sprites/fighter_red.png' },
-        // { alias: 'fighter_blue', src: '/sprites/fighter_blue.png' },
-        // { alias: 'spark', src: '/sprites/spark.png' },
-        // { alias: 'trail', src: '/sprites/trail.png' },
+        { alias: 'fighter_red', src: '/sprites/fighter_red.svg' },
+        { alias: 'fighter_blue', src: '/sprites/fighter_blue.svg' },
+        { alias: 'spark', src: '/sprites/spark.svg' },
       ],
     },
   ],

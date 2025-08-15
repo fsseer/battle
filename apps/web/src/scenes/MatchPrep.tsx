@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { socket } from '../lib/socket.ts'
 import { useAuthStore } from '../store/auth'
@@ -26,6 +26,9 @@ export default function MatchPrep() {
       .catch(()=>{})
     return () => { mounted = false }
   }, [])
+  // 훈련 실행 VFX(간단한 메시지 플래시)
+  const [flash, setFlash] = useState<string>('')
+  const flashTimer = useRef<number | null>(null)
   async function call(path: string, payload: any) {
     if (!token) return
     setBusy(true)
@@ -33,6 +36,9 @@ export default function MatchPrep() {
       const r = await fetch(`http://127.0.0.1:5174${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) })
       const j = await r.json().catch(()=>null)
       if (j?.ok) {
+        setFlash('훈련 완료!')
+        if (flashTimer.current) window.clearTimeout(flashTimer.current)
+        flashTimer.current = window.setTimeout(() => setFlash(''), 900)
         const m = await fetch('http://127.0.0.1:5174/me', { headers: { Authorization: `Bearer ${token}` } }).then(res=>res.json()).catch(()=>null)
         if (m?.ok) setUser({ id: m.user.id, name: m.user.name, token, characters: m.user.characters })
       } else if (j?.error === 'NOT_ENOUGH_AP') {
@@ -68,6 +74,7 @@ export default function MatchPrep() {
       <div className="panel">
         <h3>대전 준비</h3>
         <div className="parchment" style={{ marginTop: 8, marginBottom: 8 }}>
+          {flash ? <div className="row" style={{ justifyContent: 'center', marginBottom: 8 }}><span style={{ color: '#2a8f2a' }}>{flash}</span></div> : null}
           <ResourceBar />
           <div className="column" style={{ gap: 10, marginTop: 8 }}>
             <div className="column" style={{ gap: 6 }}>

@@ -9,6 +9,15 @@ if not exist node_modules (
 	echo [server] Installing dependencies...
 	npm install
 )
+if not exist .env (
+	echo DATABASE_URL=file:./prisma/dev.db> .env
+) else (
+	findstr /b /c:"DATABASE_URL=" .env >nul || (echo DATABASE_URL=file:./prisma/dev.db>> .env)
+)
+echo [server] Applying migrations...
+npx --yes prisma migrate deploy >nul 2>&1
+echo [server] Generating prisma client...
+npx --yes prisma generate >nul 2>&1
 echo [server] Starting dev server (port 5174)...
 start "battle-server-dev" cmd /c "npm run dev"
 popd

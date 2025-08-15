@@ -17,7 +17,7 @@ rem Start Vite dev server on fixed port in a new window
 echo [web] Starting dev server (port 5173)...
 start "battle-web-dev" cmd /c "npm run dev -- --strictPort --port 5173"
 
-rem Wait for server to be ready and open browser
+rem Wait for web to be ready and open browser
 set URL=http://localhost:5173
 echo [web] Waiting for %URL% to be ready...
 

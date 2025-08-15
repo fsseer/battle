@@ -40,7 +40,7 @@ export default function Lobby() {
           </div>
         </div>
 
-        <div className="row section" style={{ justifyContent: 'space-between' }}>
+        <div className="actions section" style={{ justifyContent: 'space-between' }}>
           <button className="ghost-btn" onClick={() => { clear(); navigate('/login') }}>{t('lobby.logout')}</button>
           <button className="gold-btn" onClick={() => navigate('/match')}>{t('lobby.quick')}</button>
         </div>

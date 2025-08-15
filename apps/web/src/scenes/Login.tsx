@@ -38,9 +38,9 @@ export default function Login() {
             </select>
           </div>
           <form onSubmit={onSubmit} className="grid" style={{ gridTemplateColumns: '1fr' }}>
-            <input placeholder={t('login.id')} value={id} onChange={(e) => setId(e.target.value)} />
-            <input placeholder={t('login.pw')} type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            <div className="row" style={{ justifyContent: 'space-between' }}>
+            <input className="control" placeholder={t('login.id')} value={id} onChange={(e) => setId(e.target.value)} />
+            <input className="control" placeholder={t('login.pw')} type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <div className="actions" style={{ justifyContent: 'space-between' }}>
               <button type="button" className="ghost-btn" onClick={() => { setId('Maximus'); setPassword('test'); }}>{t('login.autofill')}</button>
               <button type="submit" className="gold-btn">{t('login.enter')}</button>
             </div>

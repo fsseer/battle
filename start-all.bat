@@ -7,8 +7,12 @@ set "PATH=%APPDATA%\npm;%ProgramFiles%\nodejs;%ProgramFiles(x86)%\nodejs;%PATH%"
 cd /d "%~dp0"
 
 rem best-effort: close previously started consoles to avoid file locks/port conflicts
-taskkill /f /fi "WINDOWTITLE eq battle-server-dev" >nul 2>nul
-taskkill /f /fi "WINDOWTITLE eq battle-web-dev" >nul 2>nul
+echo [kill] Closing previous dev consoles (if any)...
+taskkill /f /t /fi "WINDOWTITLE eq battle-server-dev" >nul 2>nul
+taskkill /f /t /fi "WINDOWTITLE eq battle-web-dev" >nul 2>nul
+echo [kill] Freeing ports 5174(server) and 5173(web) (if any)...
+powershell -NoProfile -Command "try { Get-Process -Id (Get-NetTCPConnection -LocalPort 5174 -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique) -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue } catch { }"
+powershell -NoProfile -Command "try { Get-Process -Id (Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique) -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue } catch { }"
 
 rem ===== Server =====
 pushd apps\server
@@ -27,15 +31,29 @@ if not exist .env (
 	echo DATABASE_URL=file:./prisma/dev.db>> .env.tmp
 	move /y .env.tmp .env >nul
 )
+rem ensure port 5174 is free (kill any running server) and pre-clean locked prisma engine
+echo [server] Freeing port 5174 and cleaning prisma engine (if any)...
+powershell -NoProfile -Command "try { Get-Process -Id (Get-NetTCPConnection -LocalPort 5174 -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique) -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue } catch { }"
+powershell -NoProfile -Command "Remove-Item -Force -ErrorAction SilentlyContinue 'node_modules/.prisma/client/query_engine-windows.dll.node*'"
 echo [server] Applying migrations...
 call npx --yes prisma migrate deploy || (echo [server][ERROR] Prisma migrate failed. Press any key to exit.& pause>nul & goto :eof)
 echo [server] Generating prisma client...
-rem try normal generate; on failure, remove locked engine and retry with --no-engine
-call npx --yes prisma generate
-if errorlevel 1 (
+set RETRIES=5
+set SLEEP=2
+for /l %%i in (1,1,%RETRIES%) do (
+    call npx --yes prisma generate && goto :gen_ok
+    echo [server] prisma generate failed (attempt %%i). Cleaning and retrying in %SLEEP%s...
     powershell -NoProfile -Command "Remove-Item -Force -ErrorAction SilentlyContinue 'node_modules/.prisma/client/query_engine-windows.dll.node*'"
-    call npx --yes prisma generate --no-engine || (echo [server][ERROR] Prisma generate failed. Press any key to exit.& pause>nul & goto :eof)
+    powershell -NoProfile -Command "Stop-Process -Name node -Force -ErrorAction SilentlyContinue"
+    if %%i GEQ 3 (
+        echo [server] Deep clean .prisma cache...
+        powershell -NoProfile -Command "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue 'node_modules/.prisma'"
+    )
+    timeout /t %SLEEP% >nul
 )
+echo [server][ERROR] Prisma generate failed after %RETRIES% attempts. Press any key to exit.
+pause>nul & goto :eof
+:gen_ok
 echo [server] Starting dev server (port 5174)...
 set AP_REGEN_MS=6000
 start "battle-server-dev" cmd /k "set AP_REGEN_MS=%AP_REGEN_MS% && npm run dev"

@@ -4,6 +4,7 @@ import { socket } from '../lib/socket.ts'
 import { Stage, Container, Sprite, Graphics } from '@pixi/react'
 import * as PIXI from 'pixi.js'
 import ResourceBar from '../components/ResourceBar'
+import { loadAssets } from '../lib/assets'
 
 type Role = 'ATTACK' | 'DEFENSE'
 type Skill = { id: string, name: string, role: Role | 'ANY' }
@@ -29,6 +30,7 @@ export default function Battle() {
   const [hitstopMs, setHitstopMs] = useState(0)
   const [cam, setCam] = useState({ x: 0, y: 0 })
   const frameRef = useRef<number | null>(null)
+  const [spark, setSpark] = useState<{ x: number; y: number; t: number } | null>(null)
 
   const available = useMemo(() => SKILLS.filter(s => s.role === 'ANY' || s.role === role), [role])
 
@@ -42,6 +44,7 @@ export default function Battle() {
   }, [])
 
   useEffect(() => {
+    loadAssets().catch(() => {})
     // 라운드 타이머
     if (timerRef.current) window.clearInterval(timerRef.current)
     setTimeLeft(10)
@@ -83,6 +86,8 @@ export default function Battle() {
       // 히트스톱 & 카메라 흔들림 트리거
       setHitstopMs(120)
       setShakeMs(200)
+      // 간단한 스파크 VFX
+      setSpark({ x: 200, y: 110, t: 200 })
       resolveRound(m.self, m.opp)
       setRole(m.nextRole)
     }
@@ -103,11 +108,12 @@ export default function Battle() {
         setCam({ x: 0, y: 0 })
       }
       if (hitstopMs > 0) setHitstopMs(ms => Math.max(0, ms - 16))
+      if (spark && spark.t > 0) setSpark(s => s ? ({ ...s, t: Math.max(0, s.t - 16) }) : s)
       frameRef.current = requestAnimationFrame(loop)
     }
     frameRef.current = requestAnimationFrame(loop)
     return () => { mounted = false; if (frameRef.current) cancelAnimationFrame(frameRef.current) }
-  }, [shakeMs, hitstopMs])
+  }, [shakeMs, hitstopMs, spark])
 
   return (
     <div className="arena-frame">
@@ -171,6 +177,10 @@ export default function Battle() {
                 )}
                 {choice === 'parry' && (
                   <Graphics x={240} y={110} draw={g => { g.clear(); g.lineStyle(3, 0x00aa88); g.drawCircle(0,0,12) }} />
+                )}
+                {/* 스파크 파티클 */}
+                {spark && spark.t > 0 && (
+                  <Graphics x={spark.x} y={spark.y} alpha={Math.max(0, spark.t / 200)} draw={g => { g.clear(); g.beginFill(0xffdd66); g.drawCircle(0,0,6); g.endFill() }} />
                 )}
               </Container>
             </Stage>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { socket } from '../lib/socket.ts'
 import { Stage, Container, Sprite, Graphics } from '@pixi/react'
 import * as PIXI from 'pixi.js'
+import ResourceBar from '../components/ResourceBar'
 
 type Role = 'ATTACK' | 'DEFENSE'
 type Skill = { id: string, name: string, role: Role | 'ANY' }
@@ -23,6 +24,11 @@ export default function Battle() {
   const [log, setLog] = useState<string[]>([])
   const [timeLeft, setTimeLeft] = useState(10)
   const timerRef = useRef<number | null>(null)
+  // Camera shake & hitstop
+  const [shakeMs, setShakeMs] = useState(0)
+  const [hitstopMs, setHitstopMs] = useState(0)
+  const [cam, setCam] = useState({ x: 0, y: 0 })
+  const frameRef = useRef<number | null>(null)
 
   const available = useMemo(() => SKILLS.filter(s => s.role === 'ANY' || s.role === role), [role])
 
@@ -41,6 +47,7 @@ export default function Battle() {
     setTimeLeft(10)
     timerRef.current = window.setInterval(() => {
       setTimeLeft(t => {
+        if (hitstopMs > 0) return t // 히트스톱 중엔 시간 멈춤
         if (t <= 1) {
           window.clearInterval(timerRef.current!)
         }
@@ -48,7 +55,7 @@ export default function Battle() {
       })
     }, 1000)
     return () => { if (timerRef.current) window.clearInterval(timerRef.current) }
-  }, [round])
+  }, [round, hitstopMs])
 
   const resolveRound = useCallback((self: string, opp: string) => {
     // 더미 상성 규칙: 베기>패링, 견제>가드, 가드>베기, 패링>견제, 동일=무승부
@@ -73,6 +80,9 @@ export default function Battle() {
   useEffect(() => {
     const onResolved = (m: { round: number; self: string; opp: string; result: 'WIN'|'LOSE'|'DRAW'; nextRole: Role }) => {
       setOpponentChoice(m.opp)
+      // 히트스톱 & 카메라 흔들림 트리거
+      setHitstopMs(120)
+      setShakeMs(200)
       resolveRound(m.self, m.opp)
       setRole(m.nextRole)
     }
@@ -80,10 +90,30 @@ export default function Battle() {
     return () => { socket.off('battle.resolve', onResolved) }
   }, [resolveRound])
 
+  // 프레임 루프: 히트스톱/카메라 쉐이크 처리
+  useEffect(() => {
+    let mounted = true
+    function loop() {
+      if (!mounted) return
+      if (shakeMs > 0) {
+        const mag = 4
+        setCam({ x: (Math.random() - 0.5) * mag, y: (Math.random() - 0.5) * mag })
+        setShakeMs(ms => Math.max(0, ms - 16))
+      } else {
+        setCam({ x: 0, y: 0 })
+      }
+      if (hitstopMs > 0) setHitstopMs(ms => Math.max(0, ms - 16))
+      frameRef.current = requestAnimationFrame(loop)
+    }
+    frameRef.current = requestAnimationFrame(loop)
+    return () => { mounted = false; if (frameRef.current) cancelAnimationFrame(frameRef.current) }
+  }, [shakeMs, hitstopMs])
+
   return (
     <div className="arena-frame">
       <div className="panel">
         <h3>인게임 전투</h3>
+        <ResourceBar />
         <div className="parchment" style={{ marginTop: 8 }}>
           <div className="row" style={{ gap: 24, marginBottom: 12 }}>
             <div>라운드: {round}</div>
@@ -92,7 +122,7 @@ export default function Battle() {
           </div>
           <div style={{ border: '1px solid #ddd', borderRadius: 8, overflow: 'hidden' }}>
             <Stage width={360} height={200} options={{ background: 0xf7f1e1 }}>
-              <Container>
+              <Container x={cam.x} y={cam.y}>
                 {/* 배경 */}
                 <Graphics
                   draw={g => {

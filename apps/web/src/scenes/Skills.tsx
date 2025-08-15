@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 type SkillState = 'usable'|'locked_prof'|'locked_stat'|'locked_item'
@@ -7,27 +7,34 @@ export default function Skills() {
   const [data, setData] = useState<any>({ weaponSkills: [], characterSkills: [], traits: [] })
   const [me, setMe] = useState<any>(null)
   const navigate = useNavigate()
+  const didInitRef = useRef(false)
   const load = async () => {
     try {
-      const [skillsRes, meRes] = await Promise.all([
-        fetch('http://127.0.0.1:5174/skills', { headers: authHeader() }),
-        fetch('http://127.0.0.1:5174/me', { headers: authHeader() })
-      ])
+      const headers = authHeader()
+      const skillsRes = await fetch('http://127.0.0.1:5174/skills', { headers })
+      let meRes: Response | null = null
+      if (headers.Authorization) {
+        meRes = await fetch('http://127.0.0.1:5174/me', { headers })
+      }
       // 세션 만료(401)만 자동 로그아웃 처리. 404는 비로그인 상태로 계속 표시
-      if (meRes.status === 401) {
+      if (meRes && meRes.status === 401) {
         try { localStorage.removeItem('auth') } catch {}
         alert('세션이 만료되었습니다. 다시 로그인해 주세요.')
         navigate('/login')
         return
       }
       const s = await skillsRes.json()
-      const m = meRes.ok ? await meRes.json() : null
+      const m = meRes && meRes.ok ? await meRes.json() : null
       setData(s)
       if (m?.ok) setMe(m.user)
       else setMe(null)
     } catch {}
   }
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    if (didInitRef.current) return
+    didInitRef.current = true
+    load()
+  }, [])
 
   const renderSkill = (s: any) => (
     <div key={s.skill.id} style={{ padding: 8, border: '1px solid #ddd', borderRadius: 8, marginBottom: 8, opacity: s.state === 'usable' ? 1 : .6 }}>
@@ -69,7 +76,9 @@ export default function Skills() {
           </div>
         </div>
         <div className="section" style={{ display: 'flex', gap: 8 }}>
-          <button className="ghost-btn" onClick={() => trainOneHand().then(load)}>한손 무기 훈련(+100xp)</button>
+          <button className="ghost-btn" disabled={!me} onClick={() => trainOneHand().then(load)}>
+            한손 무기 훈련(+100xp)
+          </button>
         </div>
       </div>
     </div>
@@ -94,7 +103,12 @@ function authHeader(): Record<string, string> {
 
 async function trainOneHand() {
   try {
-    const res = await fetch('http://127.0.0.1:5174/train/proficiency', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader() as any }, body: JSON.stringify({ kind: 'ONE_HAND', xp: 100 }) })
+    const headers = authHeader()
+    if (!headers.Authorization) {
+      alert('로그인이 필요합니다. 먼저 로그인해 주세요.')
+      return
+    }
+    const res = await fetch('http://127.0.0.1:5174/train/proficiency', { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify({ kind: 'ONE_HAND', xp: 100 }) })
     if (res.status === 401) {
       try { localStorage.removeItem('auth') } catch {}
       alert('세션이 만료되었습니다. 다시 로그인해 주세요.')

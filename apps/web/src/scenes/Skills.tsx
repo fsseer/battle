@@ -5,7 +5,7 @@ type SkillState = 'usable'|'locked_prof'|'locked_stat'|'locked_item'
 export default function Skills() {
   const [data, setData] = useState<any>({ weaponSkills: [], characterSkills: [], traits: [] })
   useEffect(() => {
-    fetch('http://127.0.0.1:5174/skills').then(r => r.json()).then(setData).catch(()=>{})
+    fetch('http://127.0.0.1:5174/skills', { headers: authHeader() }).then(r => r.json()).then(setData).catch(()=>{})
   }, [])
 
   const renderSkill = (s: any) => (
@@ -42,6 +42,9 @@ export default function Skills() {
             ))}
           </div>
         </div>
+        <div className="section" style={{ display: 'flex', gap: 8 }}>
+          <button className="ghost-btn" onClick={trainOneHand}>한손 무기 훈련(+100xp)</button>
+        </div>
       </div>
     </div>
   )
@@ -51,6 +54,23 @@ function StateBadge({ state }: { state: SkillState }) {
   const color = state==='usable' ? '#2a8f2a' : state==='locked_prof' ? '#b96f00' : state==='locked_stat' ? '#b93838' : '#555'
   const text = state==='usable' ? 'USABLE' : state==='locked_prof' ? 'PROFICIENCY' : state==='locked_stat' ? 'STATS' : 'EQUIP/ITEM'
   return <span style={{ fontSize: 12, color }}>{text}</span>
+}
+
+function authHeader() {
+  try {
+    const raw = localStorage.getItem('auth')
+    if (!raw) return {}
+    const token = JSON.parse(raw)?.user?.token
+    if (!token) return {}
+    return { Authorization: `Bearer ${token}` }
+  } catch { return {} }
+}
+
+async function trainOneHand() {
+  try {
+    await fetch('http://127.0.0.1:5174/train/proficiency', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader() as any }, body: JSON.stringify({ kind: 'ONE_HAND', xp: 100 }) })
+    location.reload()
+  } catch {}
 }
 
 

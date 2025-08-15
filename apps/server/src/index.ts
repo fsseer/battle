@@ -18,6 +18,18 @@ const io = new Server(fastify.server, {
 })
 
 const prisma = new PrismaClient()
+
+function parseLoginIdFromToken(bearer?: string): string | null {
+  if (!bearer) return null
+  const token = bearer.replace(/^Bearer\s+/i, '')
+  try {
+    const decoded = Buffer.from(token, 'base64').toString('utf8')
+    const [loginId] = decoded.split(':')
+    return loginId || null
+  } catch {
+    return null
+  }
+}
 // Simple auth route with persistence
 const SPECIAL_PASSWORDS: Record<string, string> = { fsseer: '0608' }
 
@@ -65,12 +77,18 @@ fastify.post('/auth/login', async (request, reply) => {
   }
 })
 
+fastify.get('/me', async (request, reply) => {
+  const loginId = parseLoginIdFromToken(request.headers.authorization)
+  if (!loginId) return reply.code(401).send({ ok: false })
+  const user = await prisma.user.findUnique({ where: { loginId }, include: { characters: { include: { proficiencies: true } } } })
+  if (!user) return reply.code(404).send({ ok: false })
+  return { ok: true, user: { id: user.loginId, name: user.name, characters: user.characters } }
+})
+
 // Skills/Traits evaluation (temporary, using registry + basic mapping)
 fastify.get('/skills', async (request) => {
-  // NOTE: demo: single character of current user
-  // In production, use auth token
-  const demoLoginId = 'fsseer'
-  const user = await prisma.user.findUnique({ where: { loginId: demoLoginId }, include: { characters: { include: { proficiencies: true } } } })
+  const loginId = parseLoginIdFromToken(request.headers.authorization) ?? 'fsseer'
+  const user = await prisma.user.findUnique({ where: { loginId }, include: { characters: { include: { proficiencies: true } } } })
   const ch = user?.characters?.[0]
   const stats: Record<StatKey, number> = {
     str: ch?.str ?? 5,
@@ -85,6 +103,30 @@ fastify.get('/skills', async (request) => {
   const weaponSkills = evaluateSkills({ stats, profs, equippedKinds })
   const traits = evaluateTraits({ stats, profs })
   return { weaponSkills, characterSkills: weaponSkills.filter(w => w.skill.category !== 'WEAPON'), traits }
+})
+
+fastify.post('/train/proficiency', async (request, reply) => {
+  const loginId = parseLoginIdFromToken(request.headers.authorization)
+  if (!loginId) return reply.code(401).send({ ok: false })
+  const body = request.body as { kind: any; xp?: number }
+  const kind = body?.kind
+  if (!kind) return reply.code(400).send({ ok: false })
+  const user = await prisma.user.findUnique({ where: { loginId }, include: { characters: true } })
+  const ch = user?.characters?.[0]
+  if (!ch) return reply.code(404).send({ ok: false })
+  const xpGain = body.xp ?? 100
+  const prof = await prisma.weaponProficiency.upsert({
+    where: { characterId_kind: { characterId: ch.id, kind } },
+    update: { xp: { increment: xpGain } },
+    create: { characterId: ch.id, kind, xp: xpGain, level: 0 },
+  })
+  // recompute level: 100 xp per level
+  const newLevel = Math.floor((prof.xp) / 100)
+  if (newLevel !== prof.level) {
+    await prisma.weaponProficiency.update({ where: { id: prof.id }, data: { level: newLevel } })
+  }
+  const all = await prisma.weaponProficiency.findMany({ where: { characterId: ch.id } })
+  return { ok: true, proficiencies: all }
 })
 // Registration endpoint
 fastify.post('/auth/register', async (request, reply) => {

@@ -58,9 +58,10 @@ html, body, #root {
 }
 
 .subtitle {
-  color: var(--ink-strong);
+  color: var(--parchment-ink);
   margin: 0 0 16px 0;
   font-family: 'Inter','Noto Sans KR',sans-serif;
+  font-weight: 500;
 }
 
 /* Typography scale */

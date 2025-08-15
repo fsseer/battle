@@ -9,6 +9,7 @@
   --bronze-dark: #7b4f20;
   --ink: #eae6df;
   --ink-dim: #cfc7bb;
+  --ink-strong: #fff9ee;
 }
 
 /* Background: torch-lit arena ambiance */
@@ -57,10 +58,21 @@ html, body, #root {
 }
 
 .subtitle {
-  color: var(--ink-dim);
+  color: var(--ink-strong);
   margin: 0 0 16px 0;
   font-family: 'Inter','Noto Sans KR',sans-serif;
 }
+
+/* Typography scale */
+.font-display { font-family: 'Cinzel', serif; font-weight: 700; letter-spacing: .06em; }
+.font-body { font-family: 'Inter','Noto Sans KR','Noto Sans JP',sans-serif; }
+.text-xs { font-size: 12px; line-height: 18px; }
+.text-sm { font-size: 14px; line-height: 20px; }
+.text-md { font-size: 16px; line-height: 22px; }
+.text-lg { font-size: 18px; line-height: 24px; }
+.text-xl { font-size: 22px; line-height: 28px; }
+.muted { color: var(--ink-dim); }
+.strong { color: var(--ink-strong); }
 
 .grid {
   display: grid;

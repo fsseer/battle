@@ -10,7 +10,7 @@
 }
 
 /* Background: torch-lit arena ambiance */
-body {
+html, body, #root {
   background:
     radial-gradient(60% 50% at 50% 110%, rgba(206, 130, 25, 0.12), transparent 60%),
     radial-gradient(25% 20% at 10% 10%, rgba(255, 230, 160, 0.06), transparent 50%),

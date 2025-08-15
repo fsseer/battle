@@ -6,6 +6,10 @@ set "PATH=%APPDATA%\npm;%ProgramFiles%\nodejs;%ProgramFiles(x86)%\nodejs;%PATH%"
 
 cd /d "%~dp0"
 
+rem best-effort: close previously started consoles to avoid file locks/port conflicts
+taskkill /f /fi "WINDOWTITLE eq battle-server-dev" >nul 2>nul
+taskkill /f /fi "WINDOWTITLE eq battle-web-dev" >nul 2>nul
+
 rem ===== Server =====
 pushd apps\server
 if not exist node_modules (
@@ -26,9 +30,15 @@ if not exist .env (
 echo [server] Applying migrations...
 call npx --yes prisma migrate deploy || (echo [server][ERROR] Prisma migrate failed. Press any key to exit.& pause>nul & goto :eof)
 echo [server] Generating prisma client...
-call npx --yes prisma generate || (echo [server][ERROR] Prisma generate failed. Press any key to exit.& pause>nul & goto :eof)
+rem try normal generate; on failure, remove locked engine and retry with --no-engine
+call npx --yes prisma generate
+if errorlevel 1 (
+    powershell -NoProfile -Command "Remove-Item -Force -ErrorAction SilentlyContinue 'node_modules/.prisma/client/query_engine-windows.dll.node*'"
+    call npx --yes prisma generate --no-engine || (echo [server][ERROR] Prisma generate failed. Press any key to exit.& pause>nul & goto :eof)
+)
 echo [server] Starting dev server (port 5174)...
-start "battle-server-dev" cmd /k "npm run dev"
+set AP_REGEN_MS=6000
+start "battle-server-dev" cmd /k "set AP_REGEN_MS=%AP_REGEN_MS% && npm run dev"
 popd
 
 set SURL=http://localhost:5174/health

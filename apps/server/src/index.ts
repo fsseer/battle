@@ -18,6 +18,23 @@ const io = new Server(fastify.server, {
 })
 
 const prisma = new PrismaClient()
+const AP_REGEN_MS = Number(process.env.AP_REGEN_MS ?? 6 * 1000)
+// AP regen: 6분당 1, 최대 100
+function applyApRegen(ch: any) {
+  const now = Date.now()
+  const last = new Date(ch.apUpdatedAt).getTime()
+  const elapsedMs = Math.max(0, now - last)
+  const gained = Math.floor(elapsedMs / AP_REGEN_MS)
+  if (gained <= 0) return ch
+  const nextAp = Math.min(100, (ch.ap ?? 0) + gained)
+  return { ...ch, ap: nextAp, apUpdatedAt: new Date(now) }
+}
+
+async function saveApIfChanged(chBefore: any, chAfter: any) {
+  if (chAfter.ap !== chBefore.ap) {
+    await prisma.character.update({ where: { id: chBefore.id }, data: { ap: chAfter.ap, apUpdatedAt: chAfter.apUpdatedAt } })
+  }
+}
 
 function parseLoginIdFromToken(bearer?: string): string | null {
   if (!bearer) return null
@@ -86,6 +103,13 @@ fastify.get('/me', async (request, reply) => {
     request.log.warn({ route: '/me', loginId }, 'user not found')
     return reply.code(404).send({ ok: false })
   }
+  // apply AP regen on first character for now
+  const ch0 = user.characters?.[0]
+  if (ch0) {
+    const updated = applyApRegen(ch0)
+    await saveApIfChanged(ch0, updated)
+    user.characters[0] = updated as any
+  }
   return { ok: true, user: { id: user.loginId, name: user.name, characters: user.characters } }
 })
 
@@ -122,6 +146,14 @@ fastify.post('/train/proficiency', async (request, reply) => {
     request.log.warn({ route: '/train/proficiency', loginId }, 'character not found')
     return reply.code(404).send({ ok: false })
   }
+  // consume 1 AP to train
+  const chUpdated = applyApRegen(ch)
+  const cost = 1
+  if ((chUpdated.ap ?? 0) < cost) {
+    return reply.code(400).send({ ok: false, error: 'NOT_ENOUGH_AP' })
+  }
+  const afterSpend = { ...chUpdated, ap: chUpdated.ap - cost, apUpdatedAt: new Date() }
+  await saveApIfChanged(ch, afterSpend)
   const xpGain = body.xp ?? 100
   const prof = await prisma.weaponProficiency.upsert({
     where: { characterId_kind: { characterId: ch.id, kind } },
@@ -134,7 +166,7 @@ fastify.post('/train/proficiency', async (request, reply) => {
     await prisma.weaponProficiency.update({ where: { id: prof.id }, data: { level: newLevel } })
   }
   const all = await prisma.weaponProficiency.findMany({ where: { characterId: ch.id } })
-  return { ok: true, proficiencies: all }
+  return { ok: true, proficiencies: all, ap: afterSpend.ap }
 })
 
 // Debug: echo who the server sees from the Authorization header

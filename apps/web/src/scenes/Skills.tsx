@@ -13,17 +13,18 @@ export default function Skills() {
         fetch('http://127.0.0.1:5174/skills', { headers: authHeader() }),
         fetch('http://127.0.0.1:5174/me', { headers: authHeader() })
       ])
-      // 세션 만료 또는 유저 없음 → 자동 로그아웃 후 로그인으로 이동
-      if (meRes.status === 401 || meRes.status === 404) {
+      // 세션 만료(401)만 자동 로그아웃 처리. 404는 비로그인 상태로 계속 표시
+      if (meRes.status === 401) {
         try { localStorage.removeItem('auth') } catch {}
         alert('세션이 만료되었습니다. 다시 로그인해 주세요.')
         navigate('/login')
         return
       }
       const s = await skillsRes.json()
-      const m = await meRes.json()
+      const m = meRes.ok ? await meRes.json() : null
       setData(s)
       if (m?.ok) setMe(m.user)
+      else setMe(null)
     } catch {}
   }
   useEffect(() => { load() }, [])
@@ -81,7 +82,7 @@ function StateBadge({ state }: { state: SkillState }) {
   return <span style={{ fontSize: 12, color }}>{text}</span>
 }
 
-function authHeader() {
+function authHeader(): Record<string, string> {
   try {
     const raw = localStorage.getItem('auth')
     if (!raw) return {}
@@ -93,7 +94,14 @@ function authHeader() {
 
 async function trainOneHand() {
   try {
-    await fetch('http://127.0.0.1:5174/train/proficiency', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader() as any }, body: JSON.stringify({ kind: 'ONE_HAND', xp: 100 }) })
+    const res = await fetch('http://127.0.0.1:5174/train/proficiency', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader() as any }, body: JSON.stringify({ kind: 'ONE_HAND', xp: 100 }) })
+    if (res.status === 401) {
+      try { localStorage.removeItem('auth') } catch {}
+      alert('세션이 만료되었습니다. 다시 로그인해 주세요.')
+      // navigate는 훅 컨텍스트가 아니라 사용 불가하므로 단순 이동
+      location.href = '/login'
+      return
+    }
   } catch {}
 }
 

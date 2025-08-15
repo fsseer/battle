@@ -31,31 +31,58 @@ fastify.post('/auth/login', async (request, reply) => {
       pw.length < 4 || pw.length > 24 ||
       /\s/.test(id) || /\s/.test(pw)
     if (invalid) {
-      return reply.code(400).send({ ok: false, error: 'INVALID_CREDENTIALS' })
+      return reply.code(400).send({ ok: false, error: 'INVALID_INPUT' })
     }
     // Special-case credential check for demo accounts
     const expected = SPECIAL_PASSWORDS[id]
     if (expected && pw !== expected) {
-      return reply.code(401).send({ ok: false, error: 'INVALID_CREDENTIALS' })
+      return reply.code(401).send({ ok: false, error: 'WRONG_PASSWORD' })
     }
 
-    // Find or create user
-    let user = await prisma.user.findUnique({ where: { loginId: id }, include: { characters: true } })
-    if (!user) {
-      const pwHash = await bcrypt.hash(pw, 10)
-      user = await prisma.user.create({
-        data: {
-          loginId: id,
-          pwHash,
-          name: id,
-          characters: { create: [{ name: 'Novice Gladiator', level: 1, str: 5, agi: 5, sta: 5 }] }
-        },
-        include: { characters: true }
-      })
-    } else if (!expected) {
+    // Find user (no auto-create here)
+    const user = await prisma.user.findUnique({ where: { loginId: id }, include: { characters: true } })
+    if (!user) return reply.code(404).send({ ok: false, error: 'USER_NOT_FOUND' })
+    if (!expected) {
       const ok = await bcrypt.compare(pw, user.pwHash)
-      if (!ok) return reply.code(401).send({ ok: false, error: 'INVALID_CREDENTIALS' })
+      if (!ok) return reply.code(401).send({ ok: false, error: 'WRONG_PASSWORD' })
     }
+    const token = Buffer.from(`${user.loginId}:${Date.now()}`).toString('base64')
+    return {
+      ok: true,
+      token,
+      user: {
+        id: user.loginId,
+        name: user.name,
+        characters: user.characters.map(c => ({ id: c.id, name: c.name, level: c.level, stats: { str: c.str, agi: c.agi, sta: c.sta } }))
+      }
+    }
+  } catch (e) {
+    request.log.error(e)
+    return reply.code(500).send({ ok: false, error: 'SERVER_ERROR' })
+  }
+})
+
+// Registration endpoint
+fastify.post('/auth/register', async (request, reply) => {
+  try {
+    const body = request.body as { id?: string; password?: string; confirm?: string }
+    const id = (body?.id ?? '').trim()
+    const pw = body?.password ?? ''
+    const confirm = body?.confirm ?? ''
+    const invalid = !id || !pw || !confirm || id.length < 4 || id.length > 24 || pw.length < 4 || pw.length > 24 || /\s/.test(id) || /\s/.test(pw) || pw !== confirm
+    if (invalid) return reply.code(400).send({ ok: false, error: 'INVALID_INPUT' })
+    const exists = await prisma.user.findUnique({ where: { loginId: id } })
+    if (exists) return reply.code(409).send({ ok: false, error: 'DUPLICATE_ID' })
+    const pwHash = await bcrypt.hash(pw, 10)
+    const user = await prisma.user.create({
+      data: {
+        loginId: id,
+        pwHash,
+        name: id,
+        characters: { create: [{ name: 'Novice Gladiator', level: 1, str: 5, agi: 5, sta: 5 }] }
+      },
+      include: { characters: true }
+    })
     const token = Buffer.from(`${user.loginId}:${Date.now()}`).toString('base64')
     return {
       ok: true,

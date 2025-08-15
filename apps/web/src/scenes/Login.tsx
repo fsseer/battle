@@ -81,7 +81,7 @@ export default function Login() {
             <input className={`control${pwErr ? ' invalid' : ''}`} placeholder={t('login.pw')} type="password" value={password} maxLength={24} onChange={(e) => { const v = e.target.value; if (/\s/.test(v)) return; setPassword(v); if (pwErr) setPwErr('') }} required />
             {pwErr ? <div className="error-text">{pwErr}</div> : null}
             {mode === 'register' ? (
-              <input className={`control${pwErr ? ' invalid' : ''}`} placeholder={t('login.pw')} type="password" value={confirm} maxLength={24} onChange={(e) => { const v = e.target.value; if (/\s/.test(v)) return; setConfirm(v) }} required />
+              <input className={`control${pwErr ? ' invalid' : ''}`} placeholder={t('login.pwConfirm')} type="password" value={confirm} maxLength={24} onChange={(e) => { const v = e.target.value; if (/\s/.test(v)) return; setConfirm(v) }} required />
             ) : null}
             <div className="actions">
               <button type="submit" className="gold-btn" style={{ width: '100%' }}>

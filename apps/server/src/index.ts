@@ -169,6 +169,39 @@ fastify.post('/train/proficiency', async (request, reply) => {
   return { ok: true, proficiencies: all, ap: afterSpend.ap }
 })
 
+// Simple training: earn gold by spending AP
+fastify.post('/train/earn', async (request, reply) => {
+  const loginId = parseLoginIdFromToken(request.headers.authorization)
+  if (!loginId) return reply.code(401).send({ ok: false })
+  const body = request.body as { apCost?: number; gold?: number }
+  const apCost = Math.max(1, Math.min(50, body?.apCost ?? 5))
+  const goldGain = Math.max(1, Math.min(1000, body?.gold ?? 10))
+  const user = await prisma.user.findUnique({ where: { loginId }, include: { characters: true } })
+  const ch = user?.characters?.[0]
+  if (!ch) return reply.code(404).send({ ok: false })
+  const afterRegen = applyApRegen(ch)
+  if ((afterRegen.ap ?? 0) < apCost) return reply.code(400).send({ ok: false, error: 'NOT_ENOUGH_AP' })
+  const updated = await prisma.character.update({ where: { id: ch.id }, data: { ap: afterRegen.ap - apCost, apUpdatedAt: new Date(), gold: { increment: goldGain } } })
+  return { ok: true, character: { id: updated.id, ap: updated.ap, gold: updated.gold, stress: updated.stress } }
+})
+
+// Simple training: rest to reduce stress by spending AP
+fastify.post('/train/rest', async (request, reply) => {
+  const loginId = parseLoginIdFromToken(request.headers.authorization)
+  if (!loginId) return reply.code(401).send({ ok: false })
+  const body = request.body as { apCost?: number; stressRelief?: number }
+  const apCost = Math.max(0, Math.min(50, body?.apCost ?? 2))
+  const relief = Math.max(1, Math.min(100, body?.stressRelief ?? 5))
+  const user = await prisma.user.findUnique({ where: { loginId }, include: { characters: true } })
+  const ch = user?.characters?.[0]
+  if (!ch) return reply.code(404).send({ ok: false })
+  const afterRegen = applyApRegen(ch)
+  if ((afterRegen.ap ?? 0) < apCost) return reply.code(400).send({ ok: false, error: 'NOT_ENOUGH_AP' })
+  const newStress = Math.max(0, (afterRegen.stress ?? 0) - relief)
+  const updated = await prisma.character.update({ where: { id: ch.id }, data: { ap: afterRegen.ap - apCost, apUpdatedAt: new Date(), stress: newStress } })
+  return { ok: true, character: { id: updated.id, ap: updated.ap, gold: updated.gold, stress: updated.stress } }
+})
+
 // Debug: echo who the server sees from the Authorization header
 fastify.get('/debug/whoami', async (request) => {
   const loginId = parseLoginIdFromToken(request.headers.authorization)

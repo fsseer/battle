@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { Language, translations } from './locales'
+import { translations } from './locales'
+import type { Language } from './locales'
 
 type I18nState = {
   lang: Language

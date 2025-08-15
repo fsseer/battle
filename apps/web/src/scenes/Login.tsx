@@ -30,8 +30,8 @@ export default function Login() {
           </div>
           <div className="title">{t('login.title')}</div>
           <div className="subtitle text-sm font-body ink-warm">{t('login.subtitle')}</div>
-          <div className="row" style={{ gap: 8, marginBottom: 8 }}>
-            <label style={{ fontSize: 14 }}>{t('login.lang')}</label>
+          <div className="lang-switch">
+            <label>{t('login.lang')}</label>
             <select value={lang} onChange={(e) => setLang(e.target.value as Language)}>
               <option value="ko">{t('common.lang.ko')}</option>
               <option value="en">{t('common.lang.en')}</option>

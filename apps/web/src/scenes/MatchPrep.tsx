@@ -8,6 +8,13 @@ export default function MatchPrep() {
   const { user, setUser } = useAuthStore()
   const token = (user as any)?.token
   const [busy, setBusy] = useState(false)
+  const [catalog, setCatalog] = useState<any[]>([])
+  useEffect(() => {
+    fetch('http://127.0.0.1:5174/training/catalog')
+      .then(r=>r.ok?r.json():null)
+      .then(j=>{ if (j?.ok) setCatalog(j.items) })
+      .catch(()=>{})
+  }, [])
   async function call(path: string, payload: any) {
     if (!token) return
     setBusy(true)
@@ -55,9 +62,20 @@ export default function MatchPrep() {
             <span className="text-sm">Gold: <b>{(user as any)?.characters?.[0]?.gold ?? 0}</b></span>
             <span className="text-sm">Stress: <b>{(user as any)?.characters?.[0]?.stress ?? 0}</b></span>
           </div>
-          <div className="row" style={{ gap: 8, marginTop: 8 }}>
-            <button className="ghost-btn" disabled={busy} onClick={() => call('/train/earn', { apCost: 5, gold: 10 })}>[훈련] AP-5 → Gold+10</button>
-            <button className="ghost-btn" disabled={busy} onClick={() => call('/train/rest', { apCost: 2, stressRelief: 5 })}>[휴식] AP-2 → Stress-5</button>
+          <div className="column" style={{ gap: 6, marginTop: 8 }}>
+            {catalog.map((it:any)=> (
+              <div key={it.id} className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
+                <div>
+                  <div style={{ fontWeight: 600 }}>{it.name} {it.goldCost? `(Gold-${it.goldCost})`:''}</div>
+                  <div className="text-sm" style={{ opacity: .9 }}>{it.description ?? ''}</div>
+                </div>
+                <button className="ghost-btn" disabled={busy} onClick={() => call('/training/run', { id: it.id })}>실행 (AP-{it.apCost}, Stress{it.stressDelta>=0?'+':''}{it.stressDelta})</button>
+              </div>
+            ))}
+            <div className="row" style={{ gap: 8 }}>
+              <button className="ghost-btn" disabled={busy} onClick={() => call('/train/earn', { apCost: 5, gold: 10 })}>[훈련] AP-5 → Gold+10</button>
+              <button className="ghost-btn" disabled={busy} onClick={() => call('/train/rest', { apCost: 2, stressRelief: 5 })}>[휴식] AP-2 → Stress-5</button>
+            </div>
           </div>
         </div>
         <div className="parchment">

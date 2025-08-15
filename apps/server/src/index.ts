@@ -4,6 +4,7 @@ import { Server } from 'socket.io'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { evaluateSkills, evaluateTraits, type StatKey } from './skills.registry'
+import { TRAINING_CATALOG, type TrainingId } from './training.registry'
 
 const fastify = Fastify({ logger: true })
 await fastify.register(cors, { origin: ['http://127.0.0.1:5173','http://localhost:5173'] })
@@ -199,6 +200,35 @@ fastify.post('/train/rest', async (request, reply) => {
   if ((afterRegen.ap ?? 0) < apCost) return reply.code(400).send({ ok: false, error: 'NOT_ENOUGH_AP' })
   const newStress = Math.max(0, (afterRegen.stress ?? 0) - relief)
   const updated = await prisma.character.update({ where: { id: ch.id }, data: { ap: afterRegen.ap - apCost, apUpdatedAt: new Date(), stress: newStress } })
+  return { ok: true, character: { id: updated.id, ap: updated.ap, gold: updated.gold, stress: updated.stress } }
+})
+
+// Catalog + run specific training item (BASIC/WEAPON)
+fastify.get('/training/catalog', async () => ({ ok: true, items: TRAINING_CATALOG }))
+
+fastify.post('/training/run', async (request, reply) => {
+  const loginId = parseLoginIdFromToken(request.headers.authorization)
+  if (!loginId) return reply.code(401).send({ ok: false })
+  const body = request.body as { id?: TrainingId }
+  const id = body?.id
+  const item = TRAINING_CATALOG.find(t => t.id === id)
+  if (!item) return reply.code(400).send({ ok: false, error: 'INVALID_TRAINING' })
+  const user = await prisma.user.findUnique({ where: { loginId }, include: { characters: true } })
+  const ch = user?.characters?.[0]
+  if (!ch) return reply.code(404).send({ ok: false })
+  const staged = applyApRegen(ch)
+  if ((staged.ap ?? 0) < item.apCost) return reply.code(400).send({ ok: false, error: 'NOT_ENOUGH_AP' })
+  if ((item.goldCost ?? 0) > 0 && (staged.gold ?? 0) < (item.goldCost ?? 0)) return reply.code(400).send({ ok: false, error: 'NOT_ENOUGH_GOLD' })
+  const data: any = { ap: staged.ap - item.apCost, apUpdatedAt: new Date(), stress: Math.max(0, (staged.stress ?? 0) + item.stressDelta) }
+  if (item.goldCost) data.gold = { decrement: item.goldCost }
+  const updated = await prisma.character.update({ where: { id: ch.id }, data })
+  if (item.weaponKind && item.weaponXp) {
+    await prisma.weaponProficiency.upsert({
+      where: { characterId_kind: { characterId: ch.id, kind: item.weaponKind } },
+      update: { xp: { increment: item.weaponXp } },
+      create: { characterId: ch.id, kind: item.weaponKind, xp: item.weaponXp, level: 0 },
+    })
+  }
   return { ok: true, character: { id: updated.id, ap: updated.ap, gold: updated.gold, stress: updated.stress } }
 })
 

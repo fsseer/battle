@@ -1,12 +1,26 @@
 import { useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import { useAuthStore } from '../store/auth'
 import '../styles/theme.css'
 import { useI18n } from '../i18n/useI18n'
 
 export default function Lobby() {
   const navigate = useNavigate()
-  const { user, clear } = useAuthStore()
+  const { user, clear, setUser } = useAuthStore()
   const { t } = useI18n()
+
+  useEffect(() => {
+    const token = (user as any)?.token
+    if (!token) return
+    fetch('http://127.0.0.1:5174/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then((m) => {
+        if (m?.ok) {
+          setUser({ id: m.user.id, name: m.user.name, token, characters: m.user.characters })
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   return (
     <div className="arena-frame">
@@ -18,6 +32,11 @@ export default function Lobby() {
         <div className="subtitle">{t('lobby.subtitle', { name: user?.name ?? 'Guest' })}</div>
 
         <div className="parchment">
+          <div className="row" style={{ justifyContent: 'flex-end', marginBottom: 8, gap: 16 }}>
+            <span className="text-sm" style={{ opacity: .9 }}>AP: <b>{(user as any)?.characters?.[0]?.ap ?? '—'}</b>/100</span>
+            <span className="text-sm" style={{ opacity: .9 }}>Gold: <b>{(user as any)?.characters?.[0]?.gold ?? 0}</b></span>
+            <span className="text-sm" style={{ opacity: .9 }}>Stress: <b>{(user as any)?.characters?.[0]?.stress ?? 0}</b></span>
+          </div>
           <div className="grid">
             <div>
               <div style={{ fontWeight: 700, marginBottom: 6 }}>{t('lobby.training.title')}</div>

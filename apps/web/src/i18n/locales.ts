@@ -8,8 +8,8 @@ export const translations: Record<Language, Record<string, string>> = {
 
     'login.title': '루두스 입구',
     'login.subtitle': '로마의 검투사 양성소에 오신 것을 환영합니다.',
-    'login.id': '코그나멘(아이디)',
-    'login.pw': '암구(비밀번호)',
+    'login.id': '아이디',
+    'login.pw': '비밀번호',
     'login.enter': '루두스로 입장',
     'login.lang': '언어',
 
@@ -34,8 +34,8 @@ export const translations: Record<Language, Record<string, string>> = {
 
     'login.title': 'Ludus Entrance',
     'login.subtitle': 'Welcome to the Roman gladiator training school.',
-    'login.id': 'Cognomen (ID)',
-    'login.pw': 'Secret Phrase (Password)',
+    'login.id': 'ID',
+    'login.pw': 'Password',
     'login.enter': 'Enter Ludus',
     'login.lang': 'Language',
 
@@ -60,8 +60,8 @@ export const translations: Record<Language, Record<string, string>> = {
 
     'login.title': 'ルドゥス入口',
     'login.subtitle': 'ローマの剣闘士養成所へようこそ。',
-    'login.id': 'コグノーメン（ID）',
-    'login.pw': '合言葉（パスワード）',
+    'login.id': 'ID',
+    'login.pw': 'パスワード',
     'login.enter': 'ルドゥスに入場',
     'login.lang': '言語',
 

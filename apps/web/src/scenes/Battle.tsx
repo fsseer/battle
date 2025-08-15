@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { socket } from '../lib/socket.ts'
+import { Stage, Container, Sprite, Graphics } from '@pixi/react'
+import * as PIXI from 'pixi.js'
 
 type Role = 'ATTACK' | 'DEFENSE'
 type Skill = { id: string, name: string, role: Role | 'ANY' }
@@ -79,29 +81,88 @@ export default function Battle() {
   }, [resolveRound])
 
   return (
-    <div style={{ padding: 24 }}>
-      <h2>인게임 전투</h2>
-      <div style={{ display: 'flex', gap: 24, marginBottom: 12 }}>
-        <div>라운드: {round}</div>
-        <div>역할: {role === 'ATTACK' ? '공격' : '방어'}</div>
-        <div>남은 시간: {timeLeft}s</div>
-      </div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        {available.map(s => (
-          <button key={s.id} onClick={() => onSelect(s.id)} disabled={!!choice}>{s.name}</button>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 24, marginBottom: 12 }}>
-        <div>내 선택: {choice ?? '-'}</div>
-        <div>상대 선택: {opponentChoice ?? '-'}</div>
-      </div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={() => navigate('/result')}>항복/종료</button>
-        <button onClick={() => navigate('/lobby')}>로비로</button>
-      </div>
-      <div style={{ marginTop: 16 }}>
-        <h4>로그</h4>
-        <pre>{log.join('\n')}</pre>
+    <div className="arena-frame">
+      <div className="panel">
+        <h3>인게임 전투</h3>
+        <div className="parchment" style={{ marginTop: 8 }}>
+          <div className="row" style={{ gap: 24, marginBottom: 12 }}>
+            <div>라운드: {round}</div>
+            <div>역할: {role === 'ATTACK' ? '공격' : '방어'}</div>
+            <div>남은 시간: {timeLeft}s</div>
+          </div>
+          <div style={{ border: '1px solid #ddd', borderRadius: 8, overflow: 'hidden' }}>
+            <Stage width={360} height={200} options={{ background: 0xf7f1e1 }}>
+              <Container>
+                {/* 배경 */}
+                <Graphics
+                  draw={g => {
+                    g.clear()
+                    g.beginFill(0xe5d3a1)
+                    g.drawRect(0, 150, 360, 50) // 모래바닥
+                    g.endFill()
+                  }}
+                />
+                {/* 좌/우 캐릭터 더미 */}
+                <Graphics
+                  x={80}
+                  y={120}
+                  draw={g => {
+                    g.clear()
+                    g.beginFill(0x6b4f2a)
+                    g.drawCircle(0, 0, 16) // 머리
+                    g.endFill()
+                    g.lineStyle(4, 0x6b4f2a)
+                    g.moveTo(0, 0)
+                    g.lineTo(0, 30) // 몸통
+                  }}
+                />
+                <Graphics
+                  x={280}
+                  y={120}
+                  draw={g => {
+                    g.clear()
+                    g.beginFill(0x2a4f6b)
+                    g.drawCircle(0, 0, 16)
+                    g.endFill()
+                    g.lineStyle(4, 0x2a4f6b)
+                    g.moveTo(0, 0)
+                    g.lineTo(0, 30)
+                  }}
+                />
+                {/* 간단한 타격/가드 표시 */}
+                {choice === 'slash' && (
+                  <Graphics x={120} y={110} draw={g => { g.clear(); g.lineStyle(3, 0xaa0000); g.moveTo(0,0); g.lineTo(50,-20) }} />
+                )}
+                {choice === 'feint' && (
+                  <Graphics x={120} y={110} draw={g => { g.clear(); g.lineStyle(3, 0xaa8800); g.moveTo(0,0); g.lineTo(40,0) }} />
+                )}
+                {choice === 'block' && (
+                  <Graphics x={240} y={110} draw={g => { g.clear(); g.beginFill(0x888888); g.drawRect(-10,-20,20,40); g.endFill() }} />
+                )}
+                {choice === 'parry' && (
+                  <Graphics x={240} y={110} draw={g => { g.clear(); g.lineStyle(3, 0x00aa88); g.drawCircle(0,0,12) }} />
+                )}
+              </Container>
+            </Stage>
+          </div>
+          <div className="row" style={{ gap: 8, marginTop: 12 }}>
+            {available.map(s => (
+              <button key={s.id} onClick={() => onSelect(s.id)} disabled={!!choice}>{s.name}</button>
+            ))}
+          </div>
+          <div className="row" style={{ gap: 24, marginTop: 12 }}>
+            <div>내 선택: {choice ?? '-'}</div>
+            <div>상대 선택: {opponentChoice ?? '-'}</div>
+          </div>
+          <div className="row" style={{ gap: 8, marginTop: 12 }}>
+            <button className="ghost-btn" onClick={() => navigate('/result')}>항복/종료</button>
+            <button className="gold-btn" onClick={() => navigate('/lobby')}>로비로</button>
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <h4>로그</h4>
+            <pre>{log.join('\n')}</pre>
+          </div>
+        </div>
       </div>
     </div>
   )

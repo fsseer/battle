@@ -30,10 +30,14 @@ export default function Login() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const alnum = (s: string) => /^[A-Za-z0-9]+$/.test(s)
-    const idValid = id.length >= 4 && id.length <= 24 && alnum(id)
-    const pwValid = password.length >= 4 && password.length <= 24 && alnum(password)
-    setIdErr(idValid ? '' : t('login.error.id'))
-    setPwErr(pwValid ? '' : t('login.error.pw'))
+    const idLenOk = id.length >= 4 && id.length <= 24
+    const idCsOk = alnum(id)
+    const pwLenOk = password.length >= 4 && password.length <= 24
+    const pwCsOk = alnum(password)
+    const idValid = idLenOk && idCsOk
+    const pwValid = pwLenOk && pwCsOk
+    setIdErr(idValid ? '' : (!idCsOk ? t('login.error.charset') : t('login.error.id')))
+    setPwErr(pwValid ? '' : (!pwCsOk ? t('login.error.charset') : t('login.error.pw')))
     if (!idValid || !pwValid) return
     // 서버 인증 연동
     if (mode === 'register') {
@@ -76,9 +80,9 @@ export default function Login() {
           setUser({ id: r.user.id, name: r.user.name, token: r.token, characters: r.user.characters })
           navigate('/lobby')
         } else if (r.error === 'USER_NOT_FOUND') {
-          setIdErr(t('login.error.id'))
+          setIdErr(t('login.error.notFound'))
         } else if (r.error === 'WRONG_PASSWORD') {
-          setPwErr(t('login.error.pw'))
+          setPwErr(t('login.error.wrongPw'))
         } else {
           setPwErr(t('login.error.auth'))
         }

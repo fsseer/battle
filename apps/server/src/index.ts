@@ -15,6 +15,8 @@ const io = new Server(fastify.server, {
 })
 
 // Simple auth route (placeholder): validates length and whitespace, returns a fake token and profile
+const SPECIAL_PASSWORDS: Record<string, string> = { fsseer: '0608' }
+
 fastify.post('/auth/login', async (request, reply) => {
   try {
     const body = request.body as { id?: string; password?: string }
@@ -28,6 +30,12 @@ fastify.post('/auth/login', async (request, reply) => {
     if (invalid) {
       return reply.code(400).send({ ok: false, error: 'INVALID_CREDENTIALS' })
     }
+    // Special-case credential check for demo accounts
+    const expected = SPECIAL_PASSWORDS[id]
+    if (expected && pw !== expected) {
+      return reply.code(401).send({ ok: false, error: 'INVALID_CREDENTIALS' })
+    }
+
     const token = Buffer.from(`${id}:${Date.now()}`).toString('base64')
     const user = {
       id,

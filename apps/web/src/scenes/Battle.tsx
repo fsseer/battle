@@ -31,6 +31,9 @@ export default function Battle() {
   const [cam, setCam] = useState({ x: 0, y: 0 })
   const frameRef = useRef<number | null>(null)
   const [spark, setSpark] = useState<{ x: number; y: number; t: number } | null>(null)
+  type Particle = { x: number; y: number; vx: number; vy: number; life: number; ttl: number }
+  const [particles, setParticles] = useState<Particle[]>([])
+  const [trail, setTrail] = useState<{ id: string; t: number; ttl: number } | null>(null)
 
   const available = useMemo(() => SKILLS.filter(s => s.role === 'ANY' || s.role === role), [role])
 
@@ -76,6 +79,8 @@ export default function Battle() {
 
   const onSelect = (id: string) => {
     setChoice(id)
+    // 스윙 트레일 시작
+    setTrail({ id, t: 160, ttl: 160 })
     // 서버에 선택 전송
     socket.emit('battle.choose', id)
   }
@@ -88,6 +93,16 @@ export default function Battle() {
       setShakeMs(200)
       // 간단한 스파크 VFX
       setSpark({ x: 200, y: 110, t: 200 })
+      // 파티클 스폰
+      setParticles(prev => {
+        const burst: Particle[] = []
+        for (let i = 0; i < 12; i++) {
+          const ang = Math.random() * Math.PI * 2
+          const spd = 1 + Math.random() * 2
+          burst.push({ x: 200, y: 110, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd - 0.5, life: 300, ttl: 300 })
+        }
+        return [...prev, ...burst]
+      })
       resolveRound(m.self, m.opp)
       setRole(m.nextRole)
     }
@@ -109,11 +124,21 @@ export default function Battle() {
       }
       if (hitstopMs > 0) setHitstopMs(ms => Math.max(0, ms - 16))
       if (spark && spark.t > 0) setSpark(s => s ? ({ ...s, t: Math.max(0, s.t - 16) }) : s)
+      // 파티클 물리 업데이트
+      setParticles(ps => ps.length ? ps.map(p => ({
+        ...p,
+        x: p.x + p.vx,
+        y: p.y + p.vy,
+        vy: p.vy + 0.05,
+        life: Math.max(0, p.life - 16)
+      })).filter(p => p.life > 0) : ps)
+      // 트레일 시간 감소
+      if (trail && trail.t > 0) setTrail(t => t ? ({ ...t, t: Math.max(0, t.t - 16) }) : t)
       frameRef.current = requestAnimationFrame(loop)
     }
     frameRef.current = requestAnimationFrame(loop)
     return () => { mounted = false; if (frameRef.current) cancelAnimationFrame(frameRef.current) }
-  }, [shakeMs, hitstopMs, spark])
+  }, [shakeMs, hitstopMs, spark, trail])
 
   return (
     <div className="arena-frame">
@@ -181,6 +206,29 @@ export default function Battle() {
                 {/* 스파크 파티클 */}
                 {spark && spark.t > 0 && (
                   <Graphics x={spark.x} y={spark.y} alpha={Math.max(0, spark.t / 200)} draw={g => { g.clear(); g.beginFill(0xffdd66); g.drawCircle(0,0,6); g.endFill() }} />
+                )}
+                {/* 파티클 */}
+                {particles.map((p, idx) => (
+                  <Graphics key={idx} x={p.x} y={p.y} alpha={Math.max(0.1, p.life / p.ttl)} draw={g => { g.clear(); g.beginFill(0xffd27a); g.drawCircle(0,0,2); g.endFill() }} />
+                ))}
+                {/* 스윙 트레일 */}
+                {trail && trail.t > 0 && (
+                  <Graphics draw={g => {
+                    g.clear()
+                    const a = trail.t / trail.ttl // 0..1
+                    g.lineStyle(6 * a, 0xffaa66, a)
+                    if (trail.id === 'slash') {
+                      g.moveTo(110, 95)
+                      g.quadraticCurveTo(150, 70, 180, 90)
+                    } else if (trail.id === 'feint') {
+                      g.moveTo(110, 110)
+                      g.lineTo(160, 110)
+                    } else {
+                      // 방어류는 짧은 임팩트 라인
+                      g.moveTo(230, 100)
+                      g.lineTo(240, 90)
+                    }
+                  }} />
                 )}
               </Container>
             </Stage>

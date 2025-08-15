@@ -1,12 +1,14 @@
 :root {
-  --bg-dark: #0f0d0a;
-  --bg-deep: #1a1410;
-  --sand: #d6b57c;
-  --parchment: #efe2c6;
-  --blood: #8b1e1e;
-  --bronze: #b27730;
-  --bronze-dark: #7a4f20;
-  --ink: #2b2118;
+  --bg-dark: #0e0c0a;
+  --bg-deep: #191410;
+  --sand: #d8b98a;
+  --parchment: #f3e9d6;
+  --parchment-ink: #3a2e22;
+  --blood: #8e1f1f;
+  --bronze: #c18135;
+  --bronze-dark: #7b4f20;
+  --ink: #eae6df;
+  --ink-dim: #cfc7bb;
 }
 
 /* Background: torch-lit arena ambiance */
@@ -16,7 +18,7 @@ html, body, #root {
     radial-gradient(25% 20% at 10% 10%, rgba(255, 230, 160, 0.06), transparent 50%),
     radial-gradient(25% 20% at 90% 15%, rgba(255, 230, 160, 0.06), transparent 50%),
     linear-gradient(180deg, var(--bg-dark), var(--bg-deep));
-  color: #f7f4ee;
+  color: var(--ink);
 }
 
 .arena-frame {
@@ -41,21 +43,23 @@ html, body, #root {
 
 .parchment {
   background: var(--parchment);
-  color: var(--ink);
+  color: var(--parchment-ink);
   border-radius: 10px;
   padding: 18px 16px;
   box-shadow: inset 0 2px 6px rgba(0,0,0,0.18);
 }
 
 .title {
-  font-size: 28px;
-  letter-spacing: 0.04em;
-  margin: 0 0 6px 0;
+  font-family: 'Cinzel', serif;
+  font-size: 30px;
+  letter-spacing: 0.06em;
+  margin: 0 0 8px 0;
 }
 
 .subtitle {
-  color: #d9cdb4;
-  margin: 0 0 20px 0;
+  color: var(--ink-dim);
+  margin: 0 0 16px 0;
+  font-family: 'Inter','Noto Sans KR',sans-serif;
 }
 
 .grid {
@@ -67,13 +71,14 @@ html, body, #root {
 /* Controls */
 .control {
   width: 100%;
-  background: rgba(255,255,255,0.08);
-  color: #f7f4ee;
+  background: rgba(255,255,255,0.92);
+  color: #2a2320;
   border: 1px solid rgba(255,255,255,0.18);
   border-radius: 10px;
   padding: 10px 12px;
 }
-.control::placeholder { color: #d9cdb4; opacity: .9; }
+.control::placeholder { color: #7a6a59; opacity: .9; }
+.control:focus { outline: 2px solid #ad7b3b; box-shadow: 0 0 0 3px rgba(173,123,59,.25); }
 
 .actions { display: flex; gap: 8px; }
 
@@ -101,12 +106,12 @@ html, body, #root {
 .ghost-btn {
   background: transparent;
   color: var(--sand);
-  border: 1px solid rgba(214,181,124,0.45);
+  border: 1px solid rgba(214,181,124,0.6);
   border-radius: 10px;
   padding: 12px 14px;
   cursor: pointer;
 }
-.ghost-btn:hover { background: rgba(214,181,124,0.08); }
+.ghost-btn:hover { background: rgba(214,181,124,0.12); }
 
 .section {
   margin-top: 16px;

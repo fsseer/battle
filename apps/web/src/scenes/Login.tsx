@@ -28,7 +28,7 @@ export default function Login() {
             <img src="/images/helmet.svg" alt="helmet" width={64} height={64} />
           </div>
           <div className="title">{t('login.title')}</div>
-          <div className="subtitle text-sm font-body ink-black">{t('login.subtitle')}</div>
+          <div className="subtitle text-sm font-body ink-warm">{t('login.subtitle')}</div>
           <div className="row" style={{ gap: 8, marginBottom: 8 }}>
             <label style={{ fontSize: 14 }}>{t('login.lang')}</label>
             <select value={lang} onChange={(e) => setLang(e.target.value as any)}>

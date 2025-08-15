@@ -75,6 +75,7 @@ html, body, #root {
 .muted { color: var(--ink-dim); }
 .strong { color: var(--ink-strong); }
 .ink-black { color: #000000; }
+.ink-warm { color: #2b2118; }
 
 .grid {
   display: grid;

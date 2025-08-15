@@ -25,11 +25,13 @@ fastify.post('/auth/login', async (request, reply) => {
     const body = request.body as { id?: string; password?: string }
     const id = (body?.id ?? '').trim()
     const pw = body?.password ?? ''
+    const isAlnum = (s: string) => /^[A-Za-z0-9]+$/.test(s)
     const invalid =
       !id || !pw ||
       id.length < 4 || id.length > 24 ||
       pw.length < 4 || pw.length > 24 ||
-      /\s/.test(id) || /\s/.test(pw)
+      /\s/.test(id) || /\s/.test(pw) ||
+      !isAlnum(id) || !isAlnum(pw)
     if (invalid) {
       return reply.code(400).send({ ok: false, error: 'INVALID_INPUT' })
     }
@@ -73,9 +75,11 @@ fastify.post('/auth/register', async (request, reply) => {
     const invalidLenPw = pw.length < 4 || pw.length > 24
     const invalidWsId = /\s/.test(id)
     const invalidWsPw = /\s/.test(pw)
-    if (!id || !pw || !confirm || invalidLenId || invalidLenPw || invalidWsId || invalidWsPw || pw !== confirm) {
+    const invalidCsId = !/^[A-Za-z0-9]+$/.test(id)
+    const invalidCsPw = !/^[A-Za-z0-9]+$/.test(pw)
+    if (!id || !pw || !confirm || invalidLenId || invalidLenPw || invalidWsId || invalidWsPw || invalidCsId || invalidCsPw || pw !== confirm) {
       return reply.code(400).send({ ok: false, error: 'INVALID_INPUT', errorDetails: {
-        idLength: invalidLenId, pwLength: invalidLenPw, idWhitespace: invalidWsId, pwWhitespace: invalidWsPw, mismatch: pw !== confirm
+        idLength: invalidLenId, pwLength: invalidLenPw, idWhitespace: invalidWsId, pwWhitespace: invalidWsPw, idCharset: invalidCsId, pwCharset: invalidCsPw, mismatch: pw !== confirm
       } })
     }
     const exists = await prisma.user.findUnique({ where: { loginId: id } })
@@ -111,7 +115,7 @@ fastify.post('/auth/check-id', async (request, reply) => {
   try {
     const body = request.body as { id?: string }
     const id = (body?.id ?? '').trim()
-    if (!id || id.length < 4 || id.length > 24 || /\s/.test(id)) {
+    if (!id || id.length < 4 || id.length > 24 || /\s/.test(id) || !/^[A-Za-z0-9]+$/.test(id)) {
       return reply.code(400).send({ ok: false, error: 'INVALID_ID' })
     }
     const exists = await prisma.user.findUnique({ where: { loginId: id } })

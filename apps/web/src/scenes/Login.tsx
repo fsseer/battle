@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
 import '../styles/theme.css'
 import { useI18n } from '../i18n/useI18n'
+import type { Language } from '../i18n/locales'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -31,7 +32,7 @@ export default function Login() {
           <div className="subtitle text-sm font-body ink-warm">{t('login.subtitle')}</div>
           <div className="row" style={{ gap: 8, marginBottom: 8 }}>
             <label style={{ fontSize: 14 }}>{t('login.lang')}</label>
-            <select value={lang} onChange={(e) => setLang(e.target.value as any)}>
+            <select value={lang} onChange={(e) => setLang(e.target.value as Language)}>
               <option value="ko">{t('common.lang.ko')}</option>
               <option value="en">{t('common.lang.en')}</option>
               <option value="ja">{t('common.lang.ja')}</option>

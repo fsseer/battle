@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { socket } from '../lib/socket.ts'
 import { useAuthStore } from '../store/auth'
+import ResourceBar from '../components/ResourceBar'
 
 export default function MatchPrep() {
   const navigate = useNavigate()
@@ -10,10 +11,12 @@ export default function MatchPrep() {
   const [busy, setBusy] = useState(false)
   const [catalog, setCatalog] = useState<any[]>([])
   useEffect(() => {
+    let mounted = true
     fetch('http://127.0.0.1:5174/training/catalog')
       .then(r=>r.ok?r.json():null)
-      .then(j=>{ if (j?.ok) setCatalog(j.items) })
+      .then(j=>{ if (mounted && j?.ok) setCatalog(j.items) })
       .catch(()=>{})
+    return () => { mounted = false }
   }, [])
   async function call(path: string, payload: any) {
     if (!token) return
@@ -57,11 +60,7 @@ export default function MatchPrep() {
       <div className="panel">
         <h3>대전 준비</h3>
         <div className="parchment" style={{ marginTop: 8, marginBottom: 8 }}>
-          <div className="row" style={{ justifyContent: 'flex-end', gap: 16 }}>
-            <span className="text-sm">AP: <b>{(user as any)?.characters?.[0]?.ap ?? '—'}</b>/100</span>
-            <span className="text-sm">Gold: <b>{(user as any)?.characters?.[0]?.gold ?? 0}</b></span>
-            <span className="text-sm">Stress: <b>{(user as any)?.characters?.[0]?.stress ?? 0}</b></span>
-          </div>
+          <ResourceBar />
           <div className="column" style={{ gap: 10, marginTop: 8 }}>
             <div>
               <div style={{ fontWeight: 700, marginBottom: 6 }}>기초 훈련</div>

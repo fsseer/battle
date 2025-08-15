@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import ResourceBar from '../components/ResourceBar'
 import { useNavigate } from 'react-router-dom'
 
 type SkillState = 'usable'|'locked_prof'|'locked_stat'|'locked_item'
@@ -52,10 +53,12 @@ export default function Skills() {
     <div className="arena-frame">
       <div className="panel">
         <h3>스킬 / 특성</h3>
+        <ResourceBar />
         <div className="parchment" style={{ marginTop: 8 }}>
           {me ? (
             <div style={{ marginBottom: 8, fontSize: 12 }}>
-              <b>숙련도</b>: {me.characters?.[0]?.proficiencies?.map((p:any)=>`${p.kind}:Lv${p.level}(xp:${p.xp})`).join(' / ') || '없음'}
+              <div><b>AP</b>: {me.characters?.[0]?.ap ?? 0} / 100</div>
+              <div><b>숙련도</b>: {me.characters?.[0]?.proficiencies?.map((p:any)=>`${p.kind}:Lv${p.level}(xp:${p.xp})`).join(' / ') || '없음'}</div>
             </div>
           ) : null}
           <h4>무기 스킬</h4>
@@ -76,8 +79,8 @@ export default function Skills() {
           </div>
         </div>
         <div className="section" style={{ display: 'flex', gap: 8 }}>
-          <button className="ghost-btn" disabled={!me} onClick={() => trainOneHand().then(load)}>
-            한손 무기 훈련(+100xp)
+          <button className="ghost-btn" disabled={!me || (me?.characters?.[0]?.ap ?? 0) <= 0} onClick={() => trainOneHand().then(load)}>
+            한손 무기 훈련(+100xp, AP-1)
           </button>
         </div>
       </div>

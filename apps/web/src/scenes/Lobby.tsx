@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react'
 import { useAuthStore } from '../store/auth'
 import '../styles/theme.css'
 import { useI18n } from '../i18n/useI18n'
+import ResourceBar from '../components/ResourceBar'
 
 export default function Lobby() {
   const navigate = useNavigate()
@@ -50,11 +51,7 @@ export default function Lobby() {
         <div className="subtitle">{t('lobby.subtitle', { name: user?.name ?? 'Guest' })}</div>
 
         <div className="parchment">
-          <div className="row" style={{ justifyContent: 'flex-end', marginBottom: 8, gap: 16 }}>
-            <span className="text-sm" style={{ opacity: .9 }}>AP: <b>{(user as any)?.characters?.[0]?.ap ?? '—'}</b>/100</span>
-            <span className="text-sm" style={{ opacity: .9 }}>Gold: <b>{(user as any)?.characters?.[0]?.gold ?? 0}</b></span>
-            <span className="text-sm" style={{ opacity: .9 }}>Stress: <b>{(user as any)?.characters?.[0]?.stress ?? 0}</b></span>
-          </div>
+          <ResourceBar />
           <div className="grid">
             <div>
               <div style={{ fontWeight: 700, marginBottom: 6 }}>{t('lobby.training.title')}</div>

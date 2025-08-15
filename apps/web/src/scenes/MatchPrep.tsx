@@ -62,16 +62,35 @@ export default function MatchPrep() {
             <span className="text-sm">Gold: <b>{(user as any)?.characters?.[0]?.gold ?? 0}</b></span>
             <span className="text-sm">Stress: <b>{(user as any)?.characters?.[0]?.stress ?? 0}</b></span>
           </div>
-          <div className="column" style={{ gap: 6, marginTop: 8 }}>
-            {catalog.map((it:any)=> (
-              <div key={it.id} className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
-                <div>
-                  <div style={{ fontWeight: 600 }}>{it.name} {it.goldCost? `(Gold-${it.goldCost})`:''}</div>
-                  <div className="text-sm" style={{ opacity: .9 }}>{it.description ?? ''}</div>
-                </div>
-                <button className="ghost-btn" disabled={busy} onClick={() => call('/training/run', { id: it.id })}>실행 (AP-{it.apCost}, Stress{it.stressDelta>=0?'+':''}{it.stressDelta})</button>
+          <div className="column" style={{ gap: 10, marginTop: 8 }}>
+            <div>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>기초 훈련</div>
+              <div className="column" style={{ gap: 6 }}>
+                {catalog.filter((x:any)=>x.id.startsWith('basic.str.')).map((it:any)=> (
+                  <Row key={it.id} it={it} busy={busy} run={(id:string)=>call('/training/run',{id})} />
+                ))}
+                {catalog.filter((x:any)=>x.id.startsWith('basic.agi.')).map((it:any)=> (
+                  <Row key={it.id} it={it} busy={busy} run={(id:string)=>call('/training/run',{id})} />
+                ))}
+                {catalog.filter((x:any)=>x.id.startsWith('basic.int.')).map((it:any)=> (
+                  <Row key={it.id} it={it} busy={busy} run={(id:string)=>call('/training/run',{id})} />
+                ))}
               </div>
-            ))}
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>무기술 훈련</div>
+              <div className="column" style={{ gap: 6 }}>
+                {catalog.filter((x:any)=>x.id.startsWith('weapon.one_hand.')).map((it:any)=> (
+                  <Row key={it.id} it={it} busy={busy} run={(id:string)=>call('/training/run',{id})} />
+                ))}
+                {catalog.filter((x:any)=>x.id.startsWith('weapon.two_hand.')).map((it:any)=> (
+                  <Row key={it.id} it={it} busy={busy} run={(id:string)=>call('/training/run',{id})} />
+                ))}
+                {catalog.filter((x:any)=>x.id.startsWith('weapon.dual.')).map((it:any)=> (
+                  <Row key={it.id} it={it} busy={busy} run={(id:string)=>call('/training/run',{id})} />
+                ))}
+              </div>
+            </div>
             <div className="row" style={{ gap: 8 }}>
               <button className="ghost-btn" disabled={busy} onClick={() => call('/train/earn', { apCost: 5, gold: 10 })}>[훈련] AP-5 → Gold+10</button>
               <button className="ghost-btn" disabled={busy} onClick={() => call('/train/rest', { apCost: 2, stressRelief: 5 })}>[휴식] AP-2 → Stress-5</button>
@@ -86,6 +105,20 @@ export default function MatchPrep() {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function Row({ it, busy, run }: { it: any; busy: boolean; run: (id: string) => void }) {
+  return (
+    <div className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
+      <div>
+        <div style={{ fontWeight: 600 }}>{it.name} {it.goldCost? `(Gold-${it.goldCost})`:''}</div>
+        {it.description ? <div className="text-sm" style={{ opacity: .9 }}>{it.description}</div> : null}
+      </div>
+      <button className="ghost-btn" disabled={busy} onClick={() => run(it.id)}>
+        실행 (AP-{it.apCost}, Stress{it.stressDelta>=0?'+':''}{it.stressDelta})
+      </button>
     </div>
   )
 }

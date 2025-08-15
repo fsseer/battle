@@ -207,7 +207,6 @@ export default function Battle() {
                     }
                   }} />
                 )}
-              </Container>
             </Stage>
           </div>
           <div className="row" style={{ gap: 8, marginTop: 12 }}>

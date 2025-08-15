@@ -16,8 +16,8 @@ popd
 set SURL=http://localhost:5174/health
 echo [server] Waiting for %SURL% ...
 for /l %%i in (1,1,60) do (
-	>nul 2>&1 curl --silent --head %SURL% | findstr /i "200"
-	if not errorlevel 1 goto :web
+	powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing -Uri '%SURL%' -Method Get -TimeoutSec 2; if ($r.StatusCode -eq 200) { exit 0 } else { exit 1 } } catch { exit 1 }"
+	if %errorlevel%==0 goto :web
 	timeout /t 1 >nul
 )
 echo [server] Timed out waiting for server. Exiting.
@@ -37,8 +37,8 @@ popd
 set URL=http://localhost:5173
 echo [web] Waiting for %URL% ...
 for /l %%i in (1,1,60) do (
-	>nul 2>&1 curl --silent --head %URL% | findstr /i "200"
-	if not errorlevel 1 goto :open
+	powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing -Uri '%URL%' -Method Get -TimeoutSec 2; if ($r.StatusCode -eq 200) { exit 0 } else { exit 1 } } catch { exit 1 }"
+	if %errorlevel%==0 goto :open
 	timeout /t 1 >nul
 )
 echo [web] Timed out waiting for dev server.

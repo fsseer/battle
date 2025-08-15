@@ -1,6 +1,8 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import { Server } from 'socket.io'
+import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
 
 const fastify = Fastify({ logger: true })
 await fastify.register(cors, { origin: true })
@@ -14,7 +16,8 @@ const io = new Server(fastify.server, {
   }
 })
 
-// Simple auth route (placeholder): validates length and whitespace, returns a fake token and profile
+const prisma = new PrismaClient()
+// Simple auth route with persistence
 const SPECIAL_PASSWORDS: Record<string, string> = { fsseer: '0608' }
 
 fastify.post('/auth/login', async (request, reply) => {
@@ -36,15 +39,33 @@ fastify.post('/auth/login', async (request, reply) => {
       return reply.code(401).send({ ok: false, error: 'INVALID_CREDENTIALS' })
     }
 
-    const token = Buffer.from(`${id}:${Date.now()}`).toString('base64')
-    const user = {
-      id,
-      name: id,
-      characters: [
-        { id: 'char-1', name: 'Novice Gladiator', level: 1, stats: { str: 5, agi: 5, sta: 5 } }
-      ]
+    // Find or create user
+    let user = await prisma.user.findUnique({ where: { loginId: id }, include: { characters: true } })
+    if (!user) {
+      const pwHash = await bcrypt.hash(pw, 10)
+      user = await prisma.user.create({
+        data: {
+          loginId: id,
+          pwHash,
+          name: id,
+          characters: { create: [{ name: 'Novice Gladiator', level: 1, str: 5, agi: 5, sta: 5 }] }
+        },
+        include: { characters: true }
+      })
+    } else if (!expected) {
+      const ok = await bcrypt.compare(pw, user.pwHash)
+      if (!ok) return reply.code(401).send({ ok: false, error: 'INVALID_CREDENTIALS' })
     }
-    return { ok: true, token, user }
+    const token = Buffer.from(`${user.loginId}:${Date.now()}`).toString('base64')
+    return {
+      ok: true,
+      token,
+      user: {
+        id: user.loginId,
+        name: user.name,
+        characters: user.characters.map(c => ({ id: c.id, name: c.name, level: c.level, stats: { str: c.str, agi: c.agi, sta: c.sta } }))
+      }
+    }
   } catch (e) {
     request.log.error(e)
     return reply.code(500).send({ ok: false, error: 'SERVER_ERROR' })

@@ -1,10 +1,31 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 type SkillState = 'usable'|'locked_prof'|'locked_stat'|'locked_item'
 
 export default function Skills() {
   const [data, setData] = useState<any>({ weaponSkills: [], characterSkills: [], traits: [] })
-  const load = () => fetch('http://127.0.0.1:5174/skills', { headers: authHeader() }).then(r => r.json()).then(setData).catch(()=>{})
+  const [me, setMe] = useState<any>(null)
+  const navigate = useNavigate()
+  const load = async () => {
+    try {
+      const [skillsRes, meRes] = await Promise.all([
+        fetch('http://127.0.0.1:5174/skills', { headers: authHeader() }),
+        fetch('http://127.0.0.1:5174/me', { headers: authHeader() })
+      ])
+      // 세션 만료 또는 유저 없음 → 자동 로그아웃 후 로그인으로 이동
+      if (meRes.status === 401 || meRes.status === 404) {
+        try { localStorage.removeItem('auth') } catch {}
+        alert('세션이 만료되었습니다. 다시 로그인해 주세요.')
+        navigate('/login')
+        return
+      }
+      const s = await skillsRes.json()
+      const m = await meRes.json()
+      setData(s)
+      if (m?.ok) setMe(m.user)
+    } catch {}
+  }
   useEffect(() => { load() }, [])
 
   const renderSkill = (s: any) => (
@@ -24,6 +45,11 @@ export default function Skills() {
       <div className="panel">
         <h3>스킬 / 특성</h3>
         <div className="parchment" style={{ marginTop: 8 }}>
+          {me ? (
+            <div style={{ marginBottom: 8, fontSize: 12 }}>
+              <b>숙련도</b>: {me.characters?.[0]?.proficiencies?.map((p:any)=>`${p.kind}:Lv${p.level}(xp:${p.xp})`).join(' / ') || '없음'}
+            </div>
+          ) : null}
           <h4>무기 스킬</h4>
           <div>{data.weaponSkills.map(renderSkill)}</div>
           <h4>캐릭터 스킬</h4>
@@ -68,7 +94,6 @@ function authHeader() {
 async function trainOneHand() {
   try {
     await fetch('http://127.0.0.1:5174/train/proficiency', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader() as any }, body: JSON.stringify({ kind: 'ONE_HAND', xp: 100 }) })
-    location.reload()
   } catch {}
 }
 

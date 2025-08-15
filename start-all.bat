@@ -19,7 +19,7 @@ npx --yes prisma migrate deploy >nul 2>&1
 echo [server] Generating prisma client...
 npx --yes prisma generate >nul 2>&1
 echo [server] Starting dev server (port 5174)...
-start "battle-server-dev" cmd /c "npm run dev"
+start "battle-server-dev" cmd /k "npm run dev"
 popd
 
 set SURL=http://localhost:5174/health
@@ -40,7 +40,7 @@ if not exist node_modules (
 	npm install
 )
 echo [web] Starting dev server (port 5173)...
-start "battle-web-dev" cmd /c "npm run dev -- --host 127.0.0.1 --strictPort --port 5173"
+start "battle-web-dev" cmd /k "npm run dev -- --host 127.0.0.1 --strictPort --port 5173"
 popd
 
 set URL=http://127.0.0.1:5173

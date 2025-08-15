@@ -5,13 +5,13 @@ import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 const fastify = Fastify({ logger: true })
-await fastify.register(cors, { origin: true })
+await fastify.register(cors, { origin: ['http://127.0.0.1:5173','http://localhost:5173'] })
 
 fastify.get('/health', async () => ({ ok: true }))
 
 const io = new Server(fastify.server, {
   cors: {
-    origin: '*',
+    origin: ['http://127.0.0.1:5173','http://localhost:5173'],
     methods: ['GET', 'POST']
   }
 })
@@ -105,7 +105,7 @@ fastify.post('/auth/register', async (request, reply) => {
       }
     }
   } catch (e) {
-    request.log.error(e)
+    request.log.error({ err: e }, 'register failed')
     return reply.code(500).send({ ok: false, error: 'SERVER_ERROR' })
   }
 })
@@ -121,9 +121,21 @@ fastify.post('/auth/check-id', async (request, reply) => {
     const exists = await prisma.user.findUnique({ where: { loginId: id } })
     return { ok: true, available: !exists }
   } catch (e) {
-    request.log.error(e)
+    request.log.error({ err: e }, 'check-id failed')
     return reply.code(500).send({ ok: false })
   }
+})
+
+// DEV ONLY: admin delete user (no auth)
+fastify.post('/admin/delete-user', async (request, reply) => {
+  const body = request.body as { id?: string }
+  const id = (body?.id ?? '').trim()
+  if (!id) return reply.code(400).send({ ok: false })
+  const u = await prisma.user.findUnique({ where: { loginId: id } })
+  if (!u) return { ok: true, deleted: 0 }
+  await prisma.character.deleteMany({ where: { userId: u.id } })
+  await prisma.user.delete({ where: { id: u.id } })
+  return { ok: true, deleted: 1 }
 })
 
 type Role = 'ATTACK' | 'DEFENSE'

@@ -5,8 +5,10 @@ export type LoginResponse = {
   error?: string
 }
 
+const SERVER_ORIGIN = 'http://127.0.0.1:5174'
+
 export async function loginRequest(id: string, password: string): Promise<LoginResponse> {
-  const res = await fetch('http://localhost:5174/auth/login', {
+  const res = await fetch(`${SERVER_ORIGIN}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, password })
@@ -17,7 +19,7 @@ export async function loginRequest(id: string, password: string): Promise<LoginR
 export type RegisterResponse = LoginResponse & { error?: 'INVALID_INPUT' | 'DUPLICATE_ID' }
 
 export async function registerRequest(id: string, password: string, confirm: string): Promise<RegisterResponse> {
-  const res = await fetch('http://localhost:5174/auth/register', {
+  const res = await fetch(`${SERVER_ORIGIN}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, password, confirm })
@@ -26,7 +28,7 @@ export async function registerRequest(id: string, password: string, confirm: str
 }
 
 export async function checkIdAvailability(id: string): Promise<{ ok: boolean; available?: boolean }> {
-  const res = await fetch('http://localhost:5174/auth/check-id', {
+  const res = await fetch(`${SERVER_ORIGIN}/auth/check-id`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id })

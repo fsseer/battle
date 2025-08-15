@@ -22,8 +22,8 @@ npx --yes prisma migrate deploy >nul 2>&1
 echo [server] generating prisma client (silent)...
 npx --yes prisma generate >nul 2>&1
 
-echo [server] starting dev server on port 5174
-start "battle-server-dev" cmd /c "npm run dev"
+echo [server] starting dev server on port 5174 (window will remain open)
+start "battle-server-dev" cmd /k "npm run dev"
 
 popd
 endlocal

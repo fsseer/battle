@@ -4,9 +4,8 @@ type SkillState = 'usable'|'locked_prof'|'locked_stat'|'locked_item'
 
 export default function Skills() {
   const [data, setData] = useState<any>({ weaponSkills: [], characterSkills: [], traits: [] })
-  useEffect(() => {
-    fetch('http://127.0.0.1:5174/skills', { headers: authHeader() }).then(r => r.json()).then(setData).catch(()=>{})
-  }, [])
+  const load = () => fetch('http://127.0.0.1:5174/skills', { headers: authHeader() }).then(r => r.json()).then(setData).catch(()=>{})
+  useEffect(() => { load() }, [])
 
   const renderSkill = (s: any) => (
     <div key={s.skill.id} style={{ padding: 8, border: '1px solid #ddd', borderRadius: 8, marginBottom: 8, opacity: s.state === 'usable' ? 1 : .6 }}>
@@ -43,7 +42,7 @@ export default function Skills() {
           </div>
         </div>
         <div className="section" style={{ display: 'flex', gap: 8 }}>
-          <button className="ghost-btn" onClick={trainOneHand}>한손 무기 훈련(+100xp)</button>
+          <button className="ghost-btn" onClick={() => trainOneHand().then(load)}>한손 무기 훈련(+100xp)</button>
         </div>
       </div>
     </div>

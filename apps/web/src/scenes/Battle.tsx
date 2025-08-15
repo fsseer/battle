@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { socket } from '../lib/socket.ts'
-import { Stage, Container, Sprite, Graphics } from '@pixi/react'
+import { Stage, Sprite, Graphics } from '@pixi/react'
 import * as PIXI from 'pixi.js'
 import ResourceBar from '../components/ResourceBar'
 import { loadAssets } from '../lib/assets'
@@ -153,9 +153,10 @@ export default function Battle() {
           </div>
           <div style={{ border: '1px solid #ddd', borderRadius: 8, overflow: 'hidden' }}>
             <Stage width={360} height={200} options={{ background: 0xf7f1e1 }}>
-              <Container x={cam.x} y={cam.y}>
                 {/* 배경 */}
                 <Graphics
+                  x={cam.x}
+                  y={cam.y}
                   draw={g => {
                     g.clear()
                     g.beginFill(0xe5d3a1)
@@ -164,32 +165,32 @@ export default function Battle() {
                   }}
                 />
                 {/* 좌/우 캐릭터 임시 스프라이트 */}
-                <Sprite image={'/sprites/fighter_red.svg'} x={64} y={88} width={64} height={64} anchor={0} />
-                <Sprite image={'/sprites/fighter_blue.svg'} x={260} y={88} width={64} height={64} anchor={0} />
+                <Sprite image={'/sprites/fighter_red.svg'} x={64 + cam.x} y={88 + cam.y} width={64} height={64} anchor={0} />
+                <Sprite image={'/sprites/fighter_blue.svg'} x={260 + cam.x} y={88 + cam.y} width={64} height={64} anchor={0} />
                 {/* 간단한 타격/가드 표시 */}
                 {choice === 'slash' && (
-                  <Graphics x={120} y={110} draw={g => { g.clear(); g.lineStyle(3, 0xaa0000); g.moveTo(0,0); g.lineTo(50,-20) }} />
+                  <Graphics x={120 + cam.x} y={110 + cam.y} draw={g => { g.clear(); g.lineStyle(3, 0xaa0000); g.moveTo(0,0); g.lineTo(50,-20) }} />
                 )}
                 {choice === 'feint' && (
-                  <Graphics x={120} y={110} draw={g => { g.clear(); g.lineStyle(3, 0xaa8800); g.moveTo(0,0); g.lineTo(40,0) }} />
+                  <Graphics x={120 + cam.x} y={110 + cam.y} draw={g => { g.clear(); g.lineStyle(3, 0xaa8800); g.moveTo(0,0); g.lineTo(40,0) }} />
                 )}
                 {choice === 'block' && (
-                  <Graphics x={240} y={110} draw={g => { g.clear(); g.beginFill(0x888888); g.drawRect(-10,-20,20,40); g.endFill() }} />
+                  <Graphics x={240 + cam.x} y={110 + cam.y} draw={g => { g.clear(); g.beginFill(0x888888); g.drawRect(-10,-20,20,40); g.endFill() }} />
                 )}
                 {choice === 'parry' && (
-                  <Graphics x={240} y={110} draw={g => { g.clear(); g.lineStyle(3, 0x00aa88); g.drawCircle(0,0,12) }} />
+                  <Graphics x={240 + cam.x} y={110 + cam.y} draw={g => { g.clear(); g.lineStyle(3, 0x00aa88); g.drawCircle(0,0,12) }} />
                 )}
                 {/* 스파크 파티클 */}
                 {spark && spark.t > 0 && (
-                  <Graphics x={spark.x} y={spark.y} alpha={Math.max(0, spark.t / 200)} draw={g => { g.clear(); g.beginFill(0xffdd66); g.drawCircle(0,0,6); g.endFill() }} />
+                  <Graphics x={spark.x + cam.x} y={spark.y + cam.y} alpha={Math.max(0, spark.t / 200)} draw={g => { g.clear(); g.beginFill(0xffdd66); g.drawCircle(0,0,6); g.endFill() }} />
                 )}
                 {/* 파티클 */}
                 {particles.map((p, idx) => (
-                  <Graphics key={idx} x={p.x} y={p.y} alpha={Math.max(0.1, p.life / p.ttl)} draw={g => { g.clear(); g.beginFill(0xffd27a); g.drawCircle(0,0,2); g.endFill() }} />
+                  <Graphics key={idx} x={p.x + cam.x} y={p.y + cam.y} alpha={Math.max(0.1, p.life / p.ttl)} draw={g => { g.clear(); g.beginFill(0xffd27a); g.drawCircle(0,0,2); g.endFill() }} />
                 ))}
                 {/* 스윙 트레일 */}
                 {trail && trail.t > 0 && (
-                  <Graphics draw={g => {
+                  <Graphics x={cam.x} y={cam.y} draw={g => {
                     g.clear()
                     const a = trail.t / trail.ttl // 0..1
                     g.lineStyle(6 * a, 0xffaa66, a)

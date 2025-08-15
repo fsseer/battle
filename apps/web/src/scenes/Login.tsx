@@ -27,14 +27,16 @@ export default function Login() {
     // 서버 인증 연동
     if (mode === 'register') {
       // basic front validation
-      if (password !== confirm) { setPwErr(t('login.error.pw')); return }
+      if (password !== confirm) { setPwErr(t('login.error.confirm')); return }
       registerRequest(id, password, confirm)
         .then((r) => {
           if (r.ok && r.user && r.token) {
             setUser({ id: r.user.id, name: r.user.name, token: r.token, characters: r.user.characters })
             navigate('/lobby')
           } else if (r.error === 'DUPLICATE_ID') {
-            setIdErr(t('login.error.id'))
+            setIdErr(t('login.error.duplicate'))
+          } else if (r.error === 'INVALID_INPUT') {
+            setPwErr(t('login.error.input'))
           } else {
             setPwErr(t('login.error.auth'))
           }

@@ -16,6 +16,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'login.error.id': '아이디는 4~24자여야 합니다.',
     'login.error.pw': '비밀번호는 4~24자여야 합니다.',
     'login.error.auth': '아이디 또는 비밀번호가 올바르지 않습니다.',
+    'login.error.duplicate': '이미 사용 중인 아이디입니다.',
+    'login.error.confirm': '비밀번호가 일치하지 않습니다.',
+    'login.error.input': '입력을 확인해 주세요.',
 
     'lobby.title': '카스트룸 글라디아토룸',
     'lobby.subtitle': '{name} 님, 오늘의 훈련과 시합을 선택하세요.',
@@ -46,6 +49,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'login.error.id': 'ID must be 4–24 characters.',
     'login.error.pw': 'Password must be 4–24 characters.',
     'login.error.auth': 'Invalid ID or password.',
+    'login.error.duplicate': 'This ID is already taken.',
+    'login.error.confirm': 'Passwords do not match.',
+    'login.error.input': 'Please check your input.',
 
     'lobby.title': 'Castrum Gladiatorum',
     'lobby.subtitle': '{name}, choose today’s training and match.',
@@ -76,6 +82,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'login.error.id': 'IDは4～24文字で入力してください。',
     'login.error.pw': 'パスワードは4～24文字で入力してください。',
     'login.error.auth': 'IDまたはパスワードが正しくありません。',
+    'login.error.duplicate': 'このIDは既に使用されています。',
+    'login.error.confirm': 'パスワードが一致しません。',
+    'login.error.input': '入力内容を確認してください。',
 
     'lobby.title': 'カストルム・グラディアトルム',
     'lobby.subtitle': '{name} さん、本日の訓練と試合を選んでください。',

@@ -1,4 +1,7 @@
 import { io } from 'socket.io-client'
+// MessagePack parser client side
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { MsgPackParser } = require('socket.io-msgpack-parser')
 
 // Vite 환경에서만 존재하는 import.meta.env 접근을 안전하게 처리
 type ViteMetaEnv = { VITE_SERVER_ORIGIN?: string }
@@ -39,4 +42,5 @@ export const socket = io(envOrigin && envOrigin.length > 0 ? envOrigin : default
   upgrade: !isTunnel,
   path: '/socket.io',
   timeout: 10000,
+  parser: MsgPackParser,
 })

@@ -31,6 +31,9 @@ await fastify.register(formbody)
 
 fastify.get('/health', async () => ({ ok: true }))
 
+// MessagePack parser for lower payload & faster parse
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { MsgPackParser } = require('socket.io-msgpack-parser')
 const io = new Server(fastify.server, {
   cors: allowAll
     ? { origin: '*', methods: ['GET', 'POST'] }
@@ -42,6 +45,7 @@ const io = new Server(fastify.server, {
   pingInterval: 20000,
   perMessageDeflate: false,
   httpCompression: false,
+  parser: MsgPackParser,
 })
 
 const prisma = new PrismaClient()

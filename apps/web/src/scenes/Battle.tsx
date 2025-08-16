@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { socket } from '../lib/socket.ts'
 import ResourceBar from '../components/ResourceBar'
 import { Hearts } from '../components/Battle/Hearts'
 import { MomentumBar } from '../components/Battle/MomentumBar'
 import { SkillButton } from '../components/Battle/SkillButton'
+import { battleReducer, createInitialState } from './battleReducer'
 import { loadAssets } from '../lib/assets'
 
 type Role = 'ATTACK' | 'DEFENSE'
@@ -22,19 +23,22 @@ const SKILLS: Skill[] = [
 
 export default function Battle() {
   const navigate = useNavigate()
-  const [round, setRound] = useState(1)
-  const [role, setRole] = useState<Role>('ATTACK')
-  const [choice, setChoice] = useState<string | null>(null)
-  const [opponentChoice, setOpponentChoice] = useState<string | null>(null)
-  const [log, setLog] = useState<string[]>([])
+  const [state, dispatch] = useReducer(battleReducer, createInitialState('ATTACK'))
+  const {
+    round,
+    role,
+    choice,
+    oppChoice: opponentChoice,
+    log,
+    momentum,
+    selfHp,
+    selfMaxHp,
+    oppHp,
+    oppMaxHp,
+    selfInjuries,
+    oppInjuries,
+  } = state as any
   const [timeLeft, setTimeLeft] = useState(10)
-  const [selfHp, setSelfHp] = useState(2)
-  const [oppHp, setOppHp] = useState(2)
-  const [selfMaxHp, setSelfMaxHp] = useState(2)
-  const [oppMaxHp, setOppMaxHp] = useState(2)
-  const [selfInjuries, setSelfInjuries] = useState<Array<'ARM' | 'LEG' | 'TORSO'>>([])
-  const [oppInjuries, setOppInjuries] = useState<Array<'ARM' | 'LEG' | 'TORSO'>>([])
-  const [momentum, setMomentum] = useState(0)
   const timerRef = useRef<number | null>(null)
   // Camera shake & hitstop
   const [shakeMs, setShakeMs] = useState(0)
@@ -50,8 +54,8 @@ export default function Battle() {
 
   useEffect(() => {
     // 서버 연결 이벤트
-    const onHello = (m: { id: string }) => setLog((l) => [`서버 연결: ${m.id}`, ...l])
-    const onFound = (m: unknown) => setLog((l) => [`매칭: ${JSON.stringify(m)}`, ...l])
+    const onHello = (m: { id: string }) => console.log('server.hello', m)
+    const onFound = (m: unknown) => console.log('match.found', m)
     socket.on('server.hello', onHello)
     socket.on('match.found', onFound)
     return () => {
@@ -79,20 +83,12 @@ export default function Battle() {
     }
   }, [round, hitstopMs])
 
-  const resolveRound = useCallback(
-    (msg: { round: number; self: string; opp: string; result: 0 | 1 | 2; nextRole: Role }) => {
-      const label = msg.result === 1 ? '라운드 승' : msg.result === 2 ? '라운드 패' : '무승부'
-      setLog((l) => [`[R${msg.round}] 나:${msg.self} vs 상대:${msg.opp} → ${label}`, ...l])
-      setRound((r) => r + 1)
-      setChoice(null)
-      setOpponentChoice(null)
-      setRole(msg.nextRole)
-    },
-    []
-  )
+  const resolveRound = useCallback((msg: { round: number; self: string; opp: string; result: 0 | 1 | 2; nextRole: Role }) => {
+    dispatch({ type: 'resolve', msg })
+  }, [])
 
   const onSelect = (id: string) => {
-    setChoice(id)
+    dispatch({ type: 'select', id })
     // 스윙 트레일 시작
     setTrail({ id, t: 160, ttl: 160 })
     // 서버에 선택 전송
@@ -108,8 +104,7 @@ export default function Battle() {
       nextRole: 0 | 1
       momentum?: number
     }) => {
-      setOpponentChoice(m.opp)
-      if (typeof m.momentum === 'number') setMomentum(m.momentum)
+      // reducer에서 모멘텀/라운드/역할 처리
       // 히트스톱 & 카메라 흔들림 트리거
       setHitstopMs(120)
       setShakeMs(200)
@@ -143,23 +138,16 @@ export default function Battle() {
       hp: number
     }) => {
       const isMeTarget = d.target === socket.id
-      const dmg = d.damage ?? 1
-      if (isMeTarget) {
-        setSelfHp(d.hp)
-        setSelfMaxHp((mx) => Math.max(mx, d.hp + dmg))
-        setSelfInjuries((inj) => [...inj, ...(d.injured ?? [])])
-      } else {
-        setOppHp(d.hp)
-        setOppMaxHp((mx) => Math.max(mx, d.hp + dmg))
-        setOppInjuries((inj) => [...inj, ...(d.injured ?? [])])
-      }
-      setLog((l) => [
-        `[결정타] ${isMeTarget ? '피격' : '가함'} - 피해:${dmg}, 남은HP:${d.hp}`,
-        ...l,
-      ])
+      dispatch({
+        type: 'decisive',
+        hitterIsMe: !isMeTarget,
+        damage: d.damage ?? 1,
+        injured: d.injured ?? [],
+        hp: d.hp,
+      })
     }
     const onEnd = (e: { reason: string; winner?: string }) => {
-      setLog((l) => [`전투 종료: ${e.reason} ${e.winner ? `(승자:${e.winner})` : ''}`, ...l])
+      dispatch({ type: 'end', reason: e.reason, winner: e.winner })
       setTimeout(() => navigate('/result'), 600)
     }
     socket.on('battle.resolve', onResolved)

@@ -39,3 +39,7 @@ export type BattleState = {
   injuries?: Record<string, Injury[]>
   weapon?: Record<string, 'ONE_HAND' | 'TWO_HAND'>
 }
+
+// Compact wire codes for network efficiency
+export const ResultCode = { DRAW: 0, WIN: 1, LOSE: 2 } as const
+export type ResultCode = (typeof ResultCode)[keyof typeof ResultCode]

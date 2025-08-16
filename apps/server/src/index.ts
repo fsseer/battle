@@ -16,7 +16,7 @@ import {
 } from './battle/types'
 import { isSkillAllowedConsideringInjury, applyDecisiveDamage } from './battle/engine'
 
-const fastify = Fastify({ logger: true })
+const fastify = Fastify({ logger: { level: 'warn' } })
 // Allow CORS from local dev and optionally any origin via env (for quick testing over internet)
 const corsEnv = process.env.CORS_ORIGIN || ''
 const extraCorsOrigin = corsEnv ? corsEnv.split(',') : []
@@ -582,20 +582,19 @@ io.on('connection', (socket) => {
     }
 
     // 각자에게 결과 브로드캐스트
-    const resForA: 'WIN' | 'LOSE' | 'DRAW' =
+    const resForA: 0 | 1 | 2 =
       a === attacker
         ? outcome === 'ATTACKER'
-          ? 'WIN'
+          ? 1
           : outcome === 'DEFENDER'
-          ? 'LOSE'
-          : 'DRAW'
+          ? 2
+          : 0
         : outcome === 'ATTACKER'
-        ? 'LOSE'
+        ? 2
         : outcome === 'DEFENDER'
-        ? 'WIN'
-        : 'DRAW'
-    const resForB: 'WIN' | 'LOSE' | 'DRAW' =
-      resForA === 'WIN' ? 'LOSE' : resForA === 'LOSE' ? 'WIN' : 'DRAW'
+        ? 1
+        : 0
+    const resForB: 0 | 1 | 2 = resForA === 1 ? 2 : resForA === 2 ? 1 : 0
 
     io.to(a).emit('battle.resolve', {
       round: state.round,
@@ -664,7 +663,7 @@ setInterval(() => {
           state.roles[b] === 'ATTACK'
             ? (ATTACK_SKILLS[0] as SkillId)
             : (DEFENSE_SKILLS[0] as SkillId),
-        result: 'DRAW',
+        result: 0,
         nextRole: state.roles[a],
         momentum: state.momentum,
       })
@@ -678,7 +677,7 @@ setInterval(() => {
           state.roles[a] === 'ATTACK'
             ? (ATTACK_SKILLS[0] as SkillId)
             : (DEFENSE_SKILLS[0] as SkillId),
-        result: 'DRAW',
+        result: 0,
         nextRole: state.roles[b],
         momentum: state.momentum,
       })

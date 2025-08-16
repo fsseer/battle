@@ -84,11 +84,10 @@ export default function Battle() {
       round: number
       self: string
       opp: string
-      result: 'WIN' | 'LOSE' | 'DRAW'
+      result: 0 | 1 | 2
       nextRole: Role
     }) => {
-      const label =
-        msg.result === 'WIN' ? '라운드 승' : msg.result === 'LOSE' ? '라운드 패' : '무승부'
+      const label = msg.result === 1 ? '라운드 승' : msg.result === 2 ? '라운드 패' : '무승부'
       setLog((l) => [`[R${msg.round}] 나:${msg.self} vs 상대:${msg.opp} → ${label}`, ...l])
       setRound((r) => r + 1)
       setChoice(null)
@@ -111,7 +110,7 @@ export default function Battle() {
       round: number
       self: string
       opp: string
-      result: 'WIN' | 'LOSE' | 'DRAW'
+      result: 0 | 1 | 2
       nextRole: Role
       momentum?: number
     }) => {
@@ -388,7 +387,13 @@ export default function Battle() {
           </div>
           <div className="row" style={{ gap: 8, marginTop: 12 }}>
             {available.map((s) => (
-              <SkillButton key={s.id} id={s.id} label={s.name} disabled={!canUseSkill(s)} onClick={onSelect} />
+              <SkillButton
+                key={s.id}
+                id={s.id}
+                label={s.name}
+                disabled={!canUseSkill(s)}
+                onClick={onSelect}
+              />
             ))}
           </div>
           <div className="row" style={{ gap: 24, marginTop: 12 }}>

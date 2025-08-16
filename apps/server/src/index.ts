@@ -454,6 +454,27 @@ function isSkillAllowedForRole(skill: SkillId, role: Role): boolean {
     : (DEFENSE_SKILLS as readonly string[]).includes(skill)
 }
 
+function isSkillAllowedConsideringInjury(state: BattleState, sid: string, role: Role, skill: SkillId): boolean {
+  const injuries = state.injuries?.[sid] ?? []
+  if (role === 'ATTACK' && injuries.includes('ARM')) return false
+  if (role === 'DEFENSE' && skill === 'dodge' && injuries.includes('LEG')) return false
+  return isSkillAllowedForRole(skill, role)
+}
+
+function applyDecisiveDamage(state: BattleState, attackerSid: string, defenderSid: string) {
+  const hp = state.hp ?? (state.hp = { [attackerSid]: 2, [defenderSid]: 2 })
+  const weapon = state.weapon ?? (state.weapon = { [attackerSid]: 'ONE_HAND', [defenderSid]: 'ONE_HAND' })
+  const inj = state.injuries ?? (state.injuries = { [attackerSid]: [], [defenderSid]: [] })
+  const dmg = weapon[attackerSid] === 'TWO_HAND' ? 2 : 1
+  for (let i = 0; i < dmg; i++) {
+    const part = (['ARM', 'LEG', 'TORSO'] as const)[Math.floor(Math.random() * 3)]
+    inj[defenderSid].push(part)
+  }
+  hp[defenderSid] = Math.max(0, (hp[defenderSid] ?? 2) - dmg)
+  state.momentum = 0
+  return { dmg, injured: inj[defenderSid].slice(-dmg), hp: hp[defenderSid] }
+}
+
 // Simple in-memory matching and battle state
 type BattleState = {
   roomId: string
@@ -464,6 +485,9 @@ type BattleState = {
   momentum: number // >0: current attacker 우세, <0: 수비 우세
   decisiveThreshold: number
   deadlineAt?: number
+  hp?: Record<string, number>
+  injuries?: Record<string, Array<'ARM' | 'LEG' | 'TORSO'>>
+  weapon?: Record<string, 'ONE_HAND' | 'TWO_HAND'>
 }
 const waitingQueue: string[] = []
 const sidToBattle: Map<string, BattleState> = new Map()
@@ -499,6 +523,9 @@ io.on('connection', (socket) => {
         momentum: 0,
         decisiveThreshold: 2,
         deadlineAt: Date.now() + BATTLE_DEADLINE_MS,
+        hp: { [a]: 2, [b]: 2 },
+        injuries: { [a]: [], [b]: [] },
+        weapon: { [a]: 'ONE_HAND', [b]: 'ONE_HAND' },
       }
       sidToBattle.set(a, state)
       sidToBattle.set(b, state)
@@ -522,7 +549,7 @@ io.on('connection', (socket) => {
     if (!state) return
     // 역할에 맞는 스킬만 허용
     const role = state.roles[socket.id]
-    if (!isSkillAllowedForRole(skillId, role)) {
+    if (!isSkillAllowedConsideringInjury(state, socket.id, role, skillId)) {
       io.to(socket.id).emit('battle.error', {
         reason: 'INVALID_SKILL_FOR_ROLE',
         role,
@@ -556,18 +583,23 @@ io.on('connection', (socket) => {
       const success = Math.random() < 0.6
       decisive = { side, success }
       if (success) {
-        const winner = side === 'ATTACKER' ? attacker : defender
-        io.to(state.roomId).emit('battle.end', {
-          reason: 'decisive',
-          winner,
+        const hitter = side === 'ATTACKER' ? attacker : defender
+        const target = side === 'ATTACKER' ? defender : attacker
+        const impact = applyDecisiveDamage(state, hitter, target)
+        io.to(state.roomId).emit('battle.decisive', {
           round: state.round,
-          momentum: state.momentum,
-          attChoice,
-          defChoice,
+          hitter,
+          target,
+          damage: impact.dmg,
+          injured: impact.injured,
+          hp: state.hp?.[target] ?? 0,
         })
-        // 정리
-        state.players.forEach((sid) => sidToBattle.delete(sid))
-        return
+        if ((state.hp?.[target] ?? 0) <= 0) {
+          io.to(state.roomId).emit('battle.end', { reason: 'knockout', winner: hitter })
+          state.players.forEach((sid) => sidToBattle.delete(sid))
+          return
+        }
+        // 성공했지만 전투 지속: 역할은 기존 규칙(모멘텀 리셋 후 현재 부호 유지=0)로 유지
       } else {
         // 실패 시 상대에게 공세 유리(역전 기회): 역할 스왑, 모멘텀 반전 후 -1로 설정
         state.momentum = side === 'ATTACKER' ? -1 : 1
@@ -653,16 +685,28 @@ setInterval(() => {
       state.momentum = 0
       io.to(a).emit('battle.resolve', {
         round: state.round,
-        self: state.roles[a] === 'ATTACK' ? (ATTACK_SKILLS[0] as SkillId) : (DEFENSE_SKILLS[0] as SkillId),
-        opp: state.roles[b] === 'ATTACK' ? (ATTACK_SKILLS[0] as SkillId) : (DEFENSE_SKILLS[0] as SkillId),
+        self:
+          state.roles[a] === 'ATTACK'
+            ? (ATTACK_SKILLS[0] as SkillId)
+            : (DEFENSE_SKILLS[0] as SkillId),
+        opp:
+          state.roles[b] === 'ATTACK'
+            ? (ATTACK_SKILLS[0] as SkillId)
+            : (DEFENSE_SKILLS[0] as SkillId),
         result: 'DRAW',
         nextRole: state.roles[a],
         momentum: state.momentum,
       })
       io.to(b).emit('battle.resolve', {
         round: state.round,
-        self: state.roles[b] === 'ATTACK' ? (ATTACK_SKILLS[0] as SkillId) : (DEFENSE_SKILLS[0] as SkillId),
-        opp: state.roles[a] === 'ATTACK' ? (ATTACK_SKILLS[0] as SkillId) : (DEFENSE_SKILLS[0] as SkillId),
+        self:
+          state.roles[b] === 'ATTACK'
+            ? (ATTACK_SKILLS[0] as SkillId)
+            : (DEFENSE_SKILLS[0] as SkillId),
+        opp:
+          state.roles[a] === 'ATTACK'
+            ? (ATTACK_SKILLS[0] as SkillId)
+            : (DEFENSE_SKILLS[0] as SkillId),
         result: 'DRAW',
         nextRole: state.roles[b],
         momentum: state.momentum,

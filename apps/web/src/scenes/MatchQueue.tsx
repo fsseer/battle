@@ -1,10 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { socket } from '../lib/socket'
 import ResourceBar from '../components/ResourceBar'
 
 export default function MatchQueue() {
   const navigate = useNavigate()
+  const [status, setStatus] = useState<{ state: string; position?: number; size?: number } | null>(null)
 
   useEffect(() => {
     const onFound = (m: unknown) => {
@@ -12,9 +13,13 @@ export default function MatchQueue() {
       navigate('/battle')
     }
     const onQueue = (s: any) => {
+      setStatus(s)
       console.log('queue.status', s)
     }
-    const onConnect = () => console.log('socket connected', socket.id)
+    const onConnect = () => {
+      console.log('socket connected', socket.id)
+      socket.emit('queue.join')
+    }
     const onError = (e: unknown) => console.error('socket error', e)
     socket.on('connect', onConnect)
     socket.on('match.found', onFound)
@@ -40,6 +45,9 @@ export default function MatchQueue() {
             <div style={{ opacity: 0.85, marginTop: 8 }}>
               상대가 입장하면 자동으로 전투로 이동합니다.
             </div>
+            {status?.state === 'WAITING' ? (
+              <div style={{ marginTop: 8, opacity: 0.9 }}>대기열: {status.position}/{status.size}</div>
+            ) : null}
             <div style={{ marginTop: 16 }}>
               <button className="ghost-btn" onClick={() => navigate('/lobby')}>
                 취소하고 로비로

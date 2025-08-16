@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { socket } from '../lib/socket.ts'
+import { SERVER_ORIGIN } from '../lib/api'
 import { useAuthStore } from '../store/auth'
 import ResourceBar from '../components/ResourceBar'
 
@@ -21,7 +22,7 @@ export default function MatchPrep() {
   // Deprecated: 이 화면은 곧 제거 예정. Training.tsx로 분리됨.
   useEffect(() => {
     let mounted = true
-    fetch('http://127.0.0.1:5174/training/catalog')
+    fetch(`${SERVER_ORIGIN}/training/catalog`)
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
         if (mounted && j?.ok) setCatalog(j.items)
@@ -38,7 +39,7 @@ export default function MatchPrep() {
     if (!token) return
     setBusy(true)
     try {
-      const r = await fetch(`http://127.0.0.1:5174${path}`, {
+      const r = await fetch(`${SERVER_ORIGIN}${path}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
@@ -48,7 +49,7 @@ export default function MatchPrep() {
         setFlash('훈련 완료!')
         if (flashTimer.current) window.clearTimeout(flashTimer.current)
         flashTimer.current = window.setTimeout(() => setFlash(''), 900)
-        const m = await fetch('http://127.0.0.1:5174/me', {
+        const m = await fetch(`${SERVER_ORIGIN}/me`, {
           headers: { Authorization: `Bearer ${token}` },
         })
           .then((res) => res.json())

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { SERVER_ORIGIN } from '../lib/api'
 import { useEffect, useRef } from 'react'
 import { useAuthStore } from '../store/auth'
 import '../styles/theme.css'
@@ -14,7 +15,7 @@ export default function Lobby() {
   useEffect(() => {
     const token = (user as any)?.token
     if (!token) return
-    fetch('http://127.0.0.1:5174/me', { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${SERVER_ORIGIN}/me`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => (r.ok ? r.json() : null))
       .then((m) => {
         if (m?.ok) {
@@ -30,7 +31,7 @@ export default function Lobby() {
     if (!token) return
     if (pollingRef.current) window.clearInterval(pollingRef.current)
     const id = window.setInterval(() => {
-      fetch('http://127.0.0.1:5174/me', { headers: { Authorization: `Bearer ${token}` } })
+      fetch(`${SERVER_ORIGIN}/me`, { headers: { Authorization: `Bearer ${token}` } })
         .then((r) => (r.ok ? r.json() : null))
         .then((m) => {
           if (m?.ok)

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import ResourceBar from '../components/ResourceBar'
+import { SERVER_ORIGIN } from '../lib/api'
 import { useNavigate } from 'react-router-dom'
 
 type SkillState = 'usable'|'locked_prof'|'locked_stat'|'locked_item'
@@ -12,10 +13,10 @@ export default function Skills() {
   const load = async () => {
     try {
       const headers = authHeader()
-      const skillsRes = await fetch('http://127.0.0.1:5174/skills', { headers })
+      const skillsRes = await fetch(`${SERVER_ORIGIN}/skills`, { headers })
       let meRes: Response | null = null
       if (headers.Authorization) {
-        meRes = await fetch('http://127.0.0.1:5174/me', { headers })
+        meRes = await fetch(`${SERVER_ORIGIN}/me`, { headers })
       }
       // 세션 만료(401)만 자동 로그아웃 처리. 404는 비로그인 상태로 계속 표시
       if (meRes && meRes.status === 401) {
@@ -111,7 +112,7 @@ async function trainOneHand() {
       alert('로그인이 필요합니다. 먼저 로그인해 주세요.')
       return
     }
-    const res = await fetch('http://127.0.0.1:5174/train/proficiency', { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify({ kind: 'ONE_HAND', xp: 100 }) })
+    const res = await fetch(`${SERVER_ORIGIN}/train/proficiency`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify({ kind: 'ONE_HAND', xp: 100 }) })
     if (res.status === 401) {
       try { localStorage.removeItem('auth') } catch {}
       alert('세션이 만료되었습니다. 다시 로그인해 주세요.')

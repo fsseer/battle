@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { SERVER_ORIGIN } from '../lib/api'
 import { useAuthStore } from '../store/auth'
 
 export default function ResourceBar() {
@@ -10,7 +11,7 @@ export default function ResourceBar() {
     if (!token) return
     if (pollingRef.current) window.clearInterval(pollingRef.current)
     const id = window.setInterval(() => {
-      fetch('http://127.0.0.1:5174/me', { headers: { Authorization: `Bearer ${token}` } })
+      fetch(`${SERVER_ORIGIN}/me`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : null)
         .then((m) => {
           if (m?.ok) setUser({ id: m.user.id, name: m.user.name, token, characters: m.user.characters })

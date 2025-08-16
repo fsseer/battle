@@ -5,7 +5,6 @@ import '../styles/theme.css'
 import { useI18n } from '../i18n/useI18n'
 import type { Language } from '../i18n/locales'
 import { loginRequest, registerRequest, checkIdAvailability } from '../lib/api'
-import { debounce } from '../lib/util'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -18,14 +17,28 @@ export default function Login() {
   const [idErr, setIdErr] = useState<string>('')
   const [pwErr, setPwErr] = useState<string>('')
   const [idHint, setIdHint] = useState<string>('')
-  const debouncedCheck = debounce(async (value: string) => {
+
+  async function handleCheckDuplicate() {
+    setIdHint('')
+    // basic front validation
+    const alnum = (s: string) => /^[A-Za-z0-9]+$/.test(s)
+    const idLenOk = id.length >= 4 && id.length <= 24
+    const idCsOk = alnum(id)
+    if (!idLenOk || !idCsOk) {
+      setIdErr(!idCsOk ? t('login.error.charset') : t('login.error.id'))
+      return
+    }
     try {
-      const r = await checkIdAvailability(value)
+      const r = await checkIdAvailability(id)
       if (r.ok && typeof r.available !== 'undefined') {
         setIdHint(r.available ? '사용 가능한 아이디입니다.' : '이미 사용 중입니다.')
+        if (!r.available) setIdErr(t('login.error.duplicate'))
+        else setIdErr('')
       }
-    } catch { /* ignore */ }
-  }, 300)
+    } catch {
+      setIdErr(t('login.error.auth'))
+    }
+  }
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,16 +56,19 @@ export default function Login() {
     if (mode === 'register') {
       // basic front validation
       if (password !== confirm) { setPwErr(t('login.error.confirm')); return }
-      // check duplicate before submit
-      if (id.length >= 4 && id.length <= 24) {
-        try {
-          const res = await checkIdAvailability(id)
-          if (res.ok && res.available === false) {
-            setIdErr(t('login.error.duplicate'))
-            return
-          }
-        } catch { /* ignore */ }
+      // Always check duplicate on submit
+      try {
+        const res = await checkIdAvailability(id)
+        if (res.ok && res.available === false) {
+          setIdErr(t('login.error.duplicate'))
+          setIdHint('이미 사용 중입니다.')
+          return
+        }
+      } catch {
+        setPwErr(t('login.error.auth'))
+        return
       }
+
       registerRequest(id, password, confirm)
         .then((r) => {
           if (r.ok && r.user && r.token) {
@@ -108,18 +124,19 @@ export default function Login() {
             </select>
           </div>
           <form onSubmit={onSubmit} className="grid" style={{ gridTemplateColumns: '1fr' }}>
-            <input className={`control${idErr ? ' invalid' : ''}`} placeholder={t('login.id')} value={id} maxLength={24} onChange={async (e) => {
-              const v = e.target.value
-              if (/\s/.test(v)) return
-              if (v && !/^[A-Za-z0-9]+$/.test(v)) { setIdErr(t('login.error.charset')); return }
-              setId(v)
-              if (idErr) setIdErr('')
-              if (mode === 'register' && v.length >= 4 && v.length <= 24) {
-                debouncedCheck(v)
-              } else {
+            <div className="row" style={{ gap: 8 }}>
+              <input className={`control${idErr ? ' invalid' : ''}`} placeholder={t('login.id')} value={id} maxLength={24} onChange={async (e) => {
+                const v = e.target.value
+                if (/\s/.test(v)) return
+                if (v && !/^[A-Za-z0-9]+$/.test(v)) { setIdErr(t('login.error.charset')); return }
+                setId(v)
+                if (idErr) setIdErr('')
                 setIdHint('')
-              }
-            }} required />
+              }} required />
+              {mode === 'register' && (
+                <button type="button" className="ghost-btn" onClick={handleCheckDuplicate}>중복 체크</button>
+              )}
+            </div>
             {idErr ? <div className="error-text">{idErr}</div> : idHint ? <div className="text-sm" style={{ color: idHint.includes('사용') ? '#2a8f2a' : '#b93838' }}>{idHint}</div> : null}
             <input className={`control${pwErr ? ' invalid' : ''}`} placeholder={t('login.pw')} type="password" value={password} maxLength={24} onChange={(e) => { const v = e.target.value; if (/\s/.test(v)) return; if (v && !/^[A-Za-z0-9]+$/.test(v)) { setPwErr(t('login.error.charset')); return } setPassword(v); if (mode === 'register' && confirm && v !== confirm) setPwErr(t('login.error.confirm')); else setPwErr('') }} required />
             {pwErr ? <div className="error-text">{pwErr}</div> : null}

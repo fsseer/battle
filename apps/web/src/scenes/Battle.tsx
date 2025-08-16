@@ -5,13 +5,16 @@ import ResourceBar from '../components/ResourceBar'
 import { loadAssets } from '../lib/assets'
 
 type Role = 'ATTACK' | 'DEFENSE'
-type Skill = { id: string; name: string; role: Role | 'ANY' }
+type Skill = { id: string; name: string; role: Role }
 
+// 서버 규칙과 동일: 공격(light/heavy/poke), 방어(block/dodge/counter)
 const SKILLS: Skill[] = [
-  { id: 'slash', name: '베기', role: 'ATTACK' },
-  { id: 'feint', name: '견제', role: 'ATTACK' },
-  { id: 'block', name: '가드', role: 'DEFENSE' },
-  { id: 'parry', name: '패링', role: 'DEFENSE' },
+  { id: 'light', name: '약공', role: 'ATTACK' },
+  { id: 'heavy', name: '강공', role: 'ATTACK' },
+  { id: 'poke', name: '견제', role: 'ATTACK' },
+  { id: 'block', name: '막기', role: 'DEFENSE' },
+  { id: 'dodge', name: '회피', role: 'DEFENSE' },
+  { id: 'counter', name: '반격', role: 'DEFENSE' },
 ]
 
 export default function Battle() {
@@ -33,7 +36,7 @@ export default function Battle() {
   const [particles, setParticles] = useState<Particle[]>([])
   const [trail, setTrail] = useState<{ id: string; t: number; ttl: number } | null>(null)
 
-  const available = useMemo(() => SKILLS.filter((s) => s.role === 'ANY' || s.role === role), [role])
+  const available = useMemo(() => SKILLS.filter((s) => s.role === role), [role])
 
   useEffect(() => {
     // 서버 연결 이벤트
@@ -66,27 +69,14 @@ export default function Battle() {
     }
   }, [round, hitstopMs])
 
-  const resolveRound = useCallback(
-    (self: string, opp: string) => {
-      // 더미 상성 규칙: 베기>패링, 견제>가드, 가드>베기, 패링>견제, 동일=무승부
-      const beats: Record<string, string> = {
-        slash: 'parry',
-        feint: 'block',
-        block: 'slash',
-        parry: 'feint',
-      }
-      let result = '무승부'
-      if (beats[self] === opp) result = '라운드 승'
-      else if (beats[opp] === self) result = '라운드 패'
-      setLog((l) => [`[R${round}] 나:${self} vs 상대:${opp} → ${result}`, ...l])
-      if (result === '라운드 승') setRole('ATTACK')
-      else if (result === '라운드 패') setRole('DEFENSE')
-      setRound((r) => r + 1)
-      setChoice(null)
-      setOpponentChoice(null)
-    },
-    [round]
-  )
+  const resolveRound = useCallback((msg: { round: number; self: string; opp: string; result: 'WIN'|'LOSE'|'DRAW'; nextRole: Role }) => {
+    const label = msg.result === 'WIN' ? '라운드 승' : msg.result === 'LOSE' ? '라운드 패' : '무승부'
+    setLog((l) => [`[R${msg.round}] 나:${msg.self} vs 상대:${msg.opp} → ${label}`, ...l])
+    setRound((r) => r + 1)
+    setChoice(null)
+    setOpponentChoice(null)
+    setRole(msg.nextRole)
+  }, [])
 
   const onSelect = (id: string) => {
     setChoice(id)
@@ -97,13 +87,7 @@ export default function Battle() {
   }
 
   useEffect(() => {
-    const onResolved = (m: {
-      round: number
-      self: string
-      opp: string
-      result: 'WIN' | 'LOSE' | 'DRAW'
-      nextRole: Role
-    }) => {
+    const onResolved = (m: { round: number; self: string; opp: string; result: 'WIN'|'LOSE'|'DRAW'; nextRole: Role }) => {
       setOpponentChoice(m.opp)
       // 히트스톱 & 카메라 흔들림 트리거
       setHitstopMs(120)
@@ -127,8 +111,7 @@ export default function Battle() {
         }
         return [...prev, ...burst]
       })
-      resolveRound(m.self, m.opp)
-      setRole(m.nextRole)
+      resolveRound(m)
     }
     socket.on('battle.resolve', onResolved)
     return () => {
@@ -230,7 +213,7 @@ export default function Battle() {
               }}
             />
             {/* 간단한 효과 */}
-            {choice === 'slash' && (
+            {choice === 'heavy' && (
               <div
                 style={{
                   position: 'absolute',
@@ -243,7 +226,7 @@ export default function Battle() {
                 }}
               />
             )}
-            {choice === 'feint' && (
+            {choice === 'light' && (
               <div
                 style={{
                   position: 'absolute',
@@ -267,7 +250,7 @@ export default function Battle() {
                 }}
               />
             )}
-            {choice === 'parry' && (
+            {choice === 'counter' && (
               <img
                 src="/sprites/spark.svg"
                 style={{

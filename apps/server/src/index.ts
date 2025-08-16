@@ -462,6 +462,7 @@ type BattleState = {
   choices: Record<string, SkillId | undefined>
   momentum: number // >0: current attacker 우세, <0: 수비 우세
   decisiveThreshold: number
+  deadlineAt?: number
 }
 const waitingQueue: string[] = []
 const sidToBattle: Map<string, BattleState> = new Map()
@@ -496,6 +497,7 @@ io.on('connection', (socket) => {
         choices: {},
         momentum: 0,
         decisiveThreshold: 2,
+        deadlineAt: Date.now() + 15000,
       }
       sidToBattle.set(a, state)
       sidToBattle.set(b, state)
@@ -531,7 +533,27 @@ io.on('connection', (socket) => {
     const [a, b] = state.players
     const ca = state.choices[a]
     const cb = state.choices[b]
-    if (!ca || !cb) return
+    if (!ca || !cb) {
+      // 시간 초과 처리: 둘 중 하나만 선택했는데 마감되었으면 무승부 취급 후 다음 라운드
+      if (state.deadlineAt && Date.now() >= state.deadlineAt) {
+        const nextRoles = { ...state.roles }
+        // 모멘텀 0으로 유지
+        state.momentum = 0
+        // 라운드 진행
+        io.to(state.roomId).emit('battle.resolve', {
+          round: state.round,
+          self: ca ?? (state.roles[a] === 'ATTACK' ? (ATTACK_SKILLS[0] as SkillId) : (DEFENSE_SKILLS[0] as SkillId)),
+          opp: cb ?? (state.roles[b] === 'ATTACK' ? (ATTACK_SKILLS[0] as SkillId) : (DEFENSE_SKILLS[0] as SkillId)),
+          result: 'DRAW',
+          nextRole: nextRoles[socket.id],
+          momentum: state.momentum,
+        })
+        state.round += 1
+        state.choices = {}
+        state.deadlineAt = Date.now() + 15000
+      }
+      return
+    }
     // 현재 공격자/방어자 식별
     const attacker = state.roles[a] === 'ATTACK' ? a : b
     const defender = attacker === a ? b : a
@@ -620,6 +642,7 @@ io.on('connection', (socket) => {
     })
     state.round += 1
     state.choices = {}
+    state.deadlineAt = Date.now() + 15000
   })
 
   socket.on('disconnect', () => {

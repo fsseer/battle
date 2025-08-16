@@ -105,6 +105,8 @@ fastify.post('/auth/login', async (request, reply) => {
       const ok = await bcrypt.compare(pw, user.pwHash)
       if (!ok) return reply.code(401).send({ ok: false, error: 'WRONG_PASSWORD' })
     }
+    // small delay guard for extremely slow tunnels to reduce race on first connect
+    // await new Promise((r) => setTimeout(r, 50))
     const token = Buffer.from(`${user.loginId}:${Date.now()}`).toString('base64')
     return {
       ok: true,

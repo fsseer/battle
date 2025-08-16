@@ -25,8 +25,8 @@ async function fetchJsonWithTimeout<T>(
   const timer = setTimeout(() => ac.abort(), timeoutMs)
   try {
     const res = await fetch(url, { ...init, signal: ac.signal })
-    // @ts-expect-error: runtime JSON parse
-    return await res.json()
+    const data = (await res.json()) as T
+    return data
   } finally {
     clearTimeout(timer)
   }

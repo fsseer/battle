@@ -1,7 +1,13 @@
 import { io } from 'socket.io-client'
 
-export const socket = io('http://localhost:5174', {
+const envOrigin = (import.meta as any)?.env?.VITE_SERVER_ORIGIN as string | undefined
+const defaultOrigin =
+  typeof window !== 'undefined'
+    ? window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? 'http://127.0.0.1:5174'
+      : `${window.location.protocol}//${window.location.hostname}:5174`
+    : 'http://127.0.0.1:5174'
+
+export const socket = io(envOrigin && envOrigin.length > 0 ? envOrigin : defaultOrigin, {
   autoConnect: true,
 })
-
-

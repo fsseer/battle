@@ -42,7 +42,7 @@ set RETRIES=5
 set SLEEP=2
 for /l %%i in (1,1,%RETRIES%) do (
     call npx --yes prisma generate && goto :gen_ok
-    echo [server] prisma generate failed (attempt %%i). Cleaning and retrying in %SLEEP%s...
+    echo [server] prisma generate failed attempt %%i - cleaning and retrying in %SLEEP%s...
     powershell -NoProfile -Command "Remove-Item -Force -ErrorAction SilentlyContinue 'node_modules/.prisma/client/query_engine-windows.dll.node*'"
     powershell -NoProfile -Command "Stop-Process -Name node -Force -ErrorAction SilentlyContinue"
     if %%i GEQ 3 (
@@ -51,7 +51,8 @@ for /l %%i in (1,1,%RETRIES%) do (
     )
     timeout /t %SLEEP% >nul
 )
-echo [server][ERROR] Prisma generate failed after %RETRIES% attempts. Press any key to exit.
+echo [server][ERROR] Prisma generate failed after %RETRIES% attempts.
+echo Press any key to exit...
 pause>nul & goto :eof
 :gen_ok
 echo [server] Starting dev server (port 5174)...
@@ -66,7 +67,9 @@ for /l %%i in (1,1,60) do (
 	if %errorlevel%==0 goto :web
 	timeout /t 1 >nul
 )
-echo [server] Timed out waiting for server. Exiting.
+echo [server] Timed out waiting for server.
+echo Press any key to exit...
+pause>nul
 goto :eof
 
 :web
@@ -76,8 +79,8 @@ if not exist node_modules (
 	echo [web] Installing dependencies...
 	npm install
 )
-echo [web] Starting dev server (port 5173)...
-start "battle-web-dev" cmd /k "npm run dev -- --host 127.0.0.1 --strictPort --port 5173"
+echo [web] Starting dev server (port 5173, bind 0.0.0.0 for LAN/Internet via tunnel)...
+start "battle-web-dev" cmd /k "npm run dev -- --host 0.0.0.0 --strictPort --port 5173"
 popd
 
 set URL=http://127.0.0.1:5173
@@ -88,6 +91,8 @@ for /l %%i in (1,1,60) do (
 	timeout /t 1 >nul
 )
 echo [web] Timed out waiting for dev server.
+echo Press any key to exit...
+pause>nul
 goto :eof
 
 :open

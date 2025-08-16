@@ -7,15 +7,19 @@ import { evaluateSkills, evaluateTraits, type StatKey } from './skills.registry'
 import { TRAINING_CATALOG, type TrainingId } from './training.registry'
 
 const fastify = Fastify({ logger: true })
-await fastify.register(cors, { origin: ['http://127.0.0.1:5173','http://localhost:5173'] })
+// Allow CORS from local dev and optionally any origin via env (for quick testing over internet)
+const extraCorsOrigin = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : []
+await fastify.register(cors, {
+  origin: ['http://127.0.0.1:5173', 'http://localhost:5173', ...extraCorsOrigin],
+})
 
 fastify.get('/health', async () => ({ ok: true }))
 
 const io = new Server(fastify.server, {
   cors: {
-    origin: ['http://127.0.0.1:5173','http://localhost:5173'],
-    methods: ['GET', 'POST']
-  }
+    origin: ['http://127.0.0.1:5173', 'http://localhost:5173', ...extraCorsOrigin],
+    methods: ['GET', 'POST'],
+  },
 })
 
 const prisma = new PrismaClient()
@@ -33,7 +37,10 @@ function applyApRegen(ch: any) {
 
 async function saveApIfChanged(chBefore: any, chAfter: any) {
   if (chAfter.ap !== chBefore.ap) {
-    await prisma.character.update({ where: { id: chBefore.id }, data: { ap: chAfter.ap, apUpdatedAt: chAfter.apUpdatedAt } })
+    await prisma.character.update({
+      where: { id: chBefore.id },
+      data: { ap: chAfter.ap, apUpdatedAt: chAfter.apUpdatedAt },
+    })
   }
 }
 
@@ -58,11 +65,16 @@ fastify.post('/auth/login', async (request, reply) => {
     const pw = body?.password ?? ''
     const isAlnum = (s: string) => /^[A-Za-z0-9]+$/.test(s)
     const invalid =
-      !id || !pw ||
-      id.length < 4 || id.length > 24 ||
-      pw.length < 4 || pw.length > 24 ||
-      /\s/.test(id) || /\s/.test(pw) ||
-      !isAlnum(id) || !isAlnum(pw)
+      !id ||
+      !pw ||
+      id.length < 4 ||
+      id.length > 24 ||
+      pw.length < 4 ||
+      pw.length > 24 ||
+      /\s/.test(id) ||
+      /\s/.test(pw) ||
+      !isAlnum(id) ||
+      !isAlnum(pw)
     if (invalid) {
       return reply.code(400).send({ ok: false, error: 'INVALID_INPUT' })
     }
@@ -73,7 +85,10 @@ fastify.post('/auth/login', async (request, reply) => {
     }
 
     // Find user (no auto-create here)
-    const user = await prisma.user.findUnique({ where: { loginId: id }, include: { characters: true } })
+    const user = await prisma.user.findUnique({
+      where: { loginId: id },
+      include: { characters: true },
+    })
     if (!user) return reply.code(404).send({ ok: false, error: 'USER_NOT_FOUND' })
     if (!expected) {
       const ok = await bcrypt.compare(pw, user.pwHash)
@@ -86,8 +101,13 @@ fastify.post('/auth/login', async (request, reply) => {
       user: {
         id: user.loginId,
         name: user.name,
-        characters: user.characters.map(c => ({ id: c.id, name: c.name, level: c.level, stats: { str: c.str, agi: c.agi, sta: c.sta } }))
-      }
+        characters: user.characters.map((c) => ({
+          id: c.id,
+          name: c.name,
+          level: c.level,
+          stats: { str: c.str, agi: c.agi, sta: c.sta },
+        })),
+      },
     }
   } catch (e) {
     request.log.error(e)
@@ -99,7 +119,10 @@ fastify.get('/me', async (request, reply) => {
   const loginId = parseLoginIdFromToken(request.headers.authorization)
   if (!loginId) return reply.code(401).send({ ok: false })
   request.log.info({ route: '/me', loginId }, 'me request')
-  const user = await prisma.user.findUnique({ where: { loginId }, include: { characters: { include: { proficiencies: true } } } })
+  const user = await prisma.user.findUnique({
+    where: { loginId },
+    include: { characters: { include: { proficiencies: true } } },
+  })
   if (!user) {
     request.log.warn({ route: '/me', loginId }, 'user not found')
     return reply.code(404).send({ ok: false })
@@ -117,7 +140,10 @@ fastify.get('/me', async (request, reply) => {
 // Skills/Traits evaluation (temporary, using registry + basic mapping)
 fastify.get('/skills', async (request) => {
   const loginId = parseLoginIdFromToken(request.headers.authorization) ?? 'fsseer'
-  const user = await prisma.user.findUnique({ where: { loginId }, include: { characters: { include: { proficiencies: true } } } })
+  const user = await prisma.user.findUnique({
+    where: { loginId },
+    include: { characters: { include: { proficiencies: true } } },
+  })
   const ch = user?.characters?.[0]
   const stats: Record<StatKey, number> = {
     str: ch?.str ?? 5,
@@ -126,12 +152,16 @@ fastify.get('/skills', async (request) => {
     luck: (ch as any)?.luck ?? 5,
     fate: (ch as any)?.fate ?? 0,
   }
-  const profs = Object.fromEntries((ch?.proficiencies ?? []).map(p => [p.kind, p.level])) as any
+  const profs = Object.fromEntries((ch?.proficiencies ?? []).map((p) => [p.kind, p.level])) as any
   // naive equipped kinds until equipment model exists
   const equippedKinds: any[] = ['ONE_HAND']
   const weaponSkills = evaluateSkills({ stats, profs, equippedKinds })
   const traits = evaluateTraits({ stats, profs })
-  return { weaponSkills, characterSkills: weaponSkills.filter(w => w.skill.category !== 'WEAPON'), traits }
+  return {
+    weaponSkills,
+    characterSkills: weaponSkills.filter((w) => w.skill.category !== 'WEAPON'),
+    traits,
+  }
 })
 
 fastify.post('/train/proficiency', async (request, reply) => {
@@ -162,7 +192,7 @@ fastify.post('/train/proficiency', async (request, reply) => {
     create: { characterId: ch.id, kind, xp: xpGain, level: 0 },
   })
   // recompute level: 100 xp per level
-  const newLevel = Math.floor((prof.xp) / 100)
+  const newLevel = Math.floor(prof.xp / 100)
   if (newLevel !== prof.level) {
     await prisma.weaponProficiency.update({ where: { id: prof.id }, data: { level: newLevel } })
   }
@@ -181,9 +211,16 @@ fastify.post('/train/earn', async (request, reply) => {
   const ch = user?.characters?.[0]
   if (!ch) return reply.code(404).send({ ok: false })
   const afterRegen = applyApRegen(ch)
-  if ((afterRegen.ap ?? 0) < apCost) return reply.code(400).send({ ok: false, error: 'NOT_ENOUGH_AP' })
-  const updated = await prisma.character.update({ where: { id: ch.id }, data: { ap: afterRegen.ap - apCost, apUpdatedAt: new Date(), gold: { increment: goldGain } } })
-  return { ok: true, character: { id: updated.id, ap: updated.ap, gold: updated.gold, stress: updated.stress } }
+  if ((afterRegen.ap ?? 0) < apCost)
+    return reply.code(400).send({ ok: false, error: 'NOT_ENOUGH_AP' })
+  const updated = await prisma.character.update({
+    where: { id: ch.id },
+    data: { ap: afterRegen.ap - apCost, apUpdatedAt: new Date(), gold: { increment: goldGain } },
+  })
+  return {
+    ok: true,
+    character: { id: updated.id, ap: updated.ap, gold: updated.gold, stress: updated.stress },
+  }
 })
 
 // Simple training: rest to reduce stress by spending AP
@@ -197,10 +234,17 @@ fastify.post('/train/rest', async (request, reply) => {
   const ch = user?.characters?.[0]
   if (!ch) return reply.code(404).send({ ok: false })
   const afterRegen = applyApRegen(ch)
-  if ((afterRegen.ap ?? 0) < apCost) return reply.code(400).send({ ok: false, error: 'NOT_ENOUGH_AP' })
+  if ((afterRegen.ap ?? 0) < apCost)
+    return reply.code(400).send({ ok: false, error: 'NOT_ENOUGH_AP' })
   const newStress = Math.max(0, (afterRegen.stress ?? 0) - relief)
-  const updated = await prisma.character.update({ where: { id: ch.id }, data: { ap: afterRegen.ap - apCost, apUpdatedAt: new Date(), stress: newStress } })
-  return { ok: true, character: { id: updated.id, ap: updated.ap, gold: updated.gold, stress: updated.stress } }
+  const updated = await prisma.character.update({
+    where: { id: ch.id },
+    data: { ap: afterRegen.ap - apCost, apUpdatedAt: new Date(), stress: newStress },
+  })
+  return {
+    ok: true,
+    character: { id: updated.id, ap: updated.ap, gold: updated.gold, stress: updated.stress },
+  }
 })
 
 // Catalog + run specific training item (BASIC/WEAPON)
@@ -211,15 +255,21 @@ fastify.post('/training/run', async (request, reply) => {
   if (!loginId) return reply.code(401).send({ ok: false })
   const body = request.body as { id?: TrainingId }
   const id = body?.id
-  const item = TRAINING_CATALOG.find(t => t.id === id)
+  const item = TRAINING_CATALOG.find((t) => t.id === id)
   if (!item) return reply.code(400).send({ ok: false, error: 'INVALID_TRAINING' })
   const user = await prisma.user.findUnique({ where: { loginId }, include: { characters: true } })
   const ch = user?.characters?.[0]
   if (!ch) return reply.code(404).send({ ok: false })
   const staged = applyApRegen(ch)
-  if ((staged.ap ?? 0) < item.apCost) return reply.code(400).send({ ok: false, error: 'NOT_ENOUGH_AP' })
-  if ((item.goldCost ?? 0) > 0 && (staged.gold ?? 0) < (item.goldCost ?? 0)) return reply.code(400).send({ ok: false, error: 'NOT_ENOUGH_GOLD' })
-  const data: any = { ap: staged.ap - item.apCost, apUpdatedAt: new Date(), stress: Math.max(0, (staged.stress ?? 0) + item.stressDelta) }
+  if ((staged.ap ?? 0) < item.apCost)
+    return reply.code(400).send({ ok: false, error: 'NOT_ENOUGH_AP' })
+  if ((item.goldCost ?? 0) > 0 && (staged.gold ?? 0) < (item.goldCost ?? 0))
+    return reply.code(400).send({ ok: false, error: 'NOT_ENOUGH_GOLD' })
+  const data: any = {
+    ap: staged.ap - item.apCost,
+    apUpdatedAt: new Date(),
+    stress: Math.max(0, (staged.stress ?? 0) + item.stressDelta),
+  }
   if (item.goldCost) data.gold = { decrement: item.goldCost }
   const updated = await prisma.character.update({ where: { id: ch.id }, data })
   if (item.weaponKind && item.weaponXp) {
@@ -229,7 +279,10 @@ fastify.post('/training/run', async (request, reply) => {
       create: { characterId: ch.id, kind: item.weaponKind, xp: item.weaponXp, level: 0 },
     })
   }
-  return { ok: true, character: { id: updated.id, ap: updated.ap, gold: updated.gold, stress: updated.stress } }
+  return {
+    ok: true,
+    character: { id: updated.id, ap: updated.ap, gold: updated.gold, stress: updated.stress },
+  }
 })
 
 // Debug: echo who the server sees from the Authorization header
@@ -250,10 +303,31 @@ fastify.post('/auth/register', async (request, reply) => {
     const invalidWsPw = /\s/.test(pw)
     const invalidCsId = !/^[A-Za-z0-9]+$/.test(id)
     const invalidCsPw = !/^[A-Za-z0-9]+$/.test(pw)
-    if (!id || !pw || !confirm || invalidLenId || invalidLenPw || invalidWsId || invalidWsPw || invalidCsId || invalidCsPw || pw !== confirm) {
-      return reply.code(400).send({ ok: false, error: 'INVALID_INPUT', errorDetails: {
-        idLength: invalidLenId, pwLength: invalidLenPw, idWhitespace: invalidWsId, pwWhitespace: invalidWsPw, idCharset: invalidCsId, pwCharset: invalidCsPw, mismatch: pw !== confirm
-      } })
+    if (
+      !id ||
+      !pw ||
+      !confirm ||
+      invalidLenId ||
+      invalidLenPw ||
+      invalidWsId ||
+      invalidWsPw ||
+      invalidCsId ||
+      invalidCsPw ||
+      pw !== confirm
+    ) {
+      return reply.code(400).send({
+        ok: false,
+        error: 'INVALID_INPUT',
+        errorDetails: {
+          idLength: invalidLenId,
+          pwLength: invalidLenPw,
+          idWhitespace: invalidWsId,
+          pwWhitespace: invalidWsPw,
+          idCharset: invalidCsId,
+          pwCharset: invalidCsPw,
+          mismatch: pw !== confirm,
+        },
+      })
     }
     const exists = await prisma.user.findUnique({ where: { loginId: id } })
     if (exists) return reply.code(409).send({ ok: false, error: 'DUPLICATE_ID' })
@@ -263,9 +337,9 @@ fastify.post('/auth/register', async (request, reply) => {
         loginId: id,
         pwHash,
         name: id,
-        characters: { create: [{ name: 'Novice Gladiator', level: 1, str: 5, agi: 5, sta: 5 }] }
+        characters: { create: [{ name: 'Novice Gladiator', level: 1, str: 5, agi: 5, sta: 5 }] },
       },
-      include: { characters: true }
+      include: { characters: true },
     })
     const token = Buffer.from(`${user.loginId}:${Date.now()}`).toString('base64')
     return {
@@ -274,8 +348,13 @@ fastify.post('/auth/register', async (request, reply) => {
       user: {
         id: user.loginId,
         name: user.name,
-        characters: user.characters.map(c => ({ id: c.id, name: c.name, level: c.level, stats: { str: c.str, agi: c.agi, sta: c.sta } }))
-      }
+        characters: user.characters.map((c) => ({
+          id: c.id,
+          name: c.name,
+          level: c.level,
+          stats: { str: c.str, agi: c.agi, sta: c.sta },
+        })),
+      },
     }
   } catch (e) {
     request.log.error({ err: e }, 'register failed')
@@ -360,5 +439,3 @@ io.on('connection', (socket) => {
 const PORT = Number(process.env.PORT ?? 5174)
 await fastify.listen({ port: PORT, host: '0.0.0.0' })
 fastify.log.info(`Server listening on http://localhost:${PORT}`)
-
-

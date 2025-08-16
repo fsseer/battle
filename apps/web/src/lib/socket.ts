@@ -9,7 +9,13 @@ const defaultOrigin =
       : `${window.location.protocol}//${window.location.hostname}:5174`
     : 'http://127.0.0.1:5174'
 
+const isHttps = (() => {
+  if (envOrigin) return envOrigin.startsWith('https://')
+  if (typeof window !== 'undefined') return window.location.protocol === 'https:'
+  return false
+})()
+
 export const socket = io(envOrigin && envOrigin.length > 0 ? envOrigin : defaultOrigin, {
   autoConnect: true,
-  transports: ['websocket'],
+  transports: isHttps ? ['polling'] : ['websocket'],
 })

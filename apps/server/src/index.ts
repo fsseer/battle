@@ -374,12 +374,15 @@ fastify.post('/auth/check-id', async (request, reply) => {
     const body = request.body as { id?: string }
     const id = (body?.id ?? '').trim()
     if (!id || id.length < 4 || id.length > 24 || /\s/.test(id) || !/^[A-Za-z0-9]+$/.test(id)) {
+      reply.header('Cache-Control', 'no-store')
       return reply.code(400).send({ ok: false, error: 'INVALID_ID' })
     }
     const exists = await prisma.user.findUnique({ where: { loginId: id } })
+    reply.header('Cache-Control', 'no-store')
     return { ok: true, available: !exists }
   } catch (e) {
     request.log.error({ err: e }, 'check-id failed')
+    reply.header('Cache-Control', 'no-store')
     return reply.code(500).send({ ok: false })
   }
 })
@@ -390,12 +393,15 @@ fastify.get('/auth/check-id', async (request, reply) => {
     const q = request.query as { id?: string }
     const id = (q?.id ?? '').trim()
     if (!id || id.length < 4 || id.length > 24 || /\s/.test(id) || !/^[A-Za-z0-9]+$/.test(id)) {
+      reply.header('Cache-Control', 'no-store')
       return reply.code(400).send({ ok: false, error: 'INVALID_ID' })
     }
     const exists = await prisma.user.findUnique({ where: { loginId: id } })
+    reply.header('Cache-Control', 'no-store')
     return { ok: true, available: !exists }
   } catch (e) {
     request.log.error({ err: e }, 'check-id(get) failed')
+    reply.header('Cache-Control', 'no-store')
     return reply.code(500).send({ ok: false })
   }
 })
@@ -485,7 +491,11 @@ io.on('connection', (socket) => {
     // 역할에 맞는 스킬만 허용
     const role = state.roles[socket.id]
     if (!isSkillAllowedForRole(skillId, role)) {
-      io.to(socket.id).emit('battle.error', { reason: 'INVALID_SKILL_FOR_ROLE', role, skill: skillId })
+      io.to(socket.id).emit('battle.error', {
+        reason: 'INVALID_SKILL_FOR_ROLE',
+        role,
+        skill: skillId,
+      })
       return
     }
     state.choices[socket.id] = skillId
@@ -494,7 +504,7 @@ io.on('connection', (socket) => {
     const cb = state.choices[b]
     if (!ca || !cb) return
     // 현재 공격자/방어자 식별
-    const attacker = (state.roles[a] === 'ATTACK' ? a : b)
+    const attacker = state.roles[a] === 'ATTACK' ? a : b
     const defender = attacker === a ? b : a
     const attChoice = state.choices[attacker]!
     const defChoice = state.choices[defender]!
@@ -558,7 +568,8 @@ io.on('connection', (socket) => {
         : outcome === 'DEFENDER'
         ? 'WIN'
         : 'DRAW'
-    const resForB: 'WIN' | 'LOSE' | 'DRAW' = resForA === 'WIN' ? 'LOSE' : resForA === 'LOSE' ? 'WIN' : 'DRAW'
+    const resForB: 'WIN' | 'LOSE' | 'DRAW' =
+      resForA === 'WIN' ? 'LOSE' : resForA === 'LOSE' ? 'WIN' : 'DRAW'
 
     io.to(a).emit('battle.resolve', {
       round: state.round,

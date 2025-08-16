@@ -16,6 +16,22 @@ const defaultOrigin =
     : 'http://127.0.0.1:5174'
 const SERVER_ORIGIN = envOrigin && envOrigin.length > 0 ? envOrigin : defaultOrigin
 
+async function fetchJsonWithTimeout<T>(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs = 2500
+): Promise<T> {
+  const ac = new AbortController()
+  const timer = setTimeout(() => ac.abort(), timeoutMs)
+  try {
+    const res = await fetch(url, { ...init, signal: ac.signal })
+    // @ts-expect-error: runtime JSON parse
+    return await res.json()
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export async function loginRequest(id: string, password: string): Promise<LoginResponse> {
   const res = await fetch(`${SERVER_ORIGIN}/auth/login`, {
     method: 'POST',
@@ -44,8 +60,14 @@ export async function checkIdAvailability(
   id: string
 ): Promise<{ ok: boolean; available?: boolean }> {
   // Use GET to avoid preflight over tunnels
-  const res = await fetch(`${SERVER_ORIGIN}/auth/check-id?id=${encodeURIComponent(id)}`, {
-    method: 'GET',
-  })
-  return res.json()
+  const url = `${SERVER_ORIGIN}/auth/check-id?id=${encodeURIComponent(id)}&ts=${Date.now()}`
+  try {
+    return await fetchJsonWithTimeout<{ ok: boolean; available?: boolean }>(
+      url,
+      { method: 'GET', cache: 'no-store', credentials: 'omit' },
+      2500
+    )
+  } catch {
+    return { ok: false }
+  }
 }

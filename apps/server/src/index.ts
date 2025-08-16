@@ -8,18 +8,19 @@ import { TRAINING_CATALOG, type TrainingId } from './training.registry'
 
 const fastify = Fastify({ logger: true })
 // Allow CORS from local dev and optionally any origin via env (for quick testing over internet)
-const extraCorsOrigin = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : []
+const corsEnv = process.env.CORS_ORIGIN || ''
+const extraCorsOrigin = corsEnv ? corsEnv.split(',') : []
+const allowAll = corsEnv.trim() === '*'
 await fastify.register(cors, {
-  origin: ['http://127.0.0.1:5173', 'http://localhost:5173', ...extraCorsOrigin],
+  origin: allowAll ? true : ['http://127.0.0.1:5173', 'http://localhost:5173', ...extraCorsOrigin],
 })
 
 fastify.get('/health', async () => ({ ok: true }))
 
 const io = new Server(fastify.server, {
-  cors: {
-    origin: ['http://127.0.0.1:5173', 'http://localhost:5173', ...extraCorsOrigin],
-    methods: ['GET', 'POST'],
-  },
+  cors: allowAll
+    ? { origin: '*', methods: ['GET', 'POST'] }
+    : { origin: ['http://127.0.0.1:5173', 'http://localhost:5173', ...extraCorsOrigin], methods: ['GET', 'POST'] },
 })
 
 const prisma = new PrismaClient()

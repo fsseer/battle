@@ -19,13 +19,13 @@ const isHttps = (() => {
 
 export const socket = io(envOrigin && envOrigin.length > 0 ? envOrigin : defaultOrigin, {
   autoConnect: true,
-  // 터널(HTTPS)에서는 우선 websocket 업그레이드를 시도하고 실패 시 polling으로 폴백
-  transports: isHttps ? ['websocket', 'polling'] : ['websocket'],
+  // LocalTunnel에서 polling POST 400 이슈 회피: HTTPS 터널은 WebSocket만 사용
+  transports: isHttps ? ['websocket'] : ['websocket'],
   reconnection: true,
   reconnectionAttempts: Infinity,
   reconnectionDelay: 300,
   reconnectionDelayMax: 2000,
   forceNew: true,
-  upgrade: true,
+  upgrade: false,
   path: '/socket.io',
 })

@@ -67,7 +67,6 @@ export function battleReducer(state: BattleState, action: BattleAction): BattleS
       return {
         ...state,
         role: action.msg.nextRole,
-        oppChoice: action.msg.opp,
         momentum: typeof action.msg.momentum === 'number' ? action.msg.momentum : state.momentum,
         round: state.round + 1,
         choice: null,

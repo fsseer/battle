@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom'
-import { SERVER_ORIGIN } from '../lib/api'
 import { useEffect, useRef } from 'react'
 import { useAuthStore } from '../store/auth'
 import '../styles/theme.css'
@@ -158,7 +157,9 @@ function StatPanel({ metaRef }: { metaRef: React.MutableRefObject<any> }) {
       {rows.map(([name, val, desc]) => (
         <div key={name} className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
           <div>{name}</div>
-          <div><b>{val}</b></div>
+          <div>
+            <b>{val}</b>
+          </div>
         </div>
       ))}
       <div className="text-sm" style={{ opacity: 0.85, marginTop: 6 }}>
@@ -175,10 +176,18 @@ function EquipmentPanel() {
   // Placeholder: 장비 시스템 도입 전까지는 UI 골격만 표시
   return (
     <div className="column" style={{ gap: 6 }}>
-      <div className="text-sm" style={{ opacity: 0.85 }}>무기: 한손검</div>
-      <div className="text-sm" style={{ opacity: 0.85 }}>방어구: 튜닉</div>
-      <div className="text-sm" style={{ opacity: 0.85 }}>장신구: 없음</div>
-      <div className="text-sm" style={{ opacity: 0.7 }}>슬롯을 클릭하여 교체 (추가 예정)</div>
+      <div className="text-sm" style={{ opacity: 0.85 }}>
+        무기: 한손검
+      </div>
+      <div className="text-sm" style={{ opacity: 0.85 }}>
+        방어구: 튜닉
+      </div>
+      <div className="text-sm" style={{ opacity: 0.85 }}>
+        장신구: 없음
+      </div>
+      <div className="text-sm" style={{ opacity: 0.7 }}>
+        슬롯을 클릭하여 교체 (추가 예정)
+      </div>
     </div>
   )
 }
@@ -189,8 +198,12 @@ function ProficiencyPanel() {
   const list = (ch?.proficiencies ?? []).map((p: any) => `${p.kind}: Lv${p.level} (xp:${p.xp})`)
   return (
     <div className="column" style={{ gap: 6 }}>
-      <div className="text-sm" style={{ opacity: 0.85 }}>{list.join(' / ') || '기록 없음'}</div>
-      <div className="text-sm" style={{ opacity: 0.7 }}>무기 착용 시 숙련 특성/스킬 자동 적용</div>
+      <div className="text-sm" style={{ opacity: 0.85 }}>
+        {list.join(' / ') || '기록 없음'}
+      </div>
+      <div className="text-sm" style={{ opacity: 0.7 }}>
+        무기 착용 시 숙련 특성/스킬 자동 적용
+      </div>
     </div>
   )
 }

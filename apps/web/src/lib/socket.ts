@@ -11,11 +11,7 @@ const defaultOrigin =
       : `${window.location.protocol}//${window.location.hostname}:5174`
     : 'http://127.0.0.1:5174'
 
-const isHttps = (() => {
-  if (envOrigin) return envOrigin.startsWith('https://')
-  if (typeof window !== 'undefined') return window.location.protocol === 'https:'
-  return false
-})()
+// note: isHttps no longer used; tunnel detection suffices
 
 const isTunnel = (() => {
   const hostFromEnv = (() => {
@@ -34,13 +30,13 @@ const isTunnel = (() => {
 export const socket = io(envOrigin && envOrigin.length > 0 ? envOrigin : defaultOrigin, {
   autoConnect: true,
   // LocalTunnel(HTTPS 프록시)에서는 WebSocket이 종종 차단되므로 polling만 사용
-  transports: isTunnel ? ['polling'] : isHttps ? ['websocket'] : ['websocket'],
+  transports: isTunnel ? ['polling'] : ['websocket'],
   reconnection: true,
   reconnectionAttempts: Infinity,
-  reconnectionDelay: 800,
-  reconnectionDelayMax: 4000,
+  reconnectionDelay: 300,
+  reconnectionDelayMax: 1500,
   forceNew: true,
   upgrade: !isTunnel,
   path: '/socket.io',
-  timeout: 20000,
+  timeout: 10000,
 })

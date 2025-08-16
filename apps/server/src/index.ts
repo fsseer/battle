@@ -6,7 +6,14 @@ import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { evaluateSkills, evaluateTraits, type StatKey } from './skills.registry'
 import { TRAINING_CATALOG, type TrainingId } from './training.registry'
-import { BattleState, Role, SkillId, ATTACK_SKILLS, DEFENSE_SKILLS, BATTLE_DEADLINE_MS } from './battle/types'
+import {
+  BattleState,
+  Role,
+  SkillId,
+  ATTACK_SKILLS,
+  DEFENSE_SKILLS,
+  BATTLE_DEADLINE_MS,
+} from './battle/types'
 import { isSkillAllowedConsideringInjury, applyDecisiveDamage } from './battle/engine'
 
 const fastify = Fastify({ logger: true })
@@ -33,6 +40,8 @@ const io = new Server(fastify.server, {
       },
   pingTimeout: 45000,
   pingInterval: 20000,
+  perMessageDeflate: false,
+  httpCompression: false,
 })
 
 const prisma = new PrismaClient()
@@ -511,8 +520,14 @@ io.on('connection', (socket) => {
     // judgeOutcome is provided by engine; to reduce imports we inline minimal logic here
     // Outcome computation using imported beats is encapsulated in applyDecisiveDamage path
     // For clarity, reproduce logic via simple maps
-    const aWins = (attChoice === 'heavy' && defChoice === 'block') || (attChoice === 'light' && defChoice === 'dodge') || (attChoice === 'poke' && defChoice === 'counter')
-    const dWins = (defChoice === 'block' && attChoice === 'poke') || (defChoice === 'dodge' && attChoice === 'heavy') || (defChoice === 'counter' && attChoice === 'light')
+    const aWins =
+      (attChoice === 'heavy' && defChoice === 'block') ||
+      (attChoice === 'light' && defChoice === 'dodge') ||
+      (attChoice === 'poke' && defChoice === 'counter')
+    const dWins =
+      (defChoice === 'block' && attChoice === 'poke') ||
+      (defChoice === 'dodge' && attChoice === 'heavy') ||
+      (defChoice === 'counter' && attChoice === 'light')
     if (aWins) outcome = 'ATTACKER'
     else if (dWins) outcome = 'DEFENDER'
     // 모멘텀 변경
@@ -575,7 +590,8 @@ io.on('connection', (socket) => {
         : outcome === 'DEFENDER'
         ? 'WIN'
         : 'DRAW'
-    const resForB: 'WIN' | 'LOSE' | 'DRAW' = resForA === 'WIN' ? 'LOSE' : resForA === 'LOSE' ? 'WIN' : 'DRAW'
+    const resForB: 'WIN' | 'LOSE' | 'DRAW' =
+      resForA === 'WIN' ? 'LOSE' : resForA === 'LOSE' ? 'WIN' : 'DRAW'
 
     io.to(a).emit('battle.resolve', {
       round: state.round,
@@ -636,16 +652,28 @@ setInterval(() => {
       state.momentum = 0
       io.to(a).emit('battle.resolve', {
         round: state.round,
-        self: state.roles[a] === 'ATTACK' ? (ATTACK_SKILLS[0] as SkillId) : (DEFENSE_SKILLS[0] as SkillId),
-        opp: state.roles[b] === 'ATTACK' ? (ATTACK_SKILLS[0] as SkillId) : (DEFENSE_SKILLS[0] as SkillId),
+        self:
+          state.roles[a] === 'ATTACK'
+            ? (ATTACK_SKILLS[0] as SkillId)
+            : (DEFENSE_SKILLS[0] as SkillId),
+        opp:
+          state.roles[b] === 'ATTACK'
+            ? (ATTACK_SKILLS[0] as SkillId)
+            : (DEFENSE_SKILLS[0] as SkillId),
         result: 'DRAW',
         nextRole: state.roles[a],
         momentum: state.momentum,
       })
       io.to(b).emit('battle.resolve', {
         round: state.round,
-        self: state.roles[b] === 'ATTACK' ? (ATTACK_SKILLS[0] as SkillId) : (DEFENSE_SKILLS[0] as SkillId),
-        opp: state.roles[a] === 'ATTACK' ? (ATTACK_SKILLS[0] as SkillId) : (DEFENSE_SKILLS[0] as SkillId),
+        self:
+          state.roles[b] === 'ATTACK'
+            ? (ATTACK_SKILLS[0] as SkillId)
+            : (DEFENSE_SKILLS[0] as SkillId),
+        opp:
+          state.roles[a] === 'ATTACK'
+            ? (ATTACK_SKILLS[0] as SkillId)
+            : (DEFENSE_SKILLS[0] as SkillId),
         result: 'DRAW',
         nextRole: state.roles[b],
         momentum: state.momentum,

@@ -35,6 +35,7 @@ const io = new Server(fastify.server, {
 
 const prisma = new PrismaClient()
 const AP_REGEN_MS = Number(process.env.AP_REGEN_MS ?? 6 * 1000)
+const BATTLE_DEADLINE_MS = 15_000
 // AP regen: 6분당 1, 최대 100
 function applyApRegen(ch: any) {
   const now = Date.now()
@@ -497,7 +498,7 @@ io.on('connection', (socket) => {
         choices: {},
         momentum: 0,
         decisiveThreshold: 2,
-        deadlineAt: Date.now() + 15000,
+        deadlineAt: Date.now() + BATTLE_DEADLINE_MS,
       }
       sidToBattle.set(a, state)
       sidToBattle.set(b, state)
@@ -533,27 +534,7 @@ io.on('connection', (socket) => {
     const [a, b] = state.players
     const ca = state.choices[a]
     const cb = state.choices[b]
-    if (!ca || !cb) {
-      // 시간 초과 처리: 둘 중 하나만 선택했는데 마감되었으면 무승부 취급 후 다음 라운드
-      if (state.deadlineAt && Date.now() >= state.deadlineAt) {
-        const nextRoles = { ...state.roles }
-        // 모멘텀 0으로 유지
-        state.momentum = 0
-        // 라운드 진행
-        io.to(state.roomId).emit('battle.resolve', {
-          round: state.round,
-          self: ca ?? (state.roles[a] === 'ATTACK' ? (ATTACK_SKILLS[0] as SkillId) : (DEFENSE_SKILLS[0] as SkillId)),
-          opp: cb ?? (state.roles[b] === 'ATTACK' ? (ATTACK_SKILLS[0] as SkillId) : (DEFENSE_SKILLS[0] as SkillId)),
-          result: 'DRAW',
-          nextRole: nextRoles[socket.id],
-          momentum: state.momentum,
-        })
-        state.round += 1
-        state.choices = {}
-        state.deadlineAt = Date.now() + 15000
-      }
-      return
-    }
+    if (!ca || !cb) return
     // 현재 공격자/방어자 식별
     const attacker = state.roles[a] === 'ATTACK' ? a : b
     const defender = attacker === a ? b : a
@@ -642,7 +623,7 @@ io.on('connection', (socket) => {
     })
     state.round += 1
     state.choices = {}
-    state.deadlineAt = Date.now() + 15000
+    state.deadlineAt = Date.now() + BATTLE_DEADLINE_MS
   })
 
   socket.on('disconnect', () => {
@@ -656,6 +637,50 @@ io.on('connection', (socket) => {
     }
   })
 })
+
+// Round deadline watchdog: handles cases where no one or only one chose in time
+setInterval(() => {
+  const processed = new Set<string>()
+  for (const [sid, state] of sidToBattle.entries()) {
+    if (!state.deadlineAt || Date.now() < state.deadlineAt) continue
+    if (processed.has(state.roomId)) continue
+    processed.add(state.roomId)
+    const [a, b] = state.players
+    const ca = state.choices[a]
+    const cb = state.choices[b]
+    // nobody chose → draw and advance
+    if (!ca && !cb) {
+      state.momentum = 0
+      io.to(a).emit('battle.resolve', {
+        round: state.round,
+        self: state.roles[a] === 'ATTACK' ? (ATTACK_SKILLS[0] as SkillId) : (DEFENSE_SKILLS[0] as SkillId),
+        opp: state.roles[b] === 'ATTACK' ? (ATTACK_SKILLS[0] as SkillId) : (DEFENSE_SKILLS[0] as SkillId),
+        result: 'DRAW',
+        nextRole: state.roles[a],
+        momentum: state.momentum,
+      })
+      io.to(b).emit('battle.resolve', {
+        round: state.round,
+        self: state.roles[b] === 'ATTACK' ? (ATTACK_SKILLS[0] as SkillId) : (DEFENSE_SKILLS[0] as SkillId),
+        opp: state.roles[a] === 'ATTACK' ? (ATTACK_SKILLS[0] as SkillId) : (DEFENSE_SKILLS[0] as SkillId),
+        result: 'DRAW',
+        nextRole: state.roles[b],
+        momentum: state.momentum,
+      })
+      state.round += 1
+      state.choices = {}
+      state.deadlineAt = Date.now() + BATTLE_DEADLINE_MS
+      continue
+    }
+    // exactly one chose → chosen side wins decisively
+    if (!!ca !== !!cb) {
+      const winner = ca ? a : b
+      io.to(state.roomId).emit('battle.end', { reason: 'timeout_decisive', winner })
+      state.players.forEach((pid) => sidToBattle.delete(pid))
+      continue
+    }
+  }
+}, 1000)
 
 const PORT = Number(process.env.PORT ?? 5174)
 await fastify.listen({ port: PORT, host: '0.0.0.0' })

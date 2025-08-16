@@ -601,7 +601,7 @@ io.on('connection', (socket) => {
       self: ca,
       opp: cb,
       result: resForA,
-      nextRole: state.roles[a],
+      nextRole: state.roles[a] === 'ATTACK' ? 0 : 1,
       momentum: state.momentum,
       decisive,
     })
@@ -610,7 +610,7 @@ io.on('connection', (socket) => {
       self: cb,
       opp: ca,
       result: resForB,
-      nextRole: state.roles[b],
+      nextRole: state.roles[b] === 'ATTACK' ? 0 : 1,
       momentum: state.momentum,
       decisive,
     })

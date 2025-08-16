@@ -80,13 +80,7 @@ export default function Battle() {
   }, [round, hitstopMs])
 
   const resolveRound = useCallback(
-    (msg: {
-      round: number
-      self: string
-      opp: string
-      result: 0 | 1 | 2
-      nextRole: Role
-    }) => {
+    (msg: { round: number; self: string; opp: string; result: 0 | 1 | 2; nextRole: Role }) => {
       const label = msg.result === 1 ? '라운드 승' : msg.result === 2 ? '라운드 패' : '무승부'
       setLog((l) => [`[R${msg.round}] 나:${msg.self} vs 상대:${msg.opp} → ${label}`, ...l])
       setRound((r) => r + 1)
@@ -111,7 +105,7 @@ export default function Battle() {
       self: string
       opp: string
       result: 0 | 1 | 2
-      nextRole: Role
+      nextRole: 0 | 1
       momentum?: number
     }) => {
       setOpponentChoice(m.opp)
@@ -138,7 +132,7 @@ export default function Battle() {
         }
         return [...prev, ...burst]
       })
-      resolveRound(m)
+      resolveRound({ ...m, nextRole: m.nextRole === 0 ? 'ATTACK' : 'DEFENSE' })
     }
     const onDecisive = (d: {
       round: number

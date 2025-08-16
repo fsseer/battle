@@ -8,6 +8,8 @@ export type SkillId = AttackSkill | DefenseSkill
 
 export const ATTACK_SKILLS: AttackSkill[] = ['light', 'heavy', 'poke']
 export const DEFENSE_SKILLS: DefenseSkill[] = ['block', 'dodge', 'counter']
+export const RoleCode = { ATTACK: 0, DEFENSE: 1 } as const
+export type RoleCode = (typeof RoleCode)[keyof typeof RoleCode]
 
 // 공격자가 이기는 관계: (강공 > 막기), (약공 > 회피), (견제 > 반격)
 export const attackBeats: Record<AttackSkill, DefenseSkill> = {

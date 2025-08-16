@@ -28,9 +28,7 @@ const extraCorsOrigin = corsEnv
   : []
 const allowAll = corsEnv.trim() === '*'
 await fastify.register(cors, {
-  origin: allowAll
-    ? true
-    : ['http://127.0.0.1:5173', 'http://localhost:5173', ...extraCorsOrigin],
+  origin: allowAll ? true : ['http://127.0.0.1:5173', 'http://localhost:5173', ...extraCorsOrigin],
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 })
@@ -202,6 +200,17 @@ fastify.get('/skills', async (request) => {
     weaponSkills,
     characterSkills: weaponSkills.filter((w) => w.skill.category !== 'WEAPON'),
     traits,
+    meta: {
+      hpScale: {
+        HUMAN: 2,
+        SMALL_BEAST: 1,
+        MEDIUM_BEAST: 2,
+        LARGE_BEAST_3: 3,
+        LARGE_BEAST_4: 4,
+        LEGENDARY_5p: 5,
+      },
+      statBaseline: { str: 5, agi: 5, int: 5, luck: 5, fate: 0 },
+    },
   }
 })
 

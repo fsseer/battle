@@ -3,7 +3,7 @@ import ResourceBar from '../components/ResourceBar'
 import { SERVER_ORIGIN } from '../lib/api'
 import { useNavigate } from 'react-router-dom'
 
-type SkillState = 'usable'|'locked_prof'|'locked_stat'|'locked_item'
+type SkillState = 'usable' | 'locked_prof' | 'locked_stat' | 'locked_item'
 
 export default function Skills() {
   const [data, setData] = useState<any>({ weaponSkills: [], characterSkills: [], traits: [] })
@@ -20,7 +20,9 @@ export default function Skills() {
       }
       // 세션 만료(401)만 자동 로그아웃 처리. 404는 비로그인 상태로 계속 표시
       if (meRes && meRes.status === 401) {
-        try { localStorage.removeItem('auth') } catch {}
+        try {
+          localStorage.removeItem('auth')
+        } catch {}
         alert('세션이 만료되었습니다. 다시 로그인해 주세요.')
         navigate('/login')
         return
@@ -39,13 +41,33 @@ export default function Skills() {
   }, [])
 
   const renderSkill = (s: any) => (
-    <div key={s.skill.id} style={{ padding: 8, border: '1px solid #ddd', borderRadius: 8, marginBottom: 8, opacity: s.state === 'usable' ? 1 : .6 }}>
+    <div
+      key={s.skill.id}
+      style={{
+        padding: 8,
+        border: '1px solid #ddd',
+        borderRadius: 8,
+        marginBottom: 8,
+        opacity: s.state === 'usable' ? 1 : 0.6,
+      }}
+    >
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <div><b>{s.skill.name}</b> <small>({s.skill.category})</small></div>
+        <div>
+          <b>{s.skill.name}</b> <small>({s.skill.category})</small>
+        </div>
         <StateBadge state={s.state} />
       </div>
-      {s.missing?.prof ? <div style={{ fontSize: 12 }}>요구 숙련: {s.missing.prof.kind} Lv{s.missing.prof.need} (현재 {s.missing.prof.have})</div> : null}
-      {s.missing?.stats ? <div style={{ fontSize: 12 }}>요구 능력치: {s.missing.stats.map((x:any)=>`${x.key}:${x.need}(현재 ${x.have})`).join(', ')}</div> : null}
+      {s.missing?.prof ? (
+        <div style={{ fontSize: 12 }}>
+          요구 숙련: {s.missing.prof.kind} Lv{s.missing.prof.need} (현재 {s.missing.prof.have})
+        </div>
+      ) : null}
+      {s.missing?.stats ? (
+        <div style={{ fontSize: 12 }}>
+          요구 능력치:{' '}
+          {s.missing.stats.map((x: any) => `${x.key}:${x.need}(현재 ${x.have})`).join(', ')}
+        </div>
+      ) : null}
       {s.missing?.itemId ? <div style={{ fontSize: 12 }}>전용 아이템 필요</div> : null}
     </div>
   )
@@ -56,10 +78,25 @@ export default function Skills() {
         <h3>스킬 / 특성</h3>
         <ResourceBar />
         <div className="parchment" style={{ marginTop: 8 }}>
+          {data?.meta ? (
+            <div className="text-sm" style={{ marginBottom: 8, opacity: 0.85 }}>
+              <div><b>기본 능력치 기준</b>: 힘/민첩/지능/행운=5, 운명=0 (주인공만 보유)</div>
+              <div>
+                <b>생명력 기준</b>: 소형 야수 1 / 인간·중형 야수 2 / 대형 야수 3~4 / 초현세 존재 5+
+              </div>
+            </div>
+          ) : null}
           {me ? (
             <div style={{ marginBottom: 8, fontSize: 12 }}>
-              <div><b>AP</b>: {me.characters?.[0]?.ap ?? 0} / 100</div>
-              <div><b>숙련도</b>: {me.characters?.[0]?.proficiencies?.map((p:any)=>`${p.kind}:Lv${p.level}(xp:${p.xp})`).join(' / ') || '없음'}</div>
+              <div>
+                <b>AP</b>: {me.characters?.[0]?.ap ?? 0} / 100
+              </div>
+              <div>
+                <b>숙련도</b>:{' '}
+                {me.characters?.[0]?.proficiencies
+                  ?.map((p: any) => `${p.kind}:Lv${p.level}(xp:${p.xp})`)
+                  .join(' / ') || '없음'}
+              </div>
             </div>
           ) : null}
           <h4>무기 스킬</h4>
@@ -68,11 +105,22 @@ export default function Skills() {
           <div>{data.characterSkills.map(renderSkill)}</div>
           <h4>특성</h4>
           <div>
-            {data.traits.map((t:any)=>(
-              <div key={t.trait.id} style={{ padding: 8, border: '1px solid #ddd', borderRadius: 8, marginBottom: 8, opacity: t.unlocked?1:.6 }}>
+            {data.traits.map((t: any) => (
+              <div
+                key={t.trait.id}
+                style={{
+                  padding: 8,
+                  border: '1px solid #ddd',
+                  borderRadius: 8,
+                  marginBottom: 8,
+                  opacity: t.unlocked ? 1 : 0.6,
+                }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <div><b>{t.trait.name}</b></div>
-                  <span style={{ fontSize: 12 }}>{t.unlocked? 'UNLOCKED':'LOCKED'}</span>
+                  <div>
+                    <b>{t.trait.name}</b>
+                  </div>
+                  <span style={{ fontSize: 12 }}>{t.unlocked ? 'UNLOCKED' : 'LOCKED'}</span>
                 </div>
                 <div style={{ fontSize: 12 }}>{t.trait.description ?? ''}</div>
               </div>
@@ -80,7 +128,11 @@ export default function Skills() {
           </div>
         </div>
         <div className="section" style={{ display: 'flex', gap: 8 }}>
-          <button className="ghost-btn" disabled={!me || (me?.characters?.[0]?.ap ?? 0) <= 0} onClick={() => trainOneHand().then(load)}>
+          <button
+            className="ghost-btn"
+            disabled={!me || (me?.characters?.[0]?.ap ?? 0) <= 0}
+            onClick={() => trainOneHand().then(load)}
+          >
             한손 무기 훈련(+100xp, AP-1)
           </button>
         </div>
@@ -90,8 +142,22 @@ export default function Skills() {
 }
 
 function StateBadge({ state }: { state: SkillState }) {
-  const color = state==='usable' ? '#2a8f2a' : state==='locked_prof' ? '#b96f00' : state==='locked_stat' ? '#b93838' : '#555'
-  const text = state==='usable' ? 'USABLE' : state==='locked_prof' ? 'PROFICIENCY' : state==='locked_stat' ? 'STATS' : 'EQUIP/ITEM'
+  const color =
+    state === 'usable'
+      ? '#2a8f2a'
+      : state === 'locked_prof'
+      ? '#b96f00'
+      : state === 'locked_stat'
+      ? '#b93838'
+      : '#555'
+  const text =
+    state === 'usable'
+      ? 'USABLE'
+      : state === 'locked_prof'
+      ? 'PROFICIENCY'
+      : state === 'locked_stat'
+      ? 'STATS'
+      : 'EQUIP/ITEM'
   return <span style={{ fontSize: 12, color }}>{text}</span>
 }
 
@@ -102,7 +168,9 @@ function authHeader(): Record<string, string> {
     const token = JSON.parse(raw)?.user?.token
     if (!token) return {}
     return { Authorization: `Bearer ${token}` }
-  } catch { return {} }
+  } catch {
+    return {}
+  }
 }
 
 async function trainOneHand() {
@@ -112,9 +180,15 @@ async function trainOneHand() {
       alert('로그인이 필요합니다. 먼저 로그인해 주세요.')
       return
     }
-    const res = await fetch(`${SERVER_ORIGIN}/train/proficiency`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify({ kind: 'ONE_HAND', xp: 100 }) })
+    const res = await fetch(`${SERVER_ORIGIN}/train/proficiency`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify({ kind: 'ONE_HAND', xp: 100 }),
+    })
     if (res.status === 401) {
-      try { localStorage.removeItem('auth') } catch {}
+      try {
+        localStorage.removeItem('auth')
+      } catch {}
       alert('세션이 만료되었습니다. 다시 로그인해 주세요.')
       // navigate는 훅 컨텍스트가 아니라 사용 불가하므로 단순 이동
       location.href = '/login'
@@ -122,5 +196,3 @@ async function trainOneHand() {
     }
   } catch {}
 }
-
-

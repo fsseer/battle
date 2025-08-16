@@ -6,7 +6,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'common.lang.en': 'English',
     'common.lang.ja': '日本語',
 
-    'login.title': '루두스 입구',
+    'login.title': 'Vindex Arena',
     'login.subtitle': '로마의 검투사 양성소에 오신 것을 환영합니다.',
     'login.id': '아이디',
     'login.pw': '비밀번호',
@@ -23,7 +23,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'login.error.confirm': '비밀번호가 일치하지 않습니다.',
     'login.error.input': '입력을 확인해 주세요.',
 
-    'lobby.title': '카스트룸 글라디아토룸',
+    'lobby.title': 'Vindex Arena',
     'lobby.subtitle': '{name} 님, 오늘의 훈련과 시합을 선택하세요.',
     'lobby.training.title': '훈련장',
     'lobby.training.desc': '기본 동작과 스킬을 연습합니다. 추후 PvE로 확장됩니다.',
@@ -42,7 +42,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'common.lang.en': 'English',
     'common.lang.ja': '日本語',
 
-    'login.title': 'Ludus Entrance',
+    'login.title': 'Vindex Arena',
     'login.subtitle': 'Welcome to the Roman gladiator training school.',
     'login.id': 'ID',
     'login.pw': 'Password',
@@ -59,7 +59,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'login.error.confirm': 'Passwords do not match.',
     'login.error.input': 'Please check your input.',
 
-    'lobby.title': 'Castrum Gladiatorum',
+    'lobby.title': 'Vindex Arena',
     'lobby.subtitle': '{name}, choose today’s training and match.',
     'lobby.training.title': 'Training Ground',
     'lobby.training.desc': 'Practice basic moves and skills. PvE will be added later.',
@@ -78,7 +78,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'common.lang.en': 'English',
     'common.lang.ja': '日本語',
 
-    'login.title': 'ルドゥス入口',
+    'login.title': 'Vindex Arena',
     'login.subtitle': 'ローマの剣闘士養成所へようこそ。',
     'login.id': 'ID',
     'login.pw': 'パスワード',
@@ -95,7 +95,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'login.error.confirm': 'パスワードが一致しません。',
     'login.error.input': '入力内容を確認してください。',
 
-    'lobby.title': 'カストルム・グラディアトルム',
+    'lobby.title': 'Vindex Arena',
     'lobby.subtitle': '{name} さん、本日の訓練と試合を選んでください。',
     'lobby.training.title': '訓練場',
     'lobby.training.desc': '基本動作とスキルを練習します。PvEは後日実装。',

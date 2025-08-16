@@ -81,7 +81,7 @@ export default function Login() {
               token: r.token,
               characters: r.user.characters,
             })
-            navigate('/lobby')
+            navigate('/lobby', { replace: true })
           } else if (r.error === 'DUPLICATE_ID') {
             setIdErr(t('login.error.duplicate'))
           } else if (r.error === 'INVALID_INPUT') {
@@ -107,7 +107,7 @@ export default function Login() {
             token: r.token,
             characters: r.user.characters,
           })
-          navigate('/lobby')
+          navigate('/lobby', { replace: true })
         } else if (r.error === 'USER_NOT_FOUND') {
           setIdErr(t('login.error.notFound'))
         } else if (r.error === 'WRONG_PASSWORD') {

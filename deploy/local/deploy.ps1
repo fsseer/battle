@@ -1,0 +1,31 @@
+param(
+  [string]$SshHost = $env:SSH_HOST,
+  [string]$SshUser = $env:SSH_USER,
+  [string]$SshKeyPath = $env:SSH_KEY_PATH,
+  [string]$WebRoot = $env:WEB_ROOT,
+  [string]$ApiDir = $env:API_DIR,
+  [string]$ViteServerOrigin = $env:VITE_SERVER_ORIGIN
+)
+
+if (-not $SshHost -or -not $SshUser -or -not $SshKeyPath -or -not $WebRoot -or -not $ApiDir -or -not $ViteServerOrigin) {
+  Write-Error "Missing one or more params: SSH_HOST, SSH_USER, SSH_KEY_PATH, WEB_ROOT, API_DIR, VITE_SERVER_ORIGIN"
+  exit 1
+}
+
+# Build web
+Push-Location ..\..\apps\web
+$env:VITE_SERVER_ORIGIN = $ViteServerOrigin
+npm install --silent | Out-Null
+npm run build | Out-Null
+Pop-Location
+
+# Upload dist via scp (requires OpenSSH client on Windows)
+$dist = "..\..\apps\web\dist\*"
+$scpTarget = "$SshUser@$SshHost`:$WebRoot"
+scp -i "$SshKeyPath" -r $dist $scpTarget | Out-Null
+
+# Reload API via ssh + pm2
+$remoteCmd = "cd '$ApiDir'; if [ ! -d node_modules ]; then npm ci; fi; pm2 reload gladiator-api || pm2 start npm --name gladiator-api -- run dev; pm2 save"
+ssh -i "$SshKeyPath" "$SshUser@$SshHost" "$remoteCmd"
+
+Write-Host "Deploy complete."

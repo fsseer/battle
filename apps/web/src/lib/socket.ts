@@ -11,4 +11,5 @@ const defaultOrigin =
 
 export const socket = io(envOrigin && envOrigin.length > 0 ? envOrigin : defaultOrigin, {
   autoConnect: true,
+  transports: ['websocket'],
 })

@@ -160,7 +160,15 @@ fastify.get('/me', async (request, reply) => {
   request.log.info({ route: '/me', loginId }, 'me request')
   const user = await prisma.user.findUnique({
     where: { loginId },
-    include: { characters: { include: { proficiencies: true } } },
+    include: {
+      characters: {
+        include: {
+          proficiencies: true,
+          traits: { include: { trait: true } },
+          skills: { include: { skill: true } },
+        },
+      },
+    },
   })
   if (!user) {
     request.log.warn({ route: '/me', loginId }, 'user not found')
@@ -173,7 +181,23 @@ fastify.get('/me', async (request, reply) => {
     await saveApIfChanged(ch0, updated)
     user.characters[0] = updated as any
   }
-  return { ok: true, user: { id: user.loginId, name: user.name, characters: user.characters } }
+  // enrich with lightweight meta for client UI
+  return {
+    ok: true,
+    user: { id: user.loginId, name: user.name, characters: user.characters },
+    meta: {
+      statDescriptions: {
+        str: '근력/타격 위력과 장비 착용 난이도에 영향',
+        agi: '민첩/명중과 회피, 선공 확률에 영향',
+        int: '지능/특수기 숙련과 전술 판단에 영향',
+        luck: '행운/치명타와 이벤트 발생에 소폭 영향',
+        fate: '운명/주인공 전용의 드문 판정 가중치',
+      },
+      hpScale: { HUMAN: 2, SMALL_BEAST: 1, MEDIUM_BEAST: 2, LARGE_BEAST_3: 3, LARGE_BEAST_4: 4, LEGENDARY_5p: 5 },
+      statBaseline: { str: 5, agi: 5, int: 5, luck: 5, fate: 0 },
+      statXp: { str: 0, agi: 0, int: 0, luck: 0, fate: 0 },
+    },
+  }
 })
 
 // Skills/Traits evaluation (temporary, using registry + basic mapping)

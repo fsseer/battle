@@ -39,9 +39,9 @@ echo [server] Migrate...
 call npx --yes prisma migrate deploy || (echo [server][ERROR] migrate failed & pause>nul & goto :eof)
 echo [server] Generate client...
 call npx --yes prisma generate || (echo [server][WARN] prisma generate failed, continuing)
-echo [server] Start dev (CORS to %WEB_URL%)
+echo [server] Start dev (CORS_ORIGIN=*)
 set AP_REGEN_MS=6000
-start "battle-server-dev" cmd /k "set AP_REGEN_MS=%AP_REGEN_MS% && set CORS_ORIGIN=%WEB_URL% && npm run dev"
+start "battle-server-dev" cmd /k "set AP_REGEN_MS=%AP_REGEN_MS% && set CORS_ORIGIN=* && npm run dev"
 popd
 
 set SURL=http://localhost:5174/health

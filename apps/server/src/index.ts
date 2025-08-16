@@ -384,6 +384,22 @@ fastify.post('/auth/check-id', async (request, reply) => {
   }
 })
 
+// Also provide GET variant to avoid CORS preflight on JSON POST in tunnel
+fastify.get('/auth/check-id', async (request, reply) => {
+  try {
+    const q = request.query as { id?: string }
+    const id = (q?.id ?? '').trim()
+    if (!id || id.length < 4 || id.length > 24 || /\s/.test(id) || !/^[A-Za-z0-9]+$/.test(id)) {
+      return reply.code(400).send({ ok: false, error: 'INVALID_ID' })
+    }
+    const exists = await prisma.user.findUnique({ where: { loginId: id } })
+    return { ok: true, available: !exists }
+  } catch (e) {
+    request.log.error({ err: e }, 'check-id(get) failed')
+    return reply.code(500).send({ ok: false })
+  }
+})
+
 // DEV ONLY: admin delete user (no auth)
 fastify.post('/admin/delete-user', async (request, reply) => {
   const body = request.body as { id?: string }

@@ -43,10 +43,9 @@ export async function registerRequest(
 export async function checkIdAvailability(
   id: string
 ): Promise<{ ok: boolean; available?: boolean }> {
-  const res = await fetch(`${SERVER_ORIGIN}/auth/check-id`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id }),
+  // Use GET to avoid preflight over tunnels
+  const res = await fetch(`${SERVER_ORIGIN}/auth/check-id?id=${encodeURIComponent(id)}`, {
+    method: 'GET',
   })
   return res.json()
 }

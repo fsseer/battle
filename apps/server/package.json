@@ -19,7 +19,8 @@
     "bcryptjs": "^3.0.2",
     "fastify": "^5.5.0",
     "prisma": "6.14.0",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "socket.io-msgpack-parser": "^3.0.2"
   },
   "devDependencies": {
     "@types/node": "^24.2.1",

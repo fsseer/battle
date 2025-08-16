@@ -422,6 +422,12 @@ const beats: Record<SkillId, SkillId> = {
   parry: 'feint',
 }
 
+const ATTACK_SKILLS: SkillId[] = ['slash', 'feint']
+const DEFENSE_SKILLS: SkillId[] = ['block', 'parry']
+function isSkillAllowedForRole(skill: SkillId, role: Role): boolean {
+  return role === 'ATTACK' ? ATTACK_SKILLS.includes(skill) : DEFENSE_SKILLS.includes(skill)
+}
+
 // Simple in-memory matching and battle state
 type BattleState = {
   roomId: string
@@ -429,6 +435,8 @@ type BattleState = {
   players: string[] // socket ids [A,B]
   roles: Record<string, Role> // sid -> role
   choices: Record<string, SkillId | undefined>
+  momentum: number // >0: current attacker 우세, <0: 수비 우세
+  decisiveThreshold: number
 }
 const waitingQueue: string[] = []
 const sidToBattle: Map<string, BattleState> = new Map()
@@ -445,12 +453,17 @@ io.on('connection', (socket) => {
       const a = waitingQueue.shift()!
       const b = waitingQueue.shift()!
       const roomId = `battle:${a}:${b}`
+      // 초기 선공/후공: 현재는 동률 가정(능력치 5) → 동전던지기
+      const firstAttacker = Math.random() < 0.5 ? a : b
+      const firstDefender = firstAttacker === a ? b : a
       const state: BattleState = {
         roomId,
         round: 1,
         players: [a, b],
-        roles: { [a]: 'ATTACK', [b]: 'DEFENSE' },
+        roles: { [firstAttacker]: 'ATTACK', [firstDefender]: 'DEFENSE' },
         choices: {},
+        momentum: 0,
+        decisiveThreshold: 2,
       }
       sidToBattle.set(a, state)
       sidToBattle.set(b, state)
@@ -469,22 +482,103 @@ io.on('connection', (socket) => {
   socket.on('battle.choose', (skillId: SkillId) => {
     const state = sidToBattle.get(socket.id)
     if (!state) return
+    // 역할에 맞는 스킬만 허용
+    const role = state.roles[socket.id]
+    if (!isSkillAllowedForRole(skillId, role)) {
+      io.to(socket.id).emit('battle.error', { reason: 'INVALID_SKILL_FOR_ROLE', role, skill: skillId })
+      return
+    }
     state.choices[socket.id] = skillId
     const [a, b] = state.players
     const ca = state.choices[a]
     const cb = state.choices[b]
     if (!ca || !cb) return
-    let resA: 'WIN' | 'LOSE' | 'DRAW' = 'DRAW'
-    if (beats[ca] === cb) resA = 'WIN'
-    else if (beats[cb] === ca) resA = 'LOSE'
-    const resB: 'WIN' | 'LOSE' | 'DRAW' = resA === 'WIN' ? 'LOSE' : resA === 'LOSE' ? 'WIN' : 'DRAW'
-    const nextRoleA: Role = resA === 'WIN' ? 'ATTACK' : resA === 'LOSE' ? 'DEFENSE' : state.roles[a]
-    const nextRoleB: Role = resB === 'WIN' ? 'ATTACK' : resB === 'LOSE' ? 'DEFENSE' : state.roles[b]
-    io.to(a).emit('battle.resolve', { round: state.round, self: ca, opp: cb, result: resA, nextRole: nextRoleA })
-    io.to(b).emit('battle.resolve', { round: state.round, self: cb, opp: ca, result: resB, nextRole: nextRoleB })
+    // 현재 공격자/방어자 식별
+    const attacker = (state.roles[a] === 'ATTACK' ? a : b)
+    const defender = attacker === a ? b : a
+    const attChoice = state.choices[attacker]!
+    const defChoice = state.choices[defender]!
+    // 가위바위보 판정
+    let outcome: 'ATTACKER' | 'DEFENDER' | 'DRAW' = 'DRAW'
+    if (beats[attChoice] === defChoice) outcome = 'ATTACKER'
+    else if (beats[defChoice] === attChoice) outcome = 'DEFENDER'
+    // 모멘텀 변경
+    if (outcome === 'ATTACKER') state.momentum += 1
+    else if (outcome === 'DEFENDER') state.momentum -= 1
+
+    // 결정타 체크
+    let decisive: undefined | { side: 'ATTACKER' | 'DEFENDER'; success: boolean }
+    const threshold = state.decisiveThreshold
+    if (state.momentum >= threshold || state.momentum <= -threshold) {
+      const side: 'ATTACKER' | 'DEFENDER' = state.momentum > 0 ? 'ATTACKER' : 'DEFENDER'
+      const success = Math.random() < 0.6
+      decisive = { side, success }
+      if (success) {
+        const winner = side === 'ATTACKER' ? attacker : defender
+        io.to(state.roomId).emit('battle.end', {
+          reason: 'decisive',
+          winner,
+          round: state.round,
+          momentum: state.momentum,
+          attChoice,
+          defChoice,
+        })
+        // 정리
+        state.players.forEach((sid) => sidToBattle.delete(sid))
+        return
+      } else {
+        // 실패 시 상대에게 공세 유리(역전 기회): 역할 스왑, 모멘텀 반전 후 -1로 설정
+        state.momentum = side === 'ATTACKER' ? -1 : 1
+        const newRoles: Record<string, Role> = {}
+        newRoles[attacker] = 'DEFENSE'
+        newRoles[defender] = 'ATTACK'
+        state.roles = newRoles
+      }
+    } else {
+      // 결정타 아님: 모멘텀 부호에 따라 역할 유지/전환
+      if (state.momentum < 0) {
+        const newRoles: Record<string, Role> = {}
+        newRoles[attacker] = 'DEFENSE'
+        newRoles[defender] = 'ATTACK'
+        state.roles = newRoles
+      }
+      // momentum > 0 이면 공격 유지, 0이면 그대로 유지
+    }
+
+    // 각자에게 결과 브로드캐스트
+    const resForA: 'WIN' | 'LOSE' | 'DRAW' =
+      a === attacker
+        ? outcome === 'ATTACKER'
+          ? 'WIN'
+          : outcome === 'DEFENDER'
+          ? 'LOSE'
+          : 'DRAW'
+        : outcome === 'ATTACKER'
+        ? 'LOSE'
+        : outcome === 'DEFENDER'
+        ? 'WIN'
+        : 'DRAW'
+    const resForB: 'WIN' | 'LOSE' | 'DRAW' = resForA === 'WIN' ? 'LOSE' : resForA === 'LOSE' ? 'WIN' : 'DRAW'
+
+    io.to(a).emit('battle.resolve', {
+      round: state.round,
+      self: ca,
+      opp: cb,
+      result: resForA,
+      nextRole: state.roles[a],
+      momentum: state.momentum,
+      decisive,
+    })
+    io.to(b).emit('battle.resolve', {
+      round: state.round,
+      self: cb,
+      opp: ca,
+      result: resForB,
+      nextRole: state.roles[b],
+      momentum: state.momentum,
+      decisive,
+    })
     state.round += 1
-    state.roles[a] = nextRoleA
-    state.roles[b] = nextRoleB
     state.choices = {}
   })
 

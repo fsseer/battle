@@ -15,6 +15,7 @@ import {
   BATTLE_DEADLINE_MS,
 } from './battle/types'
 import { isSkillAllowedConsideringInjury, applyDecisiveDamage } from './battle/engine'
+import msgpackParser from 'socket.io-msgpack-parser'
 
 const fastify = Fastify({ logger: { level: 'warn' } })
 // Allow CORS from local dev and optionally any origin via env (for quick testing over internet)
@@ -31,9 +32,6 @@ await fastify.register(formbody)
 
 fastify.get('/health', async () => ({ ok: true }))
 
-// MessagePack parser for lower payload & faster parse
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { MsgPackParser } = require('socket.io-msgpack-parser')
 const io = new Server(fastify.server, {
   cors: allowAll
     ? { origin: '*', methods: ['GET', 'POST'] }
@@ -45,7 +43,7 @@ const io = new Server(fastify.server, {
   pingInterval: 20000,
   perMessageDeflate: false,
   httpCompression: false,
-  parser: MsgPackParser,
+  parser: msgpackParser,
 })
 
 const prisma = new PrismaClient()

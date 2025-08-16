@@ -34,10 +34,17 @@ fastify.get('/health', async () => ({ ok: true }))
 
 const io = new Server(fastify.server, {
   cors: allowAll
-    ? { origin: '*', methods: ['GET', 'POST'] }
+    ? {
+        origin: (origin: string | undefined, cb: (err: Error | null, ok: boolean) => void) => cb(null, true),
+        methods: ['GET', 'POST', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
+        credentials: false,
+      }
     : {
         origin: ['http://127.0.0.1:5173', 'http://localhost:5173', ...extraCorsOrigin],
-        methods: ['GET', 'POST'],
+        methods: ['GET', 'POST', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
+        credentials: false,
       },
   pingTimeout: 45000,
   pingInterval: 20000,

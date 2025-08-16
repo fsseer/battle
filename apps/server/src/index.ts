@@ -422,39 +422,81 @@ const beats: Record<SkillId, SkillId> = {
   parry: 'feint',
 }
 
+// Simple in-memory matching and battle state
+type BattleState = {
+  roomId: string
+  round: number
+  players: string[] // socket ids [A,B]
+  roles: Record<string, Role> // sid -> role
+  choices: Record<string, SkillId | undefined>
+}
+const waitingQueue: string[] = []
+const sidToBattle: Map<string, BattleState> = new Map()
+
 io.on('connection', (socket) => {
   fastify.log.info({ sid: socket.id }, 'socket connected')
   socket.emit('server.hello', { id: socket.id })
 
   socket.on('queue.join', () => {
     fastify.log.info({ sid: socket.id }, 'queue.join received')
-    socket.join(`battle:${socket.id}`)
-    io.to(socket.id).emit('match.found', { opponent: 'bot' })
-    // 초기 배틀 상태
-    socket.data.battle = { round: 1, role: 'ATTACK' as Role }
+    if (sidToBattle.has(socket.id)) return
+    if (!waitingQueue.includes(socket.id)) waitingQueue.push(socket.id)
+    if (waitingQueue.length >= 2) {
+      const a = waitingQueue.shift()!
+      const b = waitingQueue.shift()!
+      const roomId = `battle:${a}:${b}`
+      const state: BattleState = {
+        roomId,
+        round: 1,
+        players: [a, b],
+        roles: { [a]: 'ATTACK', [b]: 'DEFENSE' },
+        choices: {},
+      }
+      sidToBattle.set(a, state)
+      sidToBattle.set(b, state)
+      io.sockets.sockets.get(a)?.join(roomId)
+      io.sockets.sockets.get(b)?.join(roomId)
+      io.to(a).emit('match.found', { opponent: b, role: state.roles[a] })
+      io.to(b).emit('match.found', { opponent: a, role: state.roles[b] })
+    }
+  })
+
+  socket.on('queue.leave', () => {
+    const idx = waitingQueue.indexOf(socket.id)
+    if (idx >= 0) waitingQueue.splice(idx, 1)
   })
 
   socket.on('battle.choose', (skillId: SkillId) => {
-    const battle = socket.data.battle as { round: number; role: Role } | undefined
-    if (!battle) return
-    // 봇 선택: 현재 역할에 맞는 랜덤 더미
-    const candidates: SkillId[] = battle.role === 'ATTACK' ? ['slash', 'feint'] : ['block', 'parry']
-    const bot = candidates[Math.floor(Math.random() * candidates.length)]
+    const state = sidToBattle.get(socket.id)
+    if (!state) return
+    state.choices[socket.id] = skillId
+    const [a, b] = state.players
+    const ca = state.choices[a]
+    const cb = state.choices[b]
+    if (!ca || !cb) return
+    let resA: 'WIN' | 'LOSE' | 'DRAW' = 'DRAW'
+    if (beats[ca] === cb) resA = 'WIN'
+    else if (beats[cb] === ca) resA = 'LOSE'
+    const resB: 'WIN' | 'LOSE' | 'DRAW' = resA === 'WIN' ? 'LOSE' : resA === 'LOSE' ? 'WIN' : 'DRAW'
+    const nextRoleA: Role = resA === 'WIN' ? 'ATTACK' : resA === 'LOSE' ? 'DEFENSE' : state.roles[a]
+    const nextRoleB: Role = resB === 'WIN' ? 'ATTACK' : resB === 'LOSE' ? 'DEFENSE' : state.roles[b]
+    io.to(a).emit('battle.resolve', { round: state.round, self: ca, opp: cb, result: resA, nextRole: nextRoleA })
+    io.to(b).emit('battle.resolve', { round: state.round, self: cb, opp: ca, result: resB, nextRole: nextRoleB })
+    state.round += 1
+    state.roles[a] = nextRoleA
+    state.roles[b] = nextRoleB
+    state.choices = {}
+  })
 
-    let result: 'WIN' | 'LOSE' | 'DRAW' = 'DRAW'
-    if (beats[skillId] === bot) result = 'WIN'
-    else if (beats[bot] === skillId) result = 'LOSE'
-
-    // 결과 전송 및 다음 라운드로
-    io.to(socket.id).emit('battle.resolve', {
-      round: battle.round,
-      self: skillId,
-      opp: bot,
-      result,
-      nextRole: result === 'WIN' ? 'ATTACK' : result === 'LOSE' ? 'DEFENSE' : battle.role,
-    })
-    battle.round += 1
-    battle.role = result === 'WIN' ? 'ATTACK' : result === 'LOSE' ? 'DEFENSE' : battle.role
+  socket.on('disconnect', () => {
+    const idx = waitingQueue.indexOf(socket.id)
+    if (idx >= 0) waitingQueue.splice(idx, 1)
+    const state = sidToBattle.get(socket.id)
+    if (state) {
+      const opponent = state.players.find((s) => s !== socket.id)
+      if (opponent) io.to(opponent).emit('battle.end', { reason: 'opponent_disconnected' })
+      state.players.forEach((sid) => sidToBattle.delete(sid))
+    }
   })
 })
 

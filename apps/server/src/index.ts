@@ -20,10 +20,17 @@ import msgpackParser from 'socket.io-msgpack-parser'
 const fastify = Fastify({ logger: { level: 'warn' } })
 // Allow CORS from local dev and optionally any origin via env (for quick testing over internet)
 const corsEnv = process.env.CORS_ORIGIN || ''
-const extraCorsOrigin = corsEnv ? corsEnv.split(',') : []
+const extraCorsOrigin = corsEnv
+  ? corsEnv
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0)
+  : []
 const allowAll = corsEnv.trim() === '*'
 await fastify.register(cors, {
-  origin: allowAll ? true : ['http://127.0.0.1:5173', 'http://localhost:5173', ...extraCorsOrigin],
+  origin: allowAll
+    ? true
+    : ['http://127.0.0.1:5173', 'http://localhost:5173', ...extraCorsOrigin],
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 })
@@ -35,7 +42,8 @@ fastify.get('/health', async () => ({ ok: true }))
 const io = new Server(fastify.server, {
   cors: allowAll
     ? {
-        origin: (origin: string | undefined, cb: (err: Error | null, ok: boolean) => void) => cb(null, true),
+        origin: (origin: string | undefined, cb: (err: Error | null, ok: boolean) => void) =>
+          cb(null, true),
         methods: ['GET', 'POST', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
         credentials: false,

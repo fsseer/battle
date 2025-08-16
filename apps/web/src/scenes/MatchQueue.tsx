@@ -11,16 +11,21 @@ export default function MatchQueue() {
       console.log('match.found', m)
       navigate('/battle')
     }
+    const onQueue = (s: any) => {
+      console.log('queue.status', s)
+    }
     const onConnect = () => console.log('socket connected', socket.id)
     const onError = (e: unknown) => console.error('socket error', e)
     socket.on('connect', onConnect)
     socket.on('match.found', onFound)
+    socket.on('queue.status', onQueue)
     socket.on('connect_error', onError)
     socket.emit('queue.join')
     return () => {
       socket.emit('queue.leave')
       socket.off('connect', onConnect)
       socket.off('match.found', onFound)
+      socket.off('queue.status', onQueue)
       socket.off('connect_error', onError)
     }
   }, [navigate])

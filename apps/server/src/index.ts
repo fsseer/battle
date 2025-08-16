@@ -444,7 +444,9 @@ const defenseBeats: Record<DefenseSkill, AttackSkill> = {
 const ATTACK_SKILLS: AttackSkill[] = ['light', 'heavy', 'poke']
 const DEFENSE_SKILLS: DefenseSkill[] = ['block', 'dodge', 'counter']
 function isSkillAllowedForRole(skill: SkillId, role: Role): boolean {
-  return role === 'ATTACK' ? (ATTACK_SKILLS as readonly string[]).includes(skill) : (DEFENSE_SKILLS as readonly string[]).includes(skill)
+  return role === 'ATTACK'
+    ? (ATTACK_SKILLS as readonly string[]).includes(skill)
+    : (DEFENSE_SKILLS as readonly string[]).includes(skill)
 }
 
 // Simple in-memory matching and battle state
@@ -468,6 +470,9 @@ io.on('connection', (socket) => {
     fastify.log.info({ sid: socket.id }, 'queue.join received')
     if (sidToBattle.has(socket.id)) return
     if (!waitingQueue.includes(socket.id)) waitingQueue.push(socket.id)
+    // 현재 대기 정보 피드백
+    const pos = waitingQueue.indexOf(socket.id)
+    io.to(socket.id).emit('queue.status', { state: 'WAITING', position: pos + 1, size: waitingQueue.length })
     if (waitingQueue.length >= 2) {
       const a = waitingQueue.shift()!
       const b = waitingQueue.shift()!
@@ -488,6 +493,8 @@ io.on('connection', (socket) => {
       sidToBattle.set(b, state)
       io.sockets.sockets.get(a)?.join(roomId)
       io.sockets.sockets.get(b)?.join(roomId)
+      io.to(a).emit('queue.status', { state: 'MATCHED', opponent: b })
+      io.to(b).emit('queue.status', { state: 'MATCHED', opponent: a })
       io.to(a).emit('match.found', { opponent: b, role: state.roles[a] })
       io.to(b).emit('match.found', { opponent: a, role: state.roles[b] })
     }
@@ -496,6 +503,7 @@ io.on('connection', (socket) => {
   socket.on('queue.leave', () => {
     const idx = waitingQueue.indexOf(socket.id)
     if (idx >= 0) waitingQueue.splice(idx, 1)
+    io.to(socket.id).emit('queue.status', { state: 'LEFT' })
   })
 
   socket.on('battle.choose', (skillId: SkillId) => {

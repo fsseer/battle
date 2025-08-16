@@ -18,5 +18,10 @@ const isHttps = (() => {
 export const socket = io(envOrigin && envOrigin.length > 0 ? envOrigin : defaultOrigin, {
   autoConnect: true,
   transports: isHttps ? ['polling'] : ['websocket'],
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 300,
+  reconnectionDelayMax: 2000,
+  forceNew: true,
   upgrade: false,
 })

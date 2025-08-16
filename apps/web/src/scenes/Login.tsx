@@ -140,6 +140,7 @@ export default function Login() {
             <div className="row" style={{ gap: 8 }}>
               <input
                 className={`control${idErr ? ' invalid' : ''}`}
+                id="login-id"
                 placeholder={t('login.id')}
                 value={id}
                 maxLength={24}
@@ -185,6 +186,7 @@ export default function Login() {
             ) : null}
             <input
               className={`control${pwErr ? ' invalid' : ''}`}
+              id="login-password"
               placeholder={t('login.pw')}
               type="password"
               value={password}
@@ -207,6 +209,7 @@ export default function Login() {
             {mode === 'register' ? (
               <input
                 className={`control${pwErr ? ' invalid' : ''}`}
+                id="login-confirm"
                 placeholder={t('login.pwConfirm')}
                 type="password"
                 value={confirm}

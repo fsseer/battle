@@ -2,10 +2,13 @@ param(
   [string]$SshHost = $env:SSH_HOST,
   [string]$SshUser = $env:SSH_USER,
   [string]$SshKeyPath = $env:SSH_KEY_PATH,
+  [int]$SshPort = $env:SSH_PORT,
   [string]$WebRoot = $env:WEB_ROOT,
   [string]$ApiDir = $env:API_DIR,
   [string]$ViteServerOrigin = $env:VITE_SERVER_ORIGIN
 )
+
+if (-not $SshPort) { $SshPort = 22 }
 
 if (-not $SshHost -or -not $SshUser -or -not $SshKeyPath -or -not $WebRoot -or -not $ApiDir -or -not $ViteServerOrigin) {
   Write-Error "Missing one or more params: SSH_HOST, SSH_USER, SSH_KEY_PATH, WEB_ROOT, API_DIR, VITE_SERVER_ORIGIN"
@@ -32,12 +35,12 @@ if (-not (Test-Path (Join-Path $DistDir 'index.html'))) {
 # Upload dist via scp (requires OpenSSH client on Windows)
 $DistGlob = (Join-Path $DistDir '*')
 $scpTarget = "$SshUser@$SshHost`:$WebRoot"
-scp -i "$SshKeyPath" -r "$DistGlob" $scpTarget
+scp -P $SshPort -i "$SshKeyPath" -r "$DistGlob" $scpTarget
 if ($LASTEXITCODE -ne 0) { Write-Error "scp failed"; exit 1 }
 
 # Reload API via ssh + pm2
 $remoteCmd = "cd '$ApiDir'; if [ ! -d node_modules ]; then npm ci; fi; pm2 reload gladiator-api || pm2 start npm --name gladiator-api -- run dev; pm2 save"
-ssh -i "$SshKeyPath" "$SshUser@$SshHost" "$remoteCmd"
+ssh -p $SshPort -i "$SshKeyPath" "$SshUser@$SshHost" "$remoteCmd"
 if ($LASTEXITCODE -ne 0) { Write-Error "ssh/pm2 command failed"; exit 1 }
 
 Write-Host "Deploy complete."

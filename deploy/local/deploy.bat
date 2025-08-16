@@ -6,6 +6,7 @@ rem   deploy\local\deploy.bat ^
 rem     SSH_HOST=my.server.com ^
 rem     SSH_USER=ubuntu ^
 rem     SSH_KEY_PATH=C:\keys\id_rsa ^
+rem     SSH_PORT=22 ^
 rem     WEB_ROOT=/var/www/battle-web/dist ^
 rem     API_DIR=/opt/gladiator/apps/server ^
 rem     VITE_SERVER_ORIGIN=https://api.example.com
@@ -34,6 +35,7 @@ if "%VITE_SERVER_ORIGIN%"=="" (
   echo [ERROR] VITE_SERVER_ORIGIN env var is required.
   exit /b 1
 )
+if "%SSH_PORT%"=="" ( set SSH_PORT=22 )
 
 set PS_ARG=-NoProfile -ExecutionPolicy Bypass -File "deploy\local\deploy.ps1"
 powershell %PS_ARG%

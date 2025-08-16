@@ -454,7 +454,12 @@ function isSkillAllowedForRole(skill: SkillId, role: Role): boolean {
     : (DEFENSE_SKILLS as readonly string[]).includes(skill)
 }
 
-function isSkillAllowedConsideringInjury(state: BattleState, sid: string, role: Role, skill: SkillId): boolean {
+function isSkillAllowedConsideringInjury(
+  state: BattleState,
+  sid: string,
+  role: Role,
+  skill: SkillId
+): boolean {
   const injuries = state.injuries?.[sid] ?? []
   if (role === 'ATTACK' && injuries.includes('ARM')) return false
   if (role === 'DEFENSE' && skill === 'dodge' && injuries.includes('LEG')) return false
@@ -463,7 +468,8 @@ function isSkillAllowedConsideringInjury(state: BattleState, sid: string, role: 
 
 function applyDecisiveDamage(state: BattleState, attackerSid: string, defenderSid: string) {
   const hp = state.hp ?? (state.hp = { [attackerSid]: 2, [defenderSid]: 2 })
-  const weapon = state.weapon ?? (state.weapon = { [attackerSid]: 'ONE_HAND', [defenderSid]: 'ONE_HAND' })
+  const weapon =
+    state.weapon ?? (state.weapon = { [attackerSid]: 'ONE_HAND', [defenderSid]: 'ONE_HAND' })
   const inj = state.injuries ?? (state.injuries = { [attackerSid]: [], [defenderSid]: [] })
   const dmg = weapon[attackerSid] === 'TWO_HAND' ? 2 : 1
   for (let i = 0; i < dmg; i++) {
@@ -667,6 +673,15 @@ io.on('connection', (socket) => {
       if (opponent) io.to(opponent).emit('battle.end', { reason: 'opponent_disconnected' })
       state.players.forEach((sid) => sidToBattle.delete(sid))
     }
+  })
+
+  // surrender handling
+  socket.on('battle.surrender', () => {
+    const state = sidToBattle.get(socket.id)
+    if (!state) return
+    const opponent = state.players.find((s) => s !== socket.id)
+    if (opponent) io.to(state.roomId).emit('battle.end', { reason: 'surrender', winner: opponent })
+    state.players.forEach((sid) => sidToBattle.delete(sid))
   })
 })
 

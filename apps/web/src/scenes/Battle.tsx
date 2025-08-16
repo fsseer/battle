@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { socket } from '../lib/socket.ts'
 import ResourceBar from '../components/ResourceBar'
+import { Hearts } from '../components/Battle/Hearts'
+import { MomentumBar } from '../components/Battle/MomentumBar'
+import { SkillButton } from '../components/Battle/SkillButton'
 import { loadAssets } from '../lib/assets'
 
 type Role = 'ATTACK' | 'DEFENSE'
@@ -138,7 +141,14 @@ export default function Battle() {
       })
       resolveRound(m)
     }
-    const onDecisive = (d: { round: number; hitter: string; target: string; damage: number; injured: Array<'ARM'|'LEG'|'TORSO'>; hp: number }) => {
+    const onDecisive = (d: {
+      round: number
+      hitter: string
+      target: string
+      damage: number
+      injured: Array<'ARM' | 'LEG' | 'TORSO'>
+      hp: number
+    }) => {
       const isMeTarget = d.target === socket.id
       const dmg = d.damage ?? 1
       if (isMeTarget) {
@@ -150,7 +160,10 @@ export default function Battle() {
         setOppMaxHp((mx) => Math.max(mx, d.hp + dmg))
         setOppInjuries((inj) => [...inj, ...(d.injured ?? [])])
       }
-      setLog((l) => [`[결정타] ${isMeTarget ? '피격' : '가함'} - 피해:${dmg}, 남은HP:${d.hp}`, ...l])
+      setLog((l) => [
+        `[결정타] ${isMeTarget ? '피격' : '가함'} - 피해:${dmg}, 남은HP:${d.hp}`,
+        ...l,
+      ])
     }
     const onEnd = (e: { reason: string; winner?: string }) => {
       setLog((l) => [`전투 종료: ${e.reason} ${e.winner ? `(승자:${e.winner})` : ''}`, ...l])
@@ -214,26 +227,6 @@ export default function Battle() {
     [selfInjuries, choice]
   )
 
-  function Hearts({ n, max }: { n: number; max: number }) {
-    const arr = Array.from({ length: max }, (_, i) => i < n)
-    return (
-      <div className="row" style={{ gap: 4 }}>
-        {arr.map((filled, i) => (
-          <div
-            key={i}
-            style={{
-              width: 12,
-              height: 12,
-              borderRadius: 2,
-              background: filled ? '#d33' : 'transparent',
-              border: '1px solid #d33',
-            }}
-          />
-        ))}
-      </div>
-    )
-  }
-
   return (
     <div className="arena-frame">
       <div className="panel">
@@ -246,16 +239,7 @@ export default function Battle() {
             <div>남은 시간: {timeLeft}s</div>
             <div style={{ flex: 1 }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 160, height: 10, background: '#e5e5e5', borderRadius: 6, overflow: 'hidden' }}>
-                <div
-                  style={{
-                    width: `${Math.max(0, Math.min(1, (momentum + 2) / 4)) * 100}%`,
-                    height: '100%',
-                    background: momentum >= 0 ? '#c28f2c' : '#5773c6',
-                    transition: 'width 120ms',
-                  }}
-                />
-              </div>
+              <MomentumBar value={momentum} />
               <span style={{ fontSize: 12 }}>기세</span>
             </div>
           </div>
@@ -404,20 +388,25 @@ export default function Battle() {
           </div>
           <div className="row" style={{ gap: 8, marginTop: 12 }}>
             {available.map((s) => (
-              <button key={s.id} onClick={() => onSelect(s.id)} disabled={!canUseSkill(s)}>
-                {s.name}
-              </button>
+              <SkillButton key={s.id} id={s.id} label={s.name} disabled={!canUseSkill(s)} onClick={onSelect} />
             ))}
           </div>
           <div className="row" style={{ gap: 24, marginTop: 12 }}>
             <div>내 선택: {choice ?? '-'}</div>
             <div>상대 선택: {opponentChoice ?? '-'}</div>
-            <div style={{ fontSize: 12, opacity: 0.85 }}>내 부상: {selfInjuries.join(',') || '-'}</div>
-            <div style={{ fontSize: 12, opacity: 0.85 }}>상대 부상: {oppInjuries.join(',') || '-'}</div>
+            <div style={{ fontSize: 12, opacity: 0.85 }}>
+              내 부상: {selfInjuries.join(',') || '-'}
+            </div>
+            <div style={{ fontSize: 12, opacity: 0.85 }}>
+              상대 부상: {oppInjuries.join(',') || '-'}
+            </div>
           </div>
           <div className="row" style={{ gap: 8, marginTop: 12 }}>
             <button className="ghost-btn" onClick={() => navigate('/result')}>
               항복/종료
+            </button>
+            <button className="ghost-btn" onClick={() => socket.emit('battle.surrender')}>
+              항복(서버)
             </button>
             <button className="gold-btn" onClick={() => navigate('/lobby')}>
               로비로

@@ -1,5 +1,6 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
+import formbody from '@fastify/formbody'
 import { Server } from 'socket.io'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
@@ -16,6 +17,8 @@ await fastify.register(cors, {
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 })
+// Parse application/x-www-form-urlencoded bodies (to avoid JSON preflight on client)
+await fastify.register(formbody)
 
 fastify.get('/health', async () => ({ ok: true }))
 

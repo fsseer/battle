@@ -17,15 +17,29 @@ const isHttps = (() => {
   return false
 })()
 
+const isTunnel = (() => {
+  const hostFromEnv = (() => {
+    try {
+      if (!envOrigin) return ''
+      const u = new URL(envOrigin)
+      return u.hostname
+    } catch {
+      return ''
+    }
+  })()
+  const hostFromWin = typeof window !== 'undefined' ? window.location.hostname : ''
+  return hostFromEnv.endsWith('loca.lt') || hostFromWin.endsWith('loca.lt')
+})()
+
 export const socket = io(envOrigin && envOrigin.length > 0 ? envOrigin : defaultOrigin, {
   autoConnect: true,
-  // LocalTunnel에서 polling POST 400 이슈 회피: HTTPS 터널은 WebSocket만 사용
-  transports: isHttps ? ['websocket'] : ['websocket'],
+  // LocalTunnel(HTTPS 프록시)에서는 WebSocket이 종종 차단되므로 polling만 사용
+  transports: isTunnel ? ['polling'] : isHttps ? ['websocket'] : ['websocket'],
   reconnection: true,
   reconnectionAttempts: Infinity,
   reconnectionDelay: 300,
   reconnectionDelayMax: 2000,
   forceNew: true,
-  upgrade: false,
+  upgrade: !isTunnel,
   path: '/socket.io',
 })

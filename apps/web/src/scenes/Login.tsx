@@ -12,7 +12,7 @@ export default function Login() {
   const { lang, setLang, t } = useI18n()
   const [id, setId] = useState('')
   const [password, setPassword] = useState('')
-  const [mode, setMode] = useState<'login'|'register'>('login')
+  const [mode, setMode] = useState<'login' | 'register'>('login')
   const [confirm, setConfirm] = useState('')
   const [idErr, setIdErr] = useState<string>('')
   const [pwErr, setPwErr] = useState<string>('')
@@ -49,13 +49,16 @@ export default function Login() {
     const pwCsOk = alnum(password)
     const idValid = idLenOk && idCsOk
     const pwValid = pwLenOk && pwCsOk
-    setIdErr(idValid ? '' : (!idCsOk ? t('login.error.charset') : t('login.error.id')))
-    setPwErr(pwValid ? '' : (!pwCsOk ? t('login.error.charset') : t('login.error.pw')))
+    setIdErr(idValid ? '' : !idCsOk ? t('login.error.charset') : t('login.error.id'))
+    setPwErr(pwValid ? '' : !pwCsOk ? t('login.error.charset') : t('login.error.pw'))
     if (!idValid || !pwValid) return
     // 서버 인증 연동
     if (mode === 'register') {
       // basic front validation
-      if (password !== confirm) { setPwErr(t('login.error.confirm')); return }
+      if (password !== confirm) {
+        setPwErr(t('login.error.confirm'))
+        return
+      }
       // Always check duplicate on submit
       try {
         const res = await checkIdAvailability(id)
@@ -72,7 +75,12 @@ export default function Login() {
       registerRequest(id, password, confirm)
         .then((r) => {
           if (r.ok && r.user && r.token) {
-            setUser({ id: r.user.id, name: r.user.name, token: r.token, characters: r.user.characters })
+            setUser({
+              id: r.user.id,
+              name: r.user.name,
+              token: r.token,
+              characters: r.user.characters,
+            })
             navigate('/lobby')
           } else if (r.error === 'DUPLICATE_ID') {
             setIdErr(t('login.error.duplicate'))
@@ -93,7 +101,12 @@ export default function Login() {
     loginRequest(id, password)
       .then((r) => {
         if (r.ok && r.user && r.token) {
-          setUser({ id: r.user.id, name: r.user.name, token: r.token, characters: r.user.characters })
+          setUser({
+            id: r.user.id,
+            name: r.user.name,
+            token: r.token,
+            characters: r.user.characters,
+          })
           navigate('/lobby')
         } else if (r.error === 'USER_NOT_FOUND') {
           setIdErr(t('login.error.notFound'))
@@ -125,23 +138,92 @@ export default function Login() {
           </div>
           <form onSubmit={onSubmit} className="grid" style={{ gridTemplateColumns: '1fr' }}>
             <div className="row" style={{ gap: 8 }}>
-              <input className={`control${idErr ? ' invalid' : ''}`} placeholder={t('login.id')} value={id} maxLength={24} onChange={async (e) => {
-                const v = e.target.value
-                if (/\s/.test(v)) return
-                if (v && !/^[A-Za-z0-9]+$/.test(v)) { setIdErr(t('login.error.charset')); return }
-                setId(v)
-                if (idErr) setIdErr('')
-                setIdHint('')
-              }} required />
+              <input
+                className={`control${idErr ? ' invalid' : ''}`}
+                placeholder={t('login.id')}
+                value={id}
+                maxLength={24}
+                onChange={async (e) => {
+                  const v = e.target.value
+                  if (/\s/.test(v)) return
+                  if (v && !/^[A-Za-z0-9]+$/.test(v)) {
+                    setIdErr(t('login.error.charset'))
+                    return
+                  }
+                  setId(v)
+                  if (idErr) setIdErr('')
+                  setIdHint('')
+                }}
+                required
+              />
               {mode === 'register' && (
-                <button type="button" className="ghost-btn" onClick={handleCheckDuplicate}>중복 체크</button>
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  onClick={handleCheckDuplicate}
+                  style={{
+                    whiteSpace: 'nowrap',
+                    fontSize: '0.85rem',
+                    padding: '6px 12px',
+                    minWidth: 96,
+                    flex: '0 0 auto',
+                  }}
+                >
+                  중복 체크
+                </button>
               )}
             </div>
-            {idErr ? <div className="error-text">{idErr}</div> : idHint ? <div className="text-sm" style={{ color: idHint.includes('사용') ? '#2a8f2a' : '#b93838' }}>{idHint}</div> : null}
-            <input className={`control${pwErr ? ' invalid' : ''}`} placeholder={t('login.pw')} type="password" value={password} maxLength={24} onChange={(e) => { const v = e.target.value; if (/\s/.test(v)) return; if (v && !/^[A-Za-z0-9]+$/.test(v)) { setPwErr(t('login.error.charset')); return } setPassword(v); if (mode === 'register' && confirm && v !== confirm) setPwErr(t('login.error.confirm')); else setPwErr('') }} required />
+            {idErr ? (
+              <div className="error-text">{idErr}</div>
+            ) : idHint ? (
+              <div
+                className="text-sm"
+                style={{ color: idHint.includes('사용') ? '#2a8f2a' : '#b93838' }}
+              >
+                {idHint}
+              </div>
+            ) : null}
+            <input
+              className={`control${pwErr ? ' invalid' : ''}`}
+              placeholder={t('login.pw')}
+              type="password"
+              value={password}
+              maxLength={24}
+              onChange={(e) => {
+                const v = e.target.value
+                if (/\s/.test(v)) return
+                if (v && !/^[A-Za-z0-9]+$/.test(v)) {
+                  setPwErr(t('login.error.charset'))
+                  return
+                }
+                setPassword(v)
+                if (mode === 'register' && confirm && v !== confirm)
+                  setPwErr(t('login.error.confirm'))
+                else setPwErr('')
+              }}
+              required
+            />
             {pwErr ? <div className="error-text">{pwErr}</div> : null}
             {mode === 'register' ? (
-              <input className={`control${pwErr ? ' invalid' : ''}`} placeholder={t('login.pwConfirm')} type="password" value={confirm} maxLength={24} onChange={(e) => { const v = e.target.value; if (/\s/.test(v)) return; if (v && !/^[A-Za-z0-9]+$/.test(v)) { setPwErr(t('login.error.charset')); return } setConfirm(v); if (password && v !== password) setPwErr(t('login.error.confirm')); else setPwErr('') }} required />
+              <input
+                className={`control${pwErr ? ' invalid' : ''}`}
+                placeholder={t('login.pwConfirm')}
+                type="password"
+                value={confirm}
+                maxLength={24}
+                onChange={(e) => {
+                  const v = e.target.value
+                  if (/\s/.test(v)) return
+                  if (v && !/^[A-Za-z0-9]+$/.test(v)) {
+                    setPwErr(t('login.error.charset'))
+                    return
+                  }
+                  setConfirm(v)
+                  if (password && v !== password) setPwErr(t('login.error.confirm'))
+                  else setPwErr('')
+                }}
+                required
+              />
             ) : null}
             <div className="actions">
               <button type="submit" className="gold-btn" style={{ width: '100%' }}>
@@ -151,9 +233,13 @@ export default function Login() {
           </form>
           <div className="row" style={{ marginTop: 8, justifyContent: 'flex-end' }}>
             {mode === 'login' ? (
-              <button className="ghost-btn" onClick={() => setMode('register')}>계정 생성</button>
+              <button className="ghost-btn" onClick={() => setMode('register')}>
+                계정 생성
+              </button>
             ) : (
-              <button className="ghost-btn" onClick={() => setMode('login')}>로그인으로</button>
+              <button className="ghost-btn" onClick={() => setMode('login')}>
+                로그인으로
+              </button>
             )}
           </div>
         </div>
@@ -161,5 +247,3 @@ export default function Login() {
     </div>
   )
 }
-
-

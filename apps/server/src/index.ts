@@ -422,19 +422,29 @@ fastify.post('/admin/delete-user', async (request, reply) => {
 })
 
 type Role = 'ATTACK' | 'DEFENSE'
-type SkillId = 'slash' | 'feint' | 'block' | 'parry'
+// 공격: light(약공), heavy(강공), poke(견제)
+// 방어: block(막기), dodge(회피), counter(반격)
+type AttackSkill = 'light' | 'heavy' | 'poke'
+type DefenseSkill = 'block' | 'dodge' | 'counter'
+type SkillId = AttackSkill | DefenseSkill
 
-const beats: Record<SkillId, SkillId> = {
-  slash: 'parry',
-  feint: 'block',
-  block: 'slash',
-  parry: 'feint',
+// 공격자가 이기는 관계: (강공 > 막기), (약공 > 회피), (견제 > 반격)
+const attackBeats: Record<AttackSkill, DefenseSkill> = {
+  heavy: 'block',
+  light: 'dodge',
+  poke: 'counter',
+}
+// 수비자가 이기는 관계: (막기 > 견제), (회피 > 강공), (반격 > 약공)
+const defenseBeats: Record<DefenseSkill, AttackSkill> = {
+  block: 'poke',
+  dodge: 'heavy',
+  counter: 'light',
 }
 
-const ATTACK_SKILLS: SkillId[] = ['slash', 'feint']
-const DEFENSE_SKILLS: SkillId[] = ['block', 'parry']
+const ATTACK_SKILLS: AttackSkill[] = ['light', 'heavy', 'poke']
+const DEFENSE_SKILLS: DefenseSkill[] = ['block', 'dodge', 'counter']
 function isSkillAllowedForRole(skill: SkillId, role: Role): boolean {
-  return role === 'ATTACK' ? ATTACK_SKILLS.includes(skill) : DEFENSE_SKILLS.includes(skill)
+  return role === 'ATTACK' ? (ATTACK_SKILLS as readonly string[]).includes(skill) : (DEFENSE_SKILLS as readonly string[]).includes(skill)
 }
 
 // Simple in-memory matching and battle state
@@ -462,8 +472,8 @@ io.on('connection', (socket) => {
       const a = waitingQueue.shift()!
       const b = waitingQueue.shift()!
       const roomId = `battle:${a}:${b}`
-      // 초기 선공/후공: 현재는 동률 가정(능력치 5) → 동전던지기
-      const firstAttacker = Math.random() < 0.5 ? a : b
+      // 초기 선공/후공: 능력치가 같다면 먼저 대기한 a를 선공으로
+      const firstAttacker = a
       const firstDefender = firstAttacker === a ? b : a
       const state: BattleState = {
         roomId,
@@ -509,12 +519,12 @@ io.on('connection', (socket) => {
     // 현재 공격자/방어자 식별
     const attacker = state.roles[a] === 'ATTACK' ? a : b
     const defender = attacker === a ? b : a
-    const attChoice = state.choices[attacker]!
-    const defChoice = state.choices[defender]!
-    // 가위바위보 판정
+    const attChoice = state.choices[attacker]! as AttackSkill
+    const defChoice = state.choices[defender]! as DefenseSkill
+    // 가위바위보 판정 (공격 vs 방어)
     let outcome: 'ATTACKER' | 'DEFENDER' | 'DRAW' = 'DRAW'
-    if (beats[attChoice] === defChoice) outcome = 'ATTACKER'
-    else if (beats[defChoice] === attChoice) outcome = 'DEFENDER'
+    if (attackBeats[attChoice] === defChoice) outcome = 'ATTACKER'
+    else if (defenseBeats[defChoice] === attChoice) outcome = 'DEFENDER'
     // 모멘텀 변경
     if (outcome === 'ATTACKER') state.momentum += 1
     else if (outcome === 'DEFENDER') state.momentum -= 1

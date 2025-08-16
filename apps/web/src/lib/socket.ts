@@ -41,4 +41,12 @@ export const socket = io(envOrigin && envOrigin.length > 0 ? envOrigin : default
   path: '/socket.io',
   timeout: 10000,
   parser: msgpackParser,
+  // 일부 터널/프록시는 바이너리 POST를 차단하므로 base64로 강제
+  ...(isTunnel
+    ? {
+        // socket.io-client runtime accepts these for polling base64 fallback
+        forceBase64: true as unknown as undefined,
+        transportOptions: { polling: { forceBase64: true as unknown as undefined } },
+      }
+    : {}),
 })

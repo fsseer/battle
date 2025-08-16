@@ -69,7 +69,7 @@ if not exist node_modules (
   npm install
 )
 echo [web] Build with VITE_SERVER_ORIGIN=%API_URL%
-cmd /c "set VITE_SERVER_ORIGIN=%API_URL% && npm run build"
+cmd /c "set VITE_SERVER_ORIGIN=%API_URL%&& npm run build"
 echo [web] Preview on 0.0.0.0:5173
 start "battle-web-dev" cmd /k "npm run preview -- --host 0.0.0.0 --port 5173"
 popd

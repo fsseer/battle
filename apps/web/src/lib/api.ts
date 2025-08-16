@@ -6,7 +6,8 @@ export type LoginResponse = {
 }
 
 // Allow override via Vite env when served over internet/tunnel
-const envOrigin = (import.meta as any)?.env?.VITE_SERVER_ORIGIN as string | undefined
+const rawEnvOrigin = (import.meta as any)?.env?.VITE_SERVER_ORIGIN as string | undefined
+const envOrigin = rawEnvOrigin ? rawEnvOrigin.trim().replace(/\/+$/, '') : undefined
 const defaultOrigin =
   typeof window !== 'undefined'
     ? window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'

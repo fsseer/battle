@@ -19,7 +19,7 @@ const SERVER_ORIGIN = envOrigin && envOrigin.length > 0 ? envOrigin : defaultOri
 async function fetchJsonWithTimeout<T>(
   url: string,
   init: RequestInit = {},
-  timeoutMs = 2500
+  timeoutMs = 5000
 ): Promise<T> {
   const ac = new AbortController()
   const timer = setTimeout(() => ac.abort(), timeoutMs)
@@ -65,7 +65,7 @@ export async function checkIdAvailability(
     return await fetchJsonWithTimeout<{ ok: boolean; available?: boolean }>(
       url,
       { method: 'GET', cache: 'no-store', credentials: 'omit' },
-      2500
+      5000
     )
   } catch {
     return { ok: false }

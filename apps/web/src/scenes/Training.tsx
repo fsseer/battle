@@ -1,27 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { socket } from '../lib/socket.ts'
 import { useAuthStore } from '../store/auth'
 import ResourceBar from '../components/ResourceBar'
+import { SERVER_ORIGIN } from '../lib/api'
 
-export default function MatchPrep() {
+export default function Training() {
   const navigate = useNavigate()
   const { user, setUser } = useAuthStore()
   const token = (user as any)?.token
   const [busy, setBusy] = useState(false)
   const [catalog, setCatalog] = useState<any[]>([])
-  const [basicOpen, setBasicOpen] = useState(true)
-  const [weaponOpen, setWeaponOpen] = useState(true)
-  const [strOpen, setStrOpen] = useState(false)
-  const [agiOpen, setAgiOpen] = useState(false)
-  const [intOpen, setIntOpen] = useState(false)
-  const [oneOpen, setOneOpen] = useState(false)
-  const [twoOpen, setTwoOpen] = useState(false)
-  const [dualOpen, setDualOpen] = useState(false)
-  // Deprecated: 이 화면은 곧 제거 예정. Training.tsx로 분리됨.
+
   useEffect(() => {
     let mounted = true
-    fetch('http://127.0.0.1:5174/training/catalog')
+    fetch(`${SERVER_ORIGIN}/training/catalog`)
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
         if (mounted && j?.ok) setCatalog(j.items)
@@ -31,14 +23,14 @@ export default function MatchPrep() {
       mounted = false
     }
   }, [])
-  // 훈련 실행 VFX(간단한 메시지 플래시)
+
   const [flash, setFlash] = useState<string>('')
   const flashTimer = useRef<number | null>(null)
   async function call(path: string, payload: any) {
     if (!token) return
     setBusy(true)
     try {
-      const r = await fetch(`http://127.0.0.1:5174${path}`, {
+      const r = await fetch(`${SERVER_ORIGIN}${path}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
@@ -48,7 +40,7 @@ export default function MatchPrep() {
         setFlash('훈련 완료!')
         if (flashTimer.current) window.clearTimeout(flashTimer.current)
         flashTimer.current = window.setTimeout(() => setFlash(''), 900)
-        const m = await fetch('http://127.0.0.1:5174/me', {
+        const m = await fetch(`${SERVER_ORIGIN}/me`, {
           headers: { Authorization: `Bearer ${token}` },
         })
           .then((res) => res.json())
@@ -62,31 +54,20 @@ export default function MatchPrep() {
       setBusy(false)
     }
   }
-  useEffect(() => {
-    const onFound = (m: unknown) => {
-      console.log('match.found', m)
-      navigate('/battle')
-    }
-    const onHello = (m: unknown) => console.log('server.hello', m)
-    const onConnect = () => console.log('socket connected', socket.id)
-    const onError = (e: unknown) => console.error('socket error', e)
 
-    socket.on('connect', onConnect)
-    socket.on('server.hello', onHello)
-    socket.on('match.found', onFound)
-    socket.on('connect_error', onError)
-    return () => {
-      socket.off('connect', onConnect)
-      socket.off('server.hello', onHello)
-      socket.off('match.found', onFound)
-      socket.off('connect_error', onError)
-    }
-  }, [navigate])
+  const [basicOpen, setBasicOpen] = useState(true)
+  const [weaponOpen, setWeaponOpen] = useState(true)
+  const [strOpen, setStrOpen] = useState(false)
+  const [agiOpen, setAgiOpen] = useState(false)
+  const [intOpen, setIntOpen] = useState(false)
+  const [oneOpen, setOneOpen] = useState(false)
+  const [twoOpen, setTwoOpen] = useState(false)
+  const [dualOpen, setDualOpen] = useState(false)
 
   return (
     <div className="arena-frame">
       <div className="panel">
-        <h3>대전 준비</h3>
+        <h3>훈련장</h3>
         <div className="parchment" style={{ marginTop: 8, marginBottom: 8 }}>
           {flash ? (
             <div className="row" style={{ justifyContent: 'center', marginBottom: 8 }}>
@@ -214,6 +195,7 @@ export default function MatchPrep() {
                 </div>
               )}
             </div>
+
             <div className="row" style={{ gap: 8 }}>
               <button
                 className="ghost-btn"
@@ -232,16 +214,13 @@ export default function MatchPrep() {
             </div>
           </div>
         </div>
-        <div className="parchment">
-          <p>간단한 설명: 여기에서 장비/스킬 선택(추후 확장)</p>
-          <div className="row" style={{ gap: 8 }}>
-            <button className="ghost-btn" onClick={() => navigate('/lobby')}>
-              뒤로
-            </button>
-            <button className="gold-btn" onClick={() => navigate('/match')}>
-              매칭하러 가기
-            </button>
-          </div>
+        <div className="actions section" style={{ justifyContent: 'space-between' }}>
+          <button className="ghost-btn" onClick={() => navigate('/lobby')}>
+            뒤로
+          </button>
+          <button className="gold-btn" onClick={() => navigate('/match')}>
+            매칭하러 가기
+          </button>
         </div>
       </div>
     </div>

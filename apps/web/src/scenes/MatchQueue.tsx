@@ -1,0 +1,48 @@
+import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { socket } from '../lib/socket'
+import ResourceBar from '../components/ResourceBar'
+
+export default function MatchQueue() {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const onFound = (m: unknown) => {
+      console.log('match.found', m)
+      navigate('/battle')
+    }
+    const onConnect = () => console.log('socket connected', socket.id)
+    const onError = (e: unknown) => console.error('socket error', e)
+    socket.on('connect', onConnect)
+    socket.on('match.found', onFound)
+    socket.on('connect_error', onError)
+    socket.emit('queue.join')
+    return () => {
+      socket.emit('queue.leave')
+      socket.off('connect', onConnect)
+      socket.off('match.found', onFound)
+      socket.off('connect_error', onError)
+    }
+  }, [navigate])
+
+  return (
+    <div className="arena-frame">
+      <div className="panel">
+        <div className="parchment">
+          <ResourceBar />
+          <div style={{ textAlign: 'center', marginTop: 24 }}>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>매칭 대기 중...</div>
+            <div style={{ opacity: 0.85, marginTop: 8 }}>
+              상대가 입장하면 자동으로 전투로 이동합니다.
+            </div>
+            <div style={{ marginTop: 16 }}>
+              <button className="ghost-btn" onClick={() => navigate('/lobby')}>
+                취소하고 로비로
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

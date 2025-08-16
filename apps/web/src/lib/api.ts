@@ -14,7 +14,7 @@ const defaultOrigin =
       ? 'http://127.0.0.1:5174'
       : `${window.location.protocol}//${window.location.hostname}:5174`
     : 'http://127.0.0.1:5174'
-const SERVER_ORIGIN = envOrigin && envOrigin.length > 0 ? envOrigin : defaultOrigin
+export const SERVER_ORIGIN = envOrigin && envOrigin.length > 0 ? envOrigin : defaultOrigin
 
 async function fetchJsonWithTimeout<T>(
   url: string,
@@ -33,12 +33,12 @@ async function fetchJsonWithTimeout<T>(
 }
 
 export async function loginRequest(id: string, password: string): Promise<LoginResponse> {
-  const res = await fetch(`${SERVER_ORIGIN}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id, password }),
-  })
-  return res.json()
+  const body = new URLSearchParams({ id, password })
+  return fetchJsonWithTimeout<LoginResponse>(
+    `${SERVER_ORIGIN}/auth/login`,
+    { method: 'POST', body, credentials: 'omit' },
+    5000
+  )
 }
 
 export type RegisterResponse = LoginResponse & { error?: 'INVALID_INPUT' | 'DUPLICATE_ID' }
@@ -48,12 +48,12 @@ export async function registerRequest(
   password: string,
   confirm: string
 ): Promise<RegisterResponse> {
-  const res = await fetch(`${SERVER_ORIGIN}/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id, password, confirm }),
-  })
-  return res.json()
+  const body = new URLSearchParams({ id, password, confirm })
+  return fetchJsonWithTimeout<RegisterResponse>(
+    `${SERVER_ORIGIN}/auth/register`,
+    { method: 'POST', body, credentials: 'omit' },
+    7000
+  )
 }
 
 export async function checkIdAvailability(

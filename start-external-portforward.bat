@@ -69,8 +69,11 @@ if not exist node_modules (
   npm install
 )
 set VITE_SERVER_ORIGIN=http://%HOST%:5174
+set ALLOWED_HOSTS=%HOST%
+set HMR_HOST=%HOST%
+set HMR_PROTOCOL=ws
 echo [web] Start Vite dev on :5173 (0.0.0.0) with VITE_SERVER_ORIGIN=%VITE_SERVER_ORIGIN%
-start "battle-web-dev" cmd /k "set VITE_SERVER_ORIGIN=%VITE_SERVER_ORIGIN% && npm run dev -- --host 0.0.0.0 --strictPort --port 5173"
+start "battle-web-dev" cmd /k "set VITE_SERVER_ORIGIN=%VITE_SERVER_ORIGIN% && set ALLOWED_HOSTS=%ALLOWED_HOSTS% && set HMR_HOST=%HMR_HOST% && set HMR_PROTOCOL=%HMR_PROTOCOL% && npm run dev -- --host 0.0.0.0 --strictPort --port 5173"
 popd
 
 set URL_LOCAL=http://127.0.0.1:5173

@@ -8,6 +8,9 @@ const envAllowed = (process.env.ALLOWED_HOSTS ?? '')
   .filter(Boolean)
 
 const defaultExternalHost = 'gladiator-web.loca.lt'
+const hmrProtocol = (process.env.HMR_PROTOCOL || 'wss') as 'ws' | 'wss'
+const hmrHost = process.env.HMR_HOST || defaultExternalHost
+const hmrClientPort = Number(process.env.HMR_PORT || (hmrProtocol === 'wss' ? 443 : 5173))
 
 export default defineConfig({
   plugins: [react()],
@@ -15,12 +18,12 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     strictPort: true,
-    // Allow external tunneling host
+    // Allow external tunneling host or user-provided hosts via env
     allowedHosts: [defaultExternalHost, ...envAllowed],
     hmr: {
-      protocol: 'wss',
-      host: process.env.HMR_HOST || defaultExternalHost,
-      clientPort: Number(process.env.HMR_PORT || 443),
+      protocol: hmrProtocol,
+      host: hmrHost,
+      clientPort: hmrClientPort,
     },
   },
 })

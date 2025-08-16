@@ -25,6 +25,13 @@ export default function Battle() {
   const [opponentChoice, setOpponentChoice] = useState<string | null>(null)
   const [log, setLog] = useState<string[]>([])
   const [timeLeft, setTimeLeft] = useState(10)
+  const [selfHp, setSelfHp] = useState(2)
+  const [oppHp, setOppHp] = useState(2)
+  const [selfMaxHp, setSelfMaxHp] = useState(2)
+  const [oppMaxHp, setOppMaxHp] = useState(2)
+  const [selfInjuries, setSelfInjuries] = useState<Array<'ARM' | 'LEG' | 'TORSO'>>([])
+  const [oppInjuries, setOppInjuries] = useState<Array<'ARM' | 'LEG' | 'TORSO'>>([])
+  const [momentum, setMomentum] = useState(0)
   const timerRef = useRef<number | null>(null)
   // Camera shake & hitstop
   const [shakeMs, setShakeMs] = useState(0)
@@ -69,14 +76,24 @@ export default function Battle() {
     }
   }, [round, hitstopMs])
 
-  const resolveRound = useCallback((msg: { round: number; self: string; opp: string; result: 'WIN'|'LOSE'|'DRAW'; nextRole: Role }) => {
-    const label = msg.result === 'WIN' ? '라운드 승' : msg.result === 'LOSE' ? '라운드 패' : '무승부'
-    setLog((l) => [`[R${msg.round}] 나:${msg.self} vs 상대:${msg.opp} → ${label}`, ...l])
-    setRound((r) => r + 1)
-    setChoice(null)
-    setOpponentChoice(null)
-    setRole(msg.nextRole)
-  }, [])
+  const resolveRound = useCallback(
+    (msg: {
+      round: number
+      self: string
+      opp: string
+      result: 'WIN' | 'LOSE' | 'DRAW'
+      nextRole: Role
+    }) => {
+      const label =
+        msg.result === 'WIN' ? '라운드 승' : msg.result === 'LOSE' ? '라운드 패' : '무승부'
+      setLog((l) => [`[R${msg.round}] 나:${msg.self} vs 상대:${msg.opp} → ${label}`, ...l])
+      setRound((r) => r + 1)
+      setChoice(null)
+      setOpponentChoice(null)
+      setRole(msg.nextRole)
+    },
+    []
+  )
 
   const onSelect = (id: string) => {
     setChoice(id)
@@ -87,8 +104,16 @@ export default function Battle() {
   }
 
   useEffect(() => {
-    const onResolved = (m: { round: number; self: string; opp: string; result: 'WIN'|'LOSE'|'DRAW'; nextRole: Role }) => {
+    const onResolved = (m: {
+      round: number
+      self: string
+      opp: string
+      result: 'WIN' | 'LOSE' | 'DRAW'
+      nextRole: Role
+      momentum?: number
+    }) => {
       setOpponentChoice(m.opp)
+      if (typeof m.momentum === 'number') setMomentum(m.momentum)
       // 히트스톱 & 카메라 흔들림 트리거
       setHitstopMs(120)
       setShakeMs(200)
@@ -113,11 +138,33 @@ export default function Battle() {
       })
       resolveRound(m)
     }
+    const onDecisive = (d: { round: number; hitter: string; target: string; damage: number; injured: Array<'ARM'|'LEG'|'TORSO'>; hp: number }) => {
+      const isMeTarget = d.target === socket.id
+      const dmg = d.damage ?? 1
+      if (isMeTarget) {
+        setSelfHp(d.hp)
+        setSelfMaxHp((mx) => Math.max(mx, d.hp + dmg))
+        setSelfInjuries((inj) => [...inj, ...(d.injured ?? [])])
+      } else {
+        setOppHp(d.hp)
+        setOppMaxHp((mx) => Math.max(mx, d.hp + dmg))
+        setOppInjuries((inj) => [...inj, ...(d.injured ?? [])])
+      }
+      setLog((l) => [`[결정타] ${isMeTarget ? '피격' : '가함'} - 피해:${dmg}, 남은HP:${d.hp}`, ...l])
+    }
+    const onEnd = (e: { reason: string; winner?: string }) => {
+      setLog((l) => [`전투 종료: ${e.reason} ${e.winner ? `(승자:${e.winner})` : ''}`, ...l])
+      setTimeout(() => navigate('/result'), 600)
+    }
     socket.on('battle.resolve', onResolved)
+    socket.on('battle.decisive', onDecisive)
+    socket.on('battle.end', onEnd)
     return () => {
       socket.off('battle.resolve', onResolved)
+      socket.off('battle.decisive', onDecisive)
+      socket.off('battle.end', onEnd)
     }
-  }, [resolveRound])
+  }, [resolveRound, navigate])
 
   // 프레임 루프: 히트스톱/카메라 쉐이크 처리
   useEffect(() => {
@@ -158,24 +205,67 @@ export default function Battle() {
     }
   }, [shakeMs, hitstopMs, spark, trail])
 
+  const canUseSkill = useCallback(
+    (s: Skill) => {
+      if (s.role === 'ATTACK' && selfInjuries.includes('ARM')) return false
+      if (s.role === 'DEFENSE' && s.id === 'dodge' && selfInjuries.includes('LEG')) return false
+      return !choice
+    },
+    [selfInjuries, choice]
+  )
+
+  function Hearts({ n, max }: { n: number; max: number }) {
+    const arr = Array.from({ length: max }, (_, i) => i < n)
+    return (
+      <div className="row" style={{ gap: 4 }}>
+        {arr.map((filled, i) => (
+          <div
+            key={i}
+            style={{
+              width: 12,
+              height: 12,
+              borderRadius: 2,
+              background: filled ? '#d33' : 'transparent',
+              border: '1px solid #d33',
+            }}
+          />
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="arena-frame">
       <div className="panel">
         <h3>인게임 전투</h3>
         <ResourceBar />
         <div className="parchment" style={{ marginTop: 8 }}>
-          <div className="row" style={{ gap: 24, marginBottom: 12 }}>
+          <div className="row" style={{ gap: 24, marginBottom: 12, alignItems: 'center' }}>
             <div>라운드: {round}</div>
             <div>역할: {role === 'ATTACK' ? '공격' : '방어'}</div>
             <div>남은 시간: {timeLeft}s</div>
+            <div style={{ flex: 1 }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 160, height: 10, background: '#e5e5e5', borderRadius: 6, overflow: 'hidden' }}>
+                <div
+                  style={{
+                    width: `${Math.max(0, Math.min(1, (momentum + 2) / 4)) * 100}%`,
+                    height: '100%',
+                    background: momentum >= 0 ? '#c28f2c' : '#5773c6',
+                    transition: 'width 120ms',
+                  }}
+                />
+              </div>
+              <span style={{ fontSize: 12 }}>기세</span>
+            </div>
           </div>
           <div
             style={{
               border: '1px solid #ddd',
               borderRadius: 8,
               overflow: 'hidden',
-              width: 360,
-              height: 200,
+              width: 480,
+              height: 260,
               background: '#f7f1e1',
               position: 'relative',
             }}
@@ -185,40 +275,48 @@ export default function Battle() {
               style={{
                 position: 'absolute',
                 left: cam.x + 0,
-                top: cam.y + 150,
-                width: 360,
-                height: 50,
+                top: cam.y + 180,
+                width: 480,
+                height: 60,
                 background: '#e5d3a1',
               }}
             />
-            {/* 전투원 */}
+            {/* 적(우상단) */}
             <img
               src="/sprites/fighter_red.svg"
               style={{
                 position: 'absolute',
-                left: cam.x + 64,
-                top: cam.y + 88,
-                width: 64,
-                height: 64,
+                left: cam.x + 360,
+                top: cam.y + 40,
+                width: 72,
+                height: 72,
               }}
             />
+            <div style={{ position: 'absolute', left: cam.x + 360, top: cam.y + 12 }}>
+              <Hearts n={oppHp} max={oppMaxHp} />
+            </div>
+            {/* 나(좌하단) */}
             <img
               src="/sprites/fighter_blue.svg"
               style={{
                 position: 'absolute',
-                left: cam.x + 260,
-                top: cam.y + 88,
-                width: 64,
-                height: 64,
+                left: cam.x + 80,
+                top: cam.y + 140,
+                width: 72,
+                height: 72,
+                transform: 'scaleX(-1)',
               }}
             />
+            <div style={{ position: 'absolute', left: cam.x + 80, top: cam.y + 216 }}>
+              <Hearts n={selfHp} max={selfMaxHp} />
+            </div>
             {/* 간단한 효과 */}
             {choice === 'heavy' && (
               <div
                 style={{
                   position: 'absolute',
-                  left: cam.x + 120,
-                  top: cam.y + 110,
+                  left: cam.x + 150,
+                  top: cam.y + 180,
                   width: 50,
                   height: 3,
                   background: '#aa0000',
@@ -230,8 +328,8 @@ export default function Battle() {
               <div
                 style={{
                   position: 'absolute',
-                  left: cam.x + 120,
-                  top: cam.y + 110,
+                  left: cam.x + 150,
+                  top: cam.y + 180,
                   width: 40,
                   height: 3,
                   background: '#aa8800',
@@ -242,8 +340,8 @@ export default function Battle() {
               <div
                 style={{
                   position: 'absolute',
-                  left: cam.x + 230,
-                  top: cam.y + 90,
+                  left: cam.x + 220,
+                  top: cam.y + 160,
                   width: 20,
                   height: 40,
                   background: '#888',
@@ -256,7 +354,7 @@ export default function Battle() {
                 style={{
                   position: 'absolute',
                   left: cam.x + 240,
-                  top: cam.y + 110,
+                  top: cam.y + 180,
                   width: 24,
                   height: 24,
                   filter: 'hue-rotate(120deg)',
@@ -294,8 +392,8 @@ export default function Battle() {
               <div
                 style={{
                   position: 'absolute',
-                  left: cam.x + 120,
-                  top: cam.y + 105,
+                  left: cam.x + 150,
+                  top: cam.y + 175,
                   width: 60,
                   height: 4,
                   background: '#ffaa66',
@@ -306,7 +404,7 @@ export default function Battle() {
           </div>
           <div className="row" style={{ gap: 8, marginTop: 12 }}>
             {available.map((s) => (
-              <button key={s.id} onClick={() => onSelect(s.id)} disabled={!!choice}>
+              <button key={s.id} onClick={() => onSelect(s.id)} disabled={!canUseSkill(s)}>
                 {s.name}
               </button>
             ))}
@@ -314,6 +412,8 @@ export default function Battle() {
           <div className="row" style={{ gap: 24, marginTop: 12 }}>
             <div>내 선택: {choice ?? '-'}</div>
             <div>상대 선택: {opponentChoice ?? '-'}</div>
+            <div style={{ fontSize: 12, opacity: 0.85 }}>내 부상: {selfInjuries.join(',') || '-'}</div>
+            <div style={{ fontSize: 12, opacity: 0.85 }}>상대 부상: {oppInjuries.join(',') || '-'}</div>
           </div>
           <div className="row" style={{ gap: 8, marginTop: 12 }}>
             <button className="ghost-btn" onClick={() => navigate('/result')}>

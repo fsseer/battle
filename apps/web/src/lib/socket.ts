@@ -37,9 +37,10 @@ export const socket = io(envOrigin && envOrigin.length > 0 ? envOrigin : default
   transports: isTunnel ? ['polling'] : isHttps ? ['websocket'] : ['websocket'],
   reconnection: true,
   reconnectionAttempts: Infinity,
-  reconnectionDelay: 300,
-  reconnectionDelayMax: 2000,
+  reconnectionDelay: 800,
+  reconnectionDelayMax: 4000,
   forceNew: true,
   upgrade: !isTunnel,
   path: '/socket.io',
+  timeout: 20000,
 })

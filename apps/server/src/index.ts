@@ -29,6 +29,8 @@ const io = new Server(fastify.server, {
         origin: ['http://127.0.0.1:5173', 'http://localhost:5173', ...extraCorsOrigin],
         methods: ['GET', 'POST'],
       },
+  pingTimeout: 45000,
+  pingInterval: 20000,
 })
 
 const prisma = new PrismaClient()
@@ -472,7 +474,11 @@ io.on('connection', (socket) => {
     if (!waitingQueue.includes(socket.id)) waitingQueue.push(socket.id)
     // 현재 대기 정보 피드백
     const pos = waitingQueue.indexOf(socket.id)
-    io.to(socket.id).emit('queue.status', { state: 'WAITING', position: pos + 1, size: waitingQueue.length })
+    io.to(socket.id).emit('queue.status', {
+      state: 'WAITING',
+      position: pos + 1,
+      size: waitingQueue.length,
+    })
     if (waitingQueue.length >= 2) {
       const a = waitingQueue.shift()!
       const b = waitingQueue.shift()!

@@ -6,6 +6,8 @@ import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { evaluateSkills, evaluateTraits, type StatKey } from './skills.registry'
 import { TRAINING_CATALOG, type TrainingId } from './training.registry'
+import { BattleState, Role, SkillId, ATTACK_SKILLS, DEFENSE_SKILLS, BATTLE_DEADLINE_MS } from './battle/types'
+import { isSkillAllowedConsideringInjury, applyDecisiveDamage } from './battle/engine'
 
 const fastify = Fastify({ logger: true })
 // Allow CORS from local dev and optionally any origin via env (for quick testing over internet)
@@ -35,7 +37,6 @@ const io = new Server(fastify.server, {
 
 const prisma = new PrismaClient()
 const AP_REGEN_MS = Number(process.env.AP_REGEN_MS ?? 6 * 1000)
-const BATTLE_DEADLINE_MS = 15_000
 // AP regen: 6분당 1, 최대 100
 function applyApRegen(ch: any) {
   const now = Date.now()
@@ -426,75 +427,7 @@ fastify.post('/admin/delete-user', async (request, reply) => {
   return { ok: true, deleted: 1 }
 })
 
-type Role = 'ATTACK' | 'DEFENSE'
-// 공격: light(약공), heavy(강공), poke(견제)
-// 방어: block(막기), dodge(회피), counter(반격)
-type AttackSkill = 'light' | 'heavy' | 'poke'
-type DefenseSkill = 'block' | 'dodge' | 'counter'
-type SkillId = AttackSkill | DefenseSkill
-
-// 공격자가 이기는 관계: (강공 > 막기), (약공 > 회피), (견제 > 반격)
-const attackBeats: Record<AttackSkill, DefenseSkill> = {
-  heavy: 'block',
-  light: 'dodge',
-  poke: 'counter',
-}
-// 수비자가 이기는 관계: (막기 > 견제), (회피 > 강공), (반격 > 약공)
-const defenseBeats: Record<DefenseSkill, AttackSkill> = {
-  block: 'poke',
-  dodge: 'heavy',
-  counter: 'light',
-}
-
-const ATTACK_SKILLS: AttackSkill[] = ['light', 'heavy', 'poke']
-const DEFENSE_SKILLS: DefenseSkill[] = ['block', 'dodge', 'counter']
-function isSkillAllowedForRole(skill: SkillId, role: Role): boolean {
-  return role === 'ATTACK'
-    ? (ATTACK_SKILLS as readonly string[]).includes(skill)
-    : (DEFENSE_SKILLS as readonly string[]).includes(skill)
-}
-
-function isSkillAllowedConsideringInjury(
-  state: BattleState,
-  sid: string,
-  role: Role,
-  skill: SkillId
-): boolean {
-  const injuries = state.injuries?.[sid] ?? []
-  if (role === 'ATTACK' && injuries.includes('ARM')) return false
-  if (role === 'DEFENSE' && skill === 'dodge' && injuries.includes('LEG')) return false
-  return isSkillAllowedForRole(skill, role)
-}
-
-function applyDecisiveDamage(state: BattleState, attackerSid: string, defenderSid: string) {
-  const hp = state.hp ?? (state.hp = { [attackerSid]: 2, [defenderSid]: 2 })
-  const weapon =
-    state.weapon ?? (state.weapon = { [attackerSid]: 'ONE_HAND', [defenderSid]: 'ONE_HAND' })
-  const inj = state.injuries ?? (state.injuries = { [attackerSid]: [], [defenderSid]: [] })
-  const dmg = weapon[attackerSid] === 'TWO_HAND' ? 2 : 1
-  for (let i = 0; i < dmg; i++) {
-    const part = (['ARM', 'LEG', 'TORSO'] as const)[Math.floor(Math.random() * 3)]
-    inj[defenderSid].push(part)
-  }
-  hp[defenderSid] = Math.max(0, (hp[defenderSid] ?? 2) - dmg)
-  state.momentum = 0
-  return { dmg, injured: inj[defenderSid].slice(-dmg), hp: hp[defenderSid] }
-}
-
 // Simple in-memory matching and battle state
-type BattleState = {
-  roomId: string
-  round: number
-  players: string[] // socket ids [A,B]
-  roles: Record<string, Role> // sid -> role
-  choices: Record<string, SkillId | undefined>
-  momentum: number // >0: current attacker 우세, <0: 수비 우세
-  decisiveThreshold: number
-  deadlineAt?: number
-  hp?: Record<string, number>
-  injuries?: Record<string, Array<'ARM' | 'LEG' | 'TORSO'>>
-  weapon?: Record<string, 'ONE_HAND' | 'TWO_HAND'>
-}
 const waitingQueue: string[] = []
 const sidToBattle: Map<string, BattleState> = new Map()
 
@@ -553,7 +486,7 @@ io.on('connection', (socket) => {
   socket.on('battle.choose', (skillId: SkillId) => {
     const state = sidToBattle.get(socket.id)
     if (!state) return
-    // 역할에 맞는 스킬만 허용
+    // 역할에 맞는 스킬만 허용 (+부상 제약)
     const role = state.roles[socket.id]
     if (!isSkillAllowedConsideringInjury(state, socket.id, role, skillId)) {
       io.to(socket.id).emit('battle.error', {
@@ -571,12 +504,17 @@ io.on('connection', (socket) => {
     // 현재 공격자/방어자 식별
     const attacker = state.roles[a] === 'ATTACK' ? a : b
     const defender = attacker === a ? b : a
-    const attChoice = state.choices[attacker]! as AttackSkill
-    const defChoice = state.choices[defender]! as DefenseSkill
+    const attChoice = state.choices[attacker]! as SkillId
+    const defChoice = state.choices[defender]! as SkillId
     // 가위바위보 판정 (공격 vs 방어)
     let outcome: 'ATTACKER' | 'DEFENDER' | 'DRAW' = 'DRAW'
-    if (attackBeats[attChoice] === defChoice) outcome = 'ATTACKER'
-    else if (defenseBeats[defChoice] === attChoice) outcome = 'DEFENDER'
+    // judgeOutcome is provided by engine; to reduce imports we inline minimal logic here
+    // Outcome computation using imported beats is encapsulated in applyDecisiveDamage path
+    // For clarity, reproduce logic via simple maps
+    const aWins = (attChoice === 'heavy' && defChoice === 'block') || (attChoice === 'light' && defChoice === 'dodge') || (attChoice === 'poke' && defChoice === 'counter')
+    const dWins = (defChoice === 'block' && attChoice === 'poke') || (defChoice === 'dodge' && attChoice === 'heavy') || (defChoice === 'counter' && attChoice === 'light')
+    if (aWins) outcome = 'ATTACKER'
+    else if (dWins) outcome = 'DEFENDER'
     // 모멘텀 변경
     if (outcome === 'ATTACKER') state.momentum += 1
     else if (outcome === 'DEFENDER') state.momentum -= 1
@@ -605,7 +543,6 @@ io.on('connection', (socket) => {
           state.players.forEach((sid) => sidToBattle.delete(sid))
           return
         }
-        // 성공했지만 전투 지속: 역할은 기존 규칙(모멘텀 리셋 후 현재 부호 유지=0)로 유지
       } else {
         // 실패 시 상대에게 공세 유리(역전 기회): 역할 스왑, 모멘텀 반전 후 -1로 설정
         state.momentum = side === 'ATTACKER' ? -1 : 1
@@ -638,8 +575,7 @@ io.on('connection', (socket) => {
         : outcome === 'DEFENDER'
         ? 'WIN'
         : 'DRAW'
-    const resForB: 'WIN' | 'LOSE' | 'DRAW' =
-      resForA === 'WIN' ? 'LOSE' : resForA === 'LOSE' ? 'WIN' : 'DRAW'
+    const resForB: 'WIN' | 'LOSE' | 'DRAW' = resForA === 'WIN' ? 'LOSE' : resForA === 'LOSE' ? 'WIN' : 'DRAW'
 
     io.to(a).emit('battle.resolve', {
       round: state.round,
@@ -700,28 +636,16 @@ setInterval(() => {
       state.momentum = 0
       io.to(a).emit('battle.resolve', {
         round: state.round,
-        self:
-          state.roles[a] === 'ATTACK'
-            ? (ATTACK_SKILLS[0] as SkillId)
-            : (DEFENSE_SKILLS[0] as SkillId),
-        opp:
-          state.roles[b] === 'ATTACK'
-            ? (ATTACK_SKILLS[0] as SkillId)
-            : (DEFENSE_SKILLS[0] as SkillId),
+        self: state.roles[a] === 'ATTACK' ? (ATTACK_SKILLS[0] as SkillId) : (DEFENSE_SKILLS[0] as SkillId),
+        opp: state.roles[b] === 'ATTACK' ? (ATTACK_SKILLS[0] as SkillId) : (DEFENSE_SKILLS[0] as SkillId),
         result: 'DRAW',
         nextRole: state.roles[a],
         momentum: state.momentum,
       })
       io.to(b).emit('battle.resolve', {
         round: state.round,
-        self:
-          state.roles[b] === 'ATTACK'
-            ? (ATTACK_SKILLS[0] as SkillId)
-            : (DEFENSE_SKILLS[0] as SkillId),
-        opp:
-          state.roles[a] === 'ATTACK'
-            ? (ATTACK_SKILLS[0] as SkillId)
-            : (DEFENSE_SKILLS[0] as SkillId),
+        self: state.roles[b] === 'ATTACK' ? (ATTACK_SKILLS[0] as SkillId) : (DEFENSE_SKILLS[0] as SkillId),
+        opp: state.roles[a] === 'ATTACK' ? (ATTACK_SKILLS[0] as SkillId) : (DEFENSE_SKILLS[0] as SkillId),
         result: 'DRAW',
         nextRole: state.roles[b],
         momentum: state.momentum,

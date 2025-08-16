@@ -1,9 +1,10 @@
+/// <reference types="node" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 const envAllowed = (process.env.ALLOWED_HOSTS ?? '')
   .split(',')
-  .map((s) => s.trim())
+  .map((s: string) => s.trim())
   .filter(Boolean)
 
 const defaultExternalHost = 'gladiator-web.loca.lt'

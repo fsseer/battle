@@ -13,6 +13,8 @@ const extraCorsOrigin = corsEnv ? corsEnv.split(',') : []
 const allowAll = corsEnv.trim() === '*'
 await fastify.register(cors, {
   origin: allowAll ? true : ['http://127.0.0.1:5173', 'http://localhost:5173', ...extraCorsOrigin],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 })
 
 fastify.get('/health', async () => ({ ok: true }))
@@ -20,7 +22,10 @@ fastify.get('/health', async () => ({ ok: true }))
 const io = new Server(fastify.server, {
   cors: allowAll
     ? { origin: '*', methods: ['GET', 'POST'] }
-    : { origin: ['http://127.0.0.1:5173', 'http://localhost:5173', ...extraCorsOrigin], methods: ['GET', 'POST'] },
+    : {
+        origin: ['http://127.0.0.1:5173', 'http://localhost:5173', ...extraCorsOrigin],
+        methods: ['GET', 'POST'],
+      },
 })
 
 const prisma = new PrismaClient()

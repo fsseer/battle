@@ -38,11 +38,7 @@ export default function Battle() {
     battleReducer,
     createInitialState((battleData?.role as Role) || 'ATTACK')
   )
-  const {
-    round,
-    role,
-    log,
-  } = state
+  const { round, role, log } = state
 
   const [timeLeft, setTimeLeft] = useState(10)
   const timerRef = useRef<number | null>(null)
@@ -230,7 +226,7 @@ export default function Battle() {
           <p>역할: {role}</p>
           <p>시간: {timeLeft}초</p>
         </div>
-        
+
         <div className="battle-log">
           <h3>전투 로그</h3>
           {log.map((entry, index) => (

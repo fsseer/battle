@@ -6,10 +6,7 @@ interface OutGameLayoutProps {
   backgroundImage?: string
 }
 
-export default function OutGameLayout({
-  children,
-  backgroundImage,
-}: OutGameLayoutProps) {
+export default function OutGameLayout({ children, backgroundImage }: OutGameLayoutProps) {
   return (
     <div className="outgame-layout">
       {/* 상단 바 */}

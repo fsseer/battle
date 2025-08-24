@@ -1,0 +1,135 @@
+name: Deploy Debug
+
+on:
+  workflow_dispatch:
+    inputs:
+      debug_level:
+        description: 'Debug Level'
+        required: true
+        default: 'basic'
+        type: choice
+        options:
+          - basic
+          - verbose
+          - full
+
+jobs:
+  debug-deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Debug Info
+        run: |
+          echo "=== GitHub Actions Debug Info ==="
+          echo "Event: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "SHA: ${{ github.sha }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Workflow: ${{ github.workflow }}"
+          echo "Job: ${{ github.job }}"
+          echo "Run ID: ${{ github.run_id }}"
+          echo "Run Number: ${{ github.run_number }}"
+
+      - name: Check Secrets
+        run: |
+          echo "=== Secrets Check ==="
+          if [ -n "${{ secrets.SSH_HOST }}" ]; then
+            echo "✅ SSH_HOST is set"
+          else
+            echo "❌ SSH_HOST is NOT set"
+          fi
+
+          if [ -n "${{ secrets.SSH_USER }}" ]; then
+            echo "✅ SSH_USER is set"
+          else
+            echo "❌ SSH_USER is NOT set"
+          fi
+
+          if [ -n "${{ secrets.SSH_KEY }}" ]; then
+            echo "✅ SSH_KEY is set"
+          else
+            echo "❌ SSH_KEY is NOT set"
+          fi
+
+          if [ -n "${{ secrets.WEB_ROOT }}" ]; then
+            echo "✅ WEB_ROOT is set: ${{ secrets.WEB_ROOT }}"
+          else
+            echo "⚠️ WEB_ROOT is NOT set (using default)"
+          fi
+
+          if [ -n "${{ secrets.API_DIR }}" ]; then
+            echo "✅ API_DIR is set: ${{ secrets.API_DIR }}"
+          else
+            echo "⚠️ API_DIR is NOT set (using default)"
+          fi
+
+          if [ -n "${{ secrets.VITE_SERVER_ORIGIN }}" ]; then
+            echo "✅ VITE_SERVER_ORIGIN is set: ${{ secrets.VITE_SERVER_ORIGIN }}"
+          else
+            echo "⚠️ VITE_SERVER_ORIGIN is NOT set (using default)"
+          fi
+
+      - name: Test SSH Connection
+        if: ${{ github.event.inputs.debug_level == 'verbose' || github.event.inputs.debug_level == 'full' }}
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            echo "=== Server Info ==="
+            echo "Hostname: $(hostname)"
+            echo "OS: $(cat /etc/os-release | grep PRETTY_NAME)"
+            echo "User: $(whoami)"
+            echo "PWD: $(pwd)"
+            echo "Date: $(date)"
+            echo ""
+            echo "=== Disk Space ==="
+            df -h
+            echo ""
+            echo "=== Memory ==="
+            free -h
+            echo ""
+            echo "=== PM2 Status ==="
+            if command -v pm2 &> /dev/null; then
+              pm2 list
+            else
+              echo "PM2 is not installed"
+            fi
+
+      - name: Check Paths
+        if: ${{ github.event.inputs.debug_level == 'full' }}
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            echo "=== Path Check ==="
+            WEB_ROOT="${WEB_ROOT:-/var/www/battle-web/dist}"
+            API_DIR="${API_DIR:-/opt/gladiator/apps/server}"
+
+            echo "Checking WEB_ROOT: $WEB_ROOT"
+            if [ -d "$WEB_ROOT" ]; then
+              echo "✅ WEB_ROOT exists"
+              ls -la "$WEB_ROOT"
+            else
+              echo "❌ WEB_ROOT does not exist"
+              echo "Creating directory..."
+              sudo mkdir -p "$WEB_ROOT"
+              sudo chown $USER:$USER "$WEB_ROOT"
+            fi
+
+            echo ""
+            echo "Checking API_DIR: $API_DIR"
+            if [ -d "$API_DIR" ]; then
+              echo "✅ API_DIR exists"
+              ls -la "$API_DIR"
+            else
+              echo "❌ API_DIR does not exist"
+              echo "Creating directory..."
+              sudo mkdir -p "$API_DIR"
+              sudo chown $USER:$USER "$API_DIR"
+            fi

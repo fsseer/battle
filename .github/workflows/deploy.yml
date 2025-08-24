@@ -40,6 +40,25 @@ jobs:
           name: web-dist
           path: web-dist
 
+      - name: Validate deployment artifacts
+        run: |
+          echo "=== Validating deployment artifacts ==="
+          if [ ! -f "web-dist/index.html" ]; then
+            echo "❌ index.html not found in web-dist"
+            exit 1
+          fi
+          echo "✅ index.html found"
+
+          if [ ! -d "web-dist/assets" ]; then
+            echo "❌ assets directory not found in web-dist"
+            exit 1
+          fi
+          echo "✅ assets directory found"
+
+          echo "📁 Contents of web-dist:"
+          ls -la web-dist/
+          echo "✅ Artifacts validation passed"
+
       - name: Copy web dist to server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -50,6 +69,7 @@ jobs:
           source: 'web-dist/*'
           target: ${{ secrets.WEB_ROOT || '/var/www/battle-web/dist' }}
           strip_components: 1
+          overwrite: true
 
       - name: Deploy API (PM2 reload)
         uses: appleboy/ssh-action@v1.2.0

@@ -22,8 +22,8 @@ const SKILLS: Skill[] = [
 interface BattleState {
   opponent: string
   role: string
-  myInfo: any
-  opponentInfo: any
+  myInfo: Record<string, unknown>
+  opponentInfo: Record<string, unknown>
 }
 
 export default function Battle() {
@@ -57,11 +57,22 @@ export default function Battle() {
   // 토큰 유효성 검증 훅 사용
   useTokenValidation()
 
-  // 해상도나 방향이 유효하지 않으면 기본 메시지 표시
-  if (!isLandscape) {
-    return null // App.tsx에서 처리됨
-  }
+  const resolveRound = useCallback(
+    (msg: { round: number; self: string; opp: string; result: 0 | 1 | 2; nextRole: Role }) => {
+      dispatch({ type: 'resolve', msg })
+    },
+    []
+  )
 
+  const onSelect = useCallback((id: string) => {
+    dispatch({ type: 'select', id })
+    // 스윙 트레일 시작
+    setTrail({ id, t: 160, ttl: 160 })
+    // 서버에 선택 전송
+    socket.emit('battle.choose', id)
+  }, [])
+
+  // 모든 useEffect를 조건부 return 이전에 호출
   useEffect(() => {
     if (!battleData) {
       navigate('/match')
@@ -70,20 +81,38 @@ export default function Battle() {
 
     // 서버 연결 이벤트
     const onHello = (m: { id: string }) => console.log('server.hello', m)
-    const onFound = (m: unknown) => console.log('match.found', m)
-    const onBattleStart = (m: any) => {
+    const onFound = (m: Record<string, unknown>) => console.log('match.found', m)
+    const onBattleStart = (m: Record<string, unknown>) => {
       console.log('battle.start', m)
       // 전투 시작 이벤트 처리
     }
-    const onBattleResolve = (m: any) => {
+    const onBattleResolve = (m: Record<string, unknown>) => {
       console.log('battle.resolve', m)
-      resolveRound(m)
+      // 타입 안전성을 위해 타입 가드 추가
+      if (
+        typeof m === 'object' &&
+        m !== null &&
+        'round' in m &&
+        'self' in m &&
+        'opp' in m &&
+        'result' in m &&
+        'nextRole' in m
+      ) {
+        const typedMsg = m as {
+          round: number
+          self: string
+          opp: string
+          result: 0 | 1 | 2
+          nextRole: Role
+        }
+        resolveRound(typedMsg)
+      }
     }
-    const onBattleDecisive = (m: any) => {
+    const onBattleDecisive = (m: Record<string, unknown>) => {
       console.log('battle.decisive', m)
       // 결정타 이벤트 처리
     }
-    const onBattleEnd = (m: any) => {
+    const onBattleEnd = (m: Record<string, unknown>) => {
       console.log('battle.end', m)
       // 전투 종료 처리
       navigate('/result', { state: { result: m } })
@@ -104,7 +133,7 @@ export default function Battle() {
       socket.off('battle.decisive', onBattleDecisive)
       socket.off('battle.end', onBattleEnd)
     }
-  }, [navigate, battleData])
+  }, [navigate, battleData, resolveRound])
 
   useEffect(() => {
     // 라운드 타이머
@@ -125,37 +154,17 @@ export default function Battle() {
     return () => {
       if (timerRef.current) window.clearInterval(timerRef.current)
     }
-  }, [round, hitstopMs, available])
-
-  const resolveRound = useCallback(
-    (msg: { round: number; self: string; opp: string; result: 0 | 1 | 2; nextRole: Role }) => {
-      dispatch({ type: 'resolve', msg })
-    },
-    []
-  )
-
-  const onSelect = (id: string) => {
-    dispatch({ type: 'select', id })
-    // 스윙 트레일 시작
-    setTrail({ id, t: 160, ttl: 160 })
-    // 서버에 선택 전송
-    socket.emit('battle.choose', id)
-  }
+  }, [round, hitstopMs, available, onSelect])
 
   // 카메라 흔들림 효과
   useEffect(() => {
     if (shakeMs <= 0) return
     const frame = () => {
-      // setCam({ // Removed
-      //   x: (Math.random() - 0.5) * 8,
-      //   y: (Math.random() - 0.5) * 8,
-      // })
       frameRef.current = requestAnimationFrame(frame)
     }
     frameRef.current = requestAnimationFrame(frame)
     const timer = setTimeout(() => {
       setShakeMs(0)
-      // setCam({ x: 0, y: 0 }) // Removed
     }, shakeMs)
     return () => {
       if (frameRef.current) cancelAnimationFrame(frameRef.current)
@@ -215,6 +224,11 @@ export default function Battle() {
       if (frameRef.current) cancelAnimationFrame(frameRef.current)
     }
   }, [trail])
+
+  // 해상도나 방향이 유효하지 않으면 기본 메시지 표시
+  if (!isLandscape) {
+    return null // App.tsx에서 처리됨
+  }
 
   return (
     <div className="battle-layout landscape-layout">

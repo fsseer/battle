@@ -51,7 +51,7 @@ export default function Training() {
   useEffect(() => {
     if (catalog.length === 0) {
       get('/training/catalog')
-        .then((r: any) => {
+        .then((r: { ok: boolean; items?: TrainingItem[] }) => {
           if (r.ok) {
             console.log('Training catalog loaded:', r.items)
             setCatalog(r.items)
@@ -68,11 +68,15 @@ export default function Training() {
   // 카테고리별로 훈련 항목 그룹화
   const categorizedTraining = useMemo(() => {
     const categories = {
-      '기초 훈련': catalog.filter(item => item.category === 'BASIC'),
-      '힘 훈련': catalog.filter(item => item.category === 'BASIC' && item.name.includes('힘')),
-      '민첩 훈련': catalog.filter(item => item.category === 'BASIC' && item.name.includes('민첩')),
-      '지능 훈련': catalog.filter(item => item.category === 'BASIC' && item.name.includes('지능')),
-      '무기술 훈련': catalog.filter(item => item.category === 'WEAPON')
+      '기초 훈련': catalog.filter((item) => item.category === 'BASIC'),
+      '힘 훈련': catalog.filter((item) => item.category === 'BASIC' && item.name.includes('힘')),
+      '민첩 훈련': catalog.filter(
+        (item) => item.category === 'BASIC' && item.name.includes('민첩')
+      ),
+      '지능 훈련': catalog.filter(
+        (item) => item.category === 'BASIC' && item.name.includes('지능')
+      ),
+      '무기술 훈련': catalog.filter((item) => item.category === 'WEAPON'),
     }
     return categories
   }, [catalog])
@@ -84,7 +88,7 @@ export default function Training() {
       '힘 훈련': '💪',
       '민첩 훈련': '🏃',
       '지능 훈련': '🧠',
-      '무기술 훈련': '⚔️'
+      '무기술 훈련': '⚔️',
     }
     return iconMap[categoryName] || '📚'
   }
@@ -118,7 +122,7 @@ export default function Training() {
 
     setBusy(true)
     try {
-      const response: any = await call(endpoint, data)
+      const response: { ok: boolean; message?: string } = await call(endpoint, data)
 
       if (response.ok) {
         // 훈련 실행이나 빠른 액션 성공시 서버와 자원 동기화

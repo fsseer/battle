@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import './styles/theme.css'
 import './styles/base.css'
@@ -48,9 +48,9 @@ function App() {
   })
 
   // 해상도 요구사항 체크
-  const [showResolutionMessage, setShowResolutionMessage] = React.useState(false)
+  const [showResolutionMessage, setShowResolutionMessage] = useState(false)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const checkResolution = () => {
       const isLowResolution = window.innerWidth < 1280 || window.innerHeight < 720
       setShowResolutionMessage(isLowResolution)

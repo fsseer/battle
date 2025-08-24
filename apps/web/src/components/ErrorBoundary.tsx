@@ -1,4 +1,4 @@
-import React, { Component } from 'react'
+import React, { Component, useState, useCallback } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
 
 interface Props {
@@ -63,14 +63,14 @@ export class ErrorBoundary extends Component<Props, State> {
 
 // 함수형 컴포넌트용 에러 바운더리 훅
 export function useErrorHandler() {
-  const [error, setError] = React.useState<Error | null>(null)
+  const [error, setError] = useState<Error | null>(null)
 
-  const handleError = React.useCallback((error: Error) => {
+  const handleError = useCallback((error: Error) => {
     console.error('Error caught by useErrorHandler:', error)
     setError(error)
   }, [])
 
-  const clearError = React.useCallback(() => {
+  const clearError = useCallback(() => {
     setError(null)
   }, [])
 

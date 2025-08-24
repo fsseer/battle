@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
 import { useResourceSync } from '../hooks/useResourceSync'
@@ -27,6 +27,13 @@ export default function Lobby() {
   // 토큰 유효성 검증 훅 사용
   useTokenValidation()
 
+  const handleInitialSync = useCallback(async () => {
+    const result = await syncUserResources()
+    if (result?.success && result.data?.character) {
+      setCharacterData(result.data.character)
+    }
+  }, [syncUserResources])
+
   useEffect(() => {
     if (!user) {
       navigate('/login')
@@ -38,17 +45,10 @@ export default function Lobby() {
       handleInitialSync()
       setResourcesSynced(true)
     }
-  }, [user, navigate, resourcesSynced])
+  }, [user, navigate, resourcesSynced, handleInitialSync])
 
   // AP 자동 회복 활성화 (로비에서만 필요할 때)
   // useApRecovery() // 성능 문제로 임시 비활성화
-
-  const handleInitialSync = async () => {
-    const result = await syncUserResources()
-    if (result?.success && result.data?.character) {
-      setCharacterData(result.data.character)
-    }
-  }
 
   const handleLogout = () => {
     logout()

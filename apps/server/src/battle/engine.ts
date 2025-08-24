@@ -53,7 +53,9 @@ export function judgeOutcome(
   attChoice: SkillId,
   defChoice: SkillId
 ): 'ATTACKER' | 'DEFENDER' | 'DRAW' {
-  if (attChoice in attackBeats && attackBeats[attChoice as AttackSkill] === defChoice) return 'ATTACKER'
-  if (defChoice in defenseBeats && defenseBeats[defChoice as DefenseSkill] === attChoice) return 'DEFENDER'
+  if (attChoice in attackBeats && attackBeats[attChoice as AttackSkill] === defChoice)
+    return 'ATTACKER'
+  if (defChoice in defenseBeats && defenseBeats[defChoice as DefenseSkill] === attChoice)
+    return 'DEFENDER'
   return 'DRAW'
 }

@@ -428,9 +428,9 @@ server.on('request', async (req, res) => {
   if (req.url === '/training/catalog' && req.method === 'GET') {
     try {
       console.log('[Training] 카탈로그 조회 요청')
-      
+
       // 클라이언트가 기대하는 형식으로 데이터 변환
-      const catalogItems = TRAINING_CATALOG.map(item => ({
+      const catalogItems = TRAINING_CATALOG.map((item) => ({
         id: item.id,
         name: item.name,
         description: item.description || '',
@@ -439,14 +439,16 @@ server.on('request', async (req, res) => {
         goldCost: item.goldCost || 0,
         stressDelta: item.stressDelta,
         weaponKind: item.weaponKind,
-        weaponXp: item.weaponXp
+        weaponXp: item.weaponXp,
       }))
 
       res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({
-        ok: true,
-        items: catalogItems
-      }))
+      res.end(
+        JSON.stringify({
+          ok: true,
+          items: catalogItems,
+        })
+      )
     } catch (error) {
       console.error('[Training] 카탈로그 조회 실패:', error)
       res.writeHead(500, { 'Content-Type': 'application/json' })
@@ -465,22 +467,37 @@ server.on('request', async (req, res) => {
 
       req.on('end', async () => {
         try {
-          const params = new URLSearchParams(body)
-          const trainingId = params.get('id')
+          console.log('[Training] 훈련 실행 요청 body:', body)
+          
+          // JSON 요청 처리
+          let requestData
+          try {
+            requestData = JSON.parse(body)
+          } catch {
+            // JSON 파싱 실패 시 URLSearchParams로 시도
+            const params = new URLSearchParams(body)
+            requestData = { id: params.get('id') }
+          }
+
+          const trainingId = requestData.id
 
           if (!trainingId) {
             res.writeHead(400, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ ok: false, error: 'INVALID_INPUT' }))
+            res.end(JSON.stringify({ ok: false, error: 'INVALID_INPUT', message: '훈련 ID가 필요합니다.' }))
             return
           }
 
+          console.log('[Training] 훈련 ID:', trainingId)
+
           // 훈련 아이템 찾기
-          const trainingItem = TRAINING_CATALOG.find(item => item.id === trainingId)
+          const trainingItem = TRAINING_CATALOG.find((item) => item.id === trainingId)
           if (!trainingItem) {
             res.writeHead(404, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ ok: false, error: 'TRAINING_NOT_FOUND' }))
+            res.end(JSON.stringify({ ok: false, error: 'TRAINING_NOT_FOUND', message: '존재하지 않는 훈련입니다.' }))
             return
           }
+
+          console.log('[Training] 훈련 아이템 찾음:', trainingItem.name)
 
           // TODO: 실제 훈련 실행 로직 구현
           const result = {
@@ -489,25 +506,27 @@ server.on('request', async (req, res) => {
             apCost: trainingItem.apCost,
             stressDelta: trainingItem.stressDelta,
             goldCost: trainingItem.goldCost || 0,
-            message: `${trainingItem.name} 훈련이 완료되었습니다.`
+            message: `${trainingItem.name} 훈련이 완료되었습니다.`,
           }
 
           console.log('[Training] 훈련 실행 완료:', result)
           res.writeHead(200, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({
-            ok: true,
-            ...result
-          }))
+          res.end(
+            JSON.stringify({
+              ok: true,
+              ...result,
+            })
+          )
         } catch (error) {
           console.error('[Training] 훈련 실행 실패:', error)
           res.writeHead(500, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ ok: false, error: 'TRAINING_EXECUTION_ERROR' }))
+          res.end(JSON.stringify({ ok: false, error: 'TRAINING_EXECUTION_ERROR', message: '훈련 실행 중 오류가 발생했습니다.' }))
         }
       })
     } catch (error) {
       console.error('[Training] 훈련 실행 실패:', error)
       res.writeHead(500, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ ok: false, error: 'TRAINING_EXECUTION_ERROR' }))
+      res.end(JSON.stringify({ ok: false, error: 'TRAINING_EXECUTION_ERROR', message: '훈련 실행 중 오류가 발생했습니다.' }))
     }
     return
   }
@@ -522,14 +541,27 @@ server.on('request', async (req, res) => {
 
       req.on('end', async () => {
         try {
-          const params = new URLSearchParams(body)
-          const type = params.get('type')
+          console.log('[Training] 빠른 액션 요청 body:', body)
+          
+          // JSON 요청 처리
+          let requestData
+          try {
+            requestData = JSON.parse(body)
+          } catch {
+            // JSON 파싱 실패 시 URLSearchParams로 시도
+            const params = new URLSearchParams(body)
+            requestData = { type: params.get('type') }
+          }
+
+          const type = requestData.type
 
           if (!type || (type !== 'gold' && type !== 'stress')) {
             res.writeHead(400, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ ok: false, error: 'INVALID_ACTION' }))
+            res.end(JSON.stringify({ ok: false, error: 'INVALID_ACTION', message: '잘못된 액션 타입입니다.' }))
             return
           }
+
+          console.log('[Training] 빠른 액션 타입:', type)
 
           let result
           if (type === 'gold') {
@@ -537,33 +569,35 @@ server.on('request', async (req, res) => {
               success: true,
               apCost: 5,
               goldGain: 10,
-              message: 'AP 5를 소모하여 골드 10을 획득했습니다.'
+              message: 'AP 5를 소모하여 골드 10을 획득했습니다.',
             }
           } else if (type === 'stress') {
             result = {
               success: true,
               apCost: 2,
               stressReduction: 5,
-              message: 'AP 2를 소모하여 스트레스 5를 감소시켰습니다.'
+              message: 'AP 2를 소모하여 스트레스 5를 감소시켰습니다.',
             }
           }
 
           console.log('[Training] 빠른 액션 실행 완료:', result)
           res.writeHead(200, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({
-            ok: true,
-            ...result
-          }))
+          res.end(
+            JSON.stringify({
+              ok: true,
+              ...result,
+            })
+          )
         } catch (error) {
           console.error('[Training] 빠른 액션 실행 실패:', error)
           res.writeHead(500, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ ok: false, error: 'QUICK_ACTION_ERROR' }))
+          res.end(JSON.stringify({ ok: false, error: 'QUICK_ACTION_ERROR', message: '빠른 액션 실행 중 오류가 발생했습니다.' }))
         }
       })
     } catch (error) {
       console.error('[Training] 빠른 액션 실행 실패:', error)
       res.writeHead(500, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ ok: false, error: 'QUICK_ACTION_ERROR' }))
+      res.end(JSON.stringify({ ok: false, error: 'QUICK_ACTION_ERROR', message: '빠른 액션 실행 중 오류가 발생했습니다.' }))
     }
     return
   }

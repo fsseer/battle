@@ -457,43 +457,73 @@ server.on('request', async (req, res) => {
     return
   }
 
-  // 훈련 실행 API
+    // 훈련 실행 API
   if (req.url === '/training/run' && req.method === 'POST') {
+    console.log('[Training] 훈련 실행 API 호출됨')
+    console.log('[Training] 요청 URL:', req.url)
+    console.log('[Training] 요청 메서드:', req.method)
+    console.log('[Training] 요청 헤더:', req.headers)
+    
     try {
       let body = ''
       req.on('data', (chunk) => {
         body += chunk.toString()
+        console.log('[Training] 데이터 청크 수신:', chunk.toString())
       })
 
       req.on('end', async () => {
         try {
-          console.log('[Training] 훈련 실행 요청 body:', body)
+          console.log('[Training] 훈련 실행 요청 body 완료:', body)
+          console.log('[Training] body 길이:', body.length)
+          console.log('[Training] body 타입:', typeof body)
           
           // JSON 요청 처리
           let requestData
           try {
             requestData = JSON.parse(body)
-          } catch {
+            console.log('[Training] JSON 파싱 성공:', requestData)
+          } catch (parseError) {
+            console.log('[Training] JSON 파싱 실패, URLSearchParams 시도:', parseError)
             // JSON 파싱 실패 시 URLSearchParams로 시도
             const params = new URLSearchParams(body)
             requestData = { id: params.get('id') }
+            console.log('[Training] URLSearchParams 결과:', requestData)
           }
 
           const trainingId = requestData.id
+          console.log('[Training] 추출된 훈련 ID:', trainingId)
 
           if (!trainingId) {
+            console.log('[Training] 훈련 ID 누락')
             res.writeHead(400, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ ok: false, error: 'INVALID_INPUT', message: '훈련 ID가 필요합니다.' }))
+            res.end(
+              JSON.stringify({
+                ok: false,
+                error: 'INVALID_INPUT',
+                message: '훈련 ID가 필요합니다.',
+              })
+            )
             return
           }
 
-          console.log('[Training] 훈련 ID:', trainingId)
+          console.log('[Training] 훈련 ID 검증 완료:', trainingId)
 
           // 훈련 아이템 찾기
           const trainingItem = TRAINING_CATALOG.find((item) => item.id === trainingId)
+          console.log('[Training] TRAINING_CATALOG 길이:', TRAINING_CATALOG.length)
+          console.log('[Training] 찾으려는 ID:', trainingId)
+          console.log('[Training] 사용 가능한 ID들:', TRAINING_CATALOG.map(item => item.id))
+          
           if (!trainingItem) {
+            console.log('[Training] 훈련 아이템을 찾을 수 없음')
             res.writeHead(404, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ ok: false, error: 'TRAINING_NOT_FOUND', message: '존재하지 않는 훈련입니다.' }))
+            res.end(
+              JSON.stringify({
+                ok: false,
+                error: 'TRAINING_NOT_FOUND',
+                message: '존재하지 않는 훈련입니다.',
+              })
+            )
             return
           }
 
@@ -520,13 +550,25 @@ server.on('request', async (req, res) => {
         } catch (error) {
           console.error('[Training] 훈련 실행 실패:', error)
           res.writeHead(500, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ ok: false, error: 'TRAINING_EXECUTION_ERROR', message: '훈련 실행 중 오류가 발생했습니다.' }))
+          res.end(
+            JSON.stringify({
+              ok: false,
+              error: 'TRAINING_EXECUTION_ERROR',
+              message: '훈련 실행 중 오류가 발생했습니다.',
+            })
+          )
         }
       })
     } catch (error) {
       console.error('[Training] 훈련 실행 실패:', error)
       res.writeHead(500, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ ok: false, error: 'TRAINING_EXECUTION_ERROR', message: '훈련 실행 중 오류가 발생했습니다.' }))
+      res.end(
+        JSON.stringify({
+          ok: false,
+          error: 'TRAINING_EXECUTION_ERROR',
+          message: '훈련 실행 중 오류가 발생했습니다.',
+        })
+      )
     }
     return
   }
@@ -542,7 +584,7 @@ server.on('request', async (req, res) => {
       req.on('end', async () => {
         try {
           console.log('[Training] 빠른 액션 요청 body:', body)
-          
+
           // JSON 요청 처리
           let requestData
           try {
@@ -557,7 +599,13 @@ server.on('request', async (req, res) => {
 
           if (!type || (type !== 'gold' && type !== 'stress')) {
             res.writeHead(400, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ ok: false, error: 'INVALID_ACTION', message: '잘못된 액션 타입입니다.' }))
+            res.end(
+              JSON.stringify({
+                ok: false,
+                error: 'INVALID_ACTION',
+                message: '잘못된 액션 타입입니다.',
+              })
+            )
             return
           }
 
@@ -591,13 +639,25 @@ server.on('request', async (req, res) => {
         } catch (error) {
           console.error('[Training] 빠른 액션 실행 실패:', error)
           res.writeHead(500, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ ok: false, error: 'QUICK_ACTION_ERROR', message: '빠른 액션 실행 중 오류가 발생했습니다.' }))
+          res.end(
+            JSON.stringify({
+              ok: false,
+              error: 'QUICK_ACTION_ERROR',
+              message: '빠른 액션 실행 중 오류가 발생했습니다.',
+            })
+          )
         }
       })
     } catch (error) {
       console.error('[Training] 빠른 액션 실행 실패:', error)
       res.writeHead(500, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ ok: false, error: 'QUICK_ACTION_ERROR', message: '빠른 액션 실행 중 오류가 발생했습니다.' }))
+      res.end(
+        JSON.stringify({
+          ok: false,
+          error: 'QUICK_ACTION_ERROR',
+          message: '빠른 액션 실행 중 오류가 발생했습니다.',
+        })
+      )
     }
     return
   }

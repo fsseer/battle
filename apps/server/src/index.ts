@@ -8,6 +8,7 @@ import { SmartCache } from './services/smartCache'
 import { logger, type LogContext } from './utils/logger'
 import { hashPassword, verifyPassword } from './utils/security'
 import { generateTokens, verifyToken } from './utils/jwt'
+import { TRAINING_CATALOG } from './training.registry'
 
 const prisma = new PrismaClient()
 const server = createServer()
@@ -419,6 +420,150 @@ server.on('request', async (req, res) => {
       console.error('[Validate] 오류:', error)
       res.writeHead(500, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ ok: false, error: 'Internal error' }))
+    }
+    return
+  }
+
+  // 훈련 카탈로그 API
+  if (req.url === '/training/catalog' && req.method === 'GET') {
+    try {
+      console.log('[Training] 카탈로그 조회 요청')
+      
+      // 클라이언트가 기대하는 형식으로 데이터 변환
+      const catalogItems = TRAINING_CATALOG.map(item => ({
+        id: item.id,
+        name: item.name,
+        description: item.description || '',
+        category: item.category,
+        apCost: item.apCost,
+        goldCost: item.goldCost || 0,
+        stressDelta: item.stressDelta,
+        weaponKind: item.weaponKind,
+        weaponXp: item.weaponXp
+      }))
+
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({
+        ok: true,
+        items: catalogItems
+      }))
+    } catch (error) {
+      console.error('[Training] 카탈로그 조회 실패:', error)
+      res.writeHead(500, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, error: 'TRAINING_CATALOG_ERROR' }))
+    }
+    return
+  }
+
+  // 훈련 실행 API
+  if (req.url === '/training/run' && req.method === 'POST') {
+    try {
+      let body = ''
+      req.on('data', (chunk) => {
+        body += chunk.toString()
+      })
+
+      req.on('end', async () => {
+        try {
+          const params = new URLSearchParams(body)
+          const trainingId = params.get('id')
+
+          if (!trainingId) {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ ok: false, error: 'INVALID_INPUT' }))
+            return
+          }
+
+          // 훈련 아이템 찾기
+          const trainingItem = TRAINING_CATALOG.find(item => item.id === trainingId)
+          if (!trainingItem) {
+            res.writeHead(404, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ ok: false, error: 'TRAINING_NOT_FOUND' }))
+            return
+          }
+
+          // TODO: 실제 훈련 실행 로직 구현
+          const result = {
+            success: true,
+            trainingId,
+            apCost: trainingItem.apCost,
+            stressDelta: trainingItem.stressDelta,
+            goldCost: trainingItem.goldCost || 0,
+            message: `${trainingItem.name} 훈련이 완료되었습니다.`
+          }
+
+          console.log('[Training] 훈련 실행 완료:', result)
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({
+            ok: true,
+            ...result
+          }))
+        } catch (error) {
+          console.error('[Training] 훈련 실행 실패:', error)
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: false, error: 'TRAINING_EXECUTION_ERROR' }))
+        }
+      })
+    } catch (error) {
+      console.error('[Training] 훈련 실행 실패:', error)
+      res.writeHead(500, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, error: 'TRAINING_EXECUTION_ERROR' }))
+    }
+    return
+  }
+
+  // 빠른 액션 API
+  if (req.url === '/training/quick' && req.method === 'POST') {
+    try {
+      let body = ''
+      req.on('data', (chunk) => {
+        body += chunk.toString()
+      })
+
+      req.on('end', async () => {
+        try {
+          const params = new URLSearchParams(body)
+          const type = params.get('type')
+
+          if (!type || (type !== 'gold' && type !== 'stress')) {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ ok: false, error: 'INVALID_ACTION' }))
+            return
+          }
+
+          let result
+          if (type === 'gold') {
+            result = {
+              success: true,
+              apCost: 5,
+              goldGain: 10,
+              message: 'AP 5를 소모하여 골드 10을 획득했습니다.'
+            }
+          } else if (type === 'stress') {
+            result = {
+              success: true,
+              apCost: 2,
+              stressReduction: 5,
+              message: 'AP 2를 소모하여 스트레스 5를 감소시켰습니다.'
+            }
+          }
+
+          console.log('[Training] 빠른 액션 실행 완료:', result)
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({
+            ok: true,
+            ...result
+          }))
+        } catch (error) {
+          console.error('[Training] 빠른 액션 실행 실패:', error)
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: false, error: 'QUICK_ACTION_ERROR' }))
+        }
+      })
+    } catch (error) {
+      console.error('[Training] 빠른 액션 실행 실패:', error)
+      res.writeHead(500, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, error: 'QUICK_ACTION_ERROR' }))
     }
     return
   }

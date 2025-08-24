@@ -1,4 +1,5 @@
-import type { WeaponKind } from '@prisma/client'
+// WeaponKind 타입 정의 (Prisma 스키마와 일치)
+export type WeaponKind = 'ONE_HAND' | 'TWO_HAND' | 'SHIELD' | 'DAGGER' | 'SPEAR' | 'AXE'
 
 export type StatKey = 'str'|'agi'|'int'|'luck'|'fate'
 

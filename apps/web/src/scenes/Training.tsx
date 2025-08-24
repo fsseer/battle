@@ -65,6 +65,42 @@ export default function Training() {
     }
   }, [catalog.length])
 
+  // 카테고리별로 훈련 항목 그룹화
+  const categorizedTraining = useMemo(() => {
+    const categories = {
+      '기초 훈련': catalog.filter(item => item.category === 'BASIC'),
+      '힘 훈련': catalog.filter(item => item.category === 'BASIC' && item.name.includes('힘')),
+      '민첩 훈련': catalog.filter(item => item.category === 'BASIC' && item.name.includes('민첩')),
+      '지능 훈련': catalog.filter(item => item.category === 'BASIC' && item.name.includes('지능')),
+      '무기술 훈련': catalog.filter(item => item.category === 'WEAPON')
+    }
+    return categories
+  }, [catalog])
+
+  // 카테고리별 아이콘 반환 함수
+  const getCategoryIcon = (categoryName: string) => {
+    const iconMap: Record<string, string> = {
+      '기초 훈련': '💪',
+      '힘 훈련': '💪',
+      '민첩 훈련': '🏃',
+      '지능 훈련': '🧠',
+      '무기술 훈련': '⚔️'
+    }
+    return iconMap[categoryName] || '📚'
+  }
+
+  // 서브카테고리별 아이콘 반환 함수
+  const getSubcategoryIcon = (itemName: string) => {
+    if (itemName.includes('한손검')) return '🗡️'
+    if (itemName.includes('양손검')) return '⚔️'
+    if (itemName.includes('쌍검')) return '⚔️'
+    if (itemName.includes('체력')) return '💪'
+    if (itemName.includes('힘')) return '💪'
+    if (itemName.includes('민첩')) return '🏃'
+    if (itemName.includes('지능')) return '🧠'
+    return '📚'
+  }
+
   // 카테고리 토글 함수
   const toggleCategory = (category: string) => {
     if (openCategory === category) {
@@ -270,14 +306,14 @@ export default function Training() {
                 <div className="landscape-grid">
                   <LandscapeButton
                     disabled={busy}
-                    onClick={() => handleCall('/training/quick', { type: 'ap_to_gold' })}
+                    onClick={() => handleCall('/training/quick', { type: 'gold' })}
                     variant="success"
                   >
                     💪 AP-5 → 골드+10
                   </LandscapeButton>
                   <LandscapeButton
                     disabled={busy}
-                    onClick={() => handleCall('/training/quick', { type: 'ap_to_stress' })}
+                    onClick={() => handleCall('/training/quick', { type: 'stress' })}
                     variant="secondary"
                   >
                     🧘 AP-2 → 스트레스-5

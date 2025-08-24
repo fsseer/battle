@@ -3,6 +3,7 @@ import { createSuccessResponse, createErrorResponse } from '../types/api'
 import { SmartCache } from '../services/smartCache'
 import { ResourceManager } from '../services/resourceManager'
 import { logger } from '../utils/logger'
+import { TRAINING_CATALOG } from '../training.registry'
 
 interface GameRoutesOptions {
   smartCache: SmartCache
@@ -164,6 +165,108 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
     } catch (error) {
       logger.error('게임 상태 조회 실패', { error })
       return createErrorResponse('GAME_STATE_FETCH_ERROR', '게임 상태 조회에 실패했습니다.')
+    }
+  })
+
+  // 훈련 카탈로그 조회
+  fastify.get('/training/catalog', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      logger.debug('훈련 카탈로그 조회 요청')
+      
+      // 클라이언트가 기대하는 형식으로 데이터 변환
+      const catalogItems = TRAINING_CATALOG.map(item => ({
+        id: item.id,
+        name: item.name,
+        description: item.description || '',
+        category: item.category,
+        apCost: item.apCost,
+        goldCost: item.goldCost || 0,
+        stressDelta: item.stressDelta,
+        weaponKind: item.weaponKind,
+        weaponXp: item.weaponXp
+      }))
+
+      return createSuccessResponse({ items: catalogItems })
+    } catch (error) {
+      logger.error('훈련 카탈로그 조회 실패', { error })
+      return createErrorResponse('TRAINING_CATALOG_ERROR', '훈련 카탈로그 조회에 실패했습니다.')
+    }
+  })
+
+  // 훈련 실행
+  fastify.post('/training/run', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { id: trainingId } = request.body as { id: string }
+      const token = request.headers.authorization?.replace('Bearer ', '')
+      
+      if (!token) {
+        return createErrorResponse('UNAUTHORIZED', '인증이 필요합니다.')
+      }
+
+      // TODO: 토큰에서 사용자 ID 추출 및 검증
+      const userId = 'temp-user-id' // 실제로는 JWT에서 추출
+
+      // 훈련 아이템 찾기
+      const trainingItem = TRAINING_CATALOG.find(item => item.id === trainingId)
+      if (!trainingItem) {
+        return createErrorResponse('TRAINING_NOT_FOUND', '존재하지 않는 훈련입니다.')
+      }
+
+      // TODO: 실제 훈련 실행 로직 구현
+      const result = {
+        success: true,
+        trainingId,
+        apCost: trainingItem.apCost,
+        stressDelta: trainingItem.stressDelta,
+        goldCost: trainingItem.goldCost || 0,
+        message: `${trainingItem.name} 훈련이 완료되었습니다.`
+      }
+
+      logger.info('훈련 실행 완료', { userId, trainingId, result })
+      return createSuccessResponse(result)
+    } catch (error) {
+      logger.error('훈련 실행 실패', { error })
+      return createErrorResponse('TRAINING_EXECUTION_ERROR', '훈련 실행에 실패했습니다.')
+    }
+  })
+
+  // 빠른 액션 (AP 소모로 골드 획득 또는 스트레스 감소)
+  fastify.post('/training/quick', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { type } = request.body as { type: 'gold' | 'stress' }
+      const token = request.headers.authorization?.replace('Bearer ', '')
+      
+      if (!token) {
+        return createErrorResponse('UNAUTHORIZED', '인증이 필요합니다.')
+      }
+
+      // TODO: 토큰에서 사용자 ID 추출 및 검증
+      const userId = 'temp-user-id' // 실제로는 JWT에서 추출
+
+      let result
+      if (type === 'gold') {
+        result = {
+          success: true,
+          apCost: 5,
+          goldGain: 10,
+          message: 'AP 5를 소모하여 골드 10을 획득했습니다.'
+        }
+      } else if (type === 'stress') {
+        result = {
+          success: true,
+          apCost: 2,
+          stressReduction: 5,
+          message: 'AP 2를 소모하여 스트레스 5를 감소시켰습니다.'
+        }
+      } else {
+        return createErrorResponse('INVALID_ACTION', '잘못된 액션 타입입니다.')
+      }
+
+      logger.info('빠른 액션 실행 완료', { userId, type, result })
+      return createSuccessResponse(result)
+    } catch (error) {
+      logger.error('빠른 액션 실행 실패', { error })
+      return createErrorResponse('QUICK_ACTION_ERROR', '빠른 액션 실행에 실패했습니다.')
     }
   })
 

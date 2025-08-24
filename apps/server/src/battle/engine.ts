@@ -3,6 +3,8 @@ import {
   DEFENSE_SKILLS,
   Role,
   SkillId,
+  AttackSkill,
+  DefenseSkill,
   BattleState,
   Injury,
   attackBeats,
@@ -51,7 +53,7 @@ export function judgeOutcome(
   attChoice: SkillId,
   defChoice: SkillId
 ): 'ATTACKER' | 'DEFENDER' | 'DRAW' {
-  if (attackBeats[attChoice as any] === defChoice) return 'ATTACKER'
-  if (defenseBeats[defChoice as any] === attChoice) return 'DEFENDER'
+  if (attChoice in attackBeats && attackBeats[attChoice as AttackSkill] === defChoice) return 'ATTACKER'
+  if (defChoice in defenseBeats && defenseBeats[defChoice as DefenseSkill] === attChoice) return 'DEFENDER'
   return 'DRAW'
 }

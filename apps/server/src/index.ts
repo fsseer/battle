@@ -5,7 +5,7 @@ import { createServer } from 'http'
 import { HybridSyncService } from './services/hybridSync'
 import { ResourceManager } from './services/resourceManager'
 import { SmartCache } from './services/smartCache'
-import { logger } from './utils/logger'
+import { logger, type LogContext } from './utils/logger'
 import { hashPassword, verifyPassword } from './utils/security'
 import { generateTokens, verifyToken } from './utils/jwt'
 
@@ -500,7 +500,7 @@ const start = async () => {
     logger.info(`서버가 포트 5174에서 실행 중입니다.`)
     logger.info('서비스 초기화 완료')
   } catch (err) {
-    logger.error('서버 시작 실패:', err)
+    logger.error('서버 시작 실패:', err as LogContext)
     process.exit(1)
   }
 }

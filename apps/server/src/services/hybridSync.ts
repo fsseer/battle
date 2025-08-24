@@ -74,7 +74,7 @@ export class HybridSyncService {
 
       // 구독 해제 요청 처리
       socket.on('unsubscribe', (data: { entity: string; entityId: string }) => {
-        this.unsubscribe(socket.id, data.entity, entityId)
+        this.unsubscribe(socket.id, data.entity, data.entityId)
       })
 
       // 연결 해제 시 구독 정리

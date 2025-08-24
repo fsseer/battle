@@ -423,6 +423,7 @@ export default function Login() {
                 placeholder="비밀번호를 입력하세요"
                 required
               />
+              {mode === 'login' && pwErr && <div className="error-message">{pwErr}</div>}
             </div>
 
             {mode === 'register' && (

@@ -110,5 +110,3 @@ export const translations: Record<Language, Record<string, string>> = {
     'lobby.quick': 'クイックマッチ',
   },
 }
-
-

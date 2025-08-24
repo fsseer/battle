@@ -1,0 +1,298 @@
+/* ===== MENU PANEL STYLES ===== */
+
+/* 메뉴 패널 기본 스타일 */
+.menu-panel {
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  border: none;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  position: relative;
+  z-index: 10;
+}
+
+/* 메뉴 패널 헤더 */
+.menu-panel-header {
+  text-align: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.menu-panel-title {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+.menu-panel-subtitle {
+  color: #ccc;
+  font-size: 14px;
+  margin: 0;
+  opacity: 0.8;
+}
+
+/* 메뉴 섹션 */
+.menu-section {
+  margin-bottom: 20px;
+}
+
+.menu-section-title {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  text-align: center;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* 메뉴 카드 */
+.menu-card {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.menu-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.menu-card:last-child {
+  margin-bottom: 0;
+}
+
+/* 메뉴 버튼 */
+.menu-btn {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, var(--bronze), #d2691e);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.menu-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(139, 69, 19, 0.4);
+}
+
+.menu-btn:active:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(139, 69, 19, 0.4);
+}
+
+.menu-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 버튼 변형 스타일 */
+.menu-btn-secondary {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.menu-btn-secondary:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.1));
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.menu-btn-danger {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+}
+
+.menu-btn-danger:hover:not(:disabled) {
+  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.4);
+}
+
+.menu-btn-success {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+}
+
+.menu-btn-success:hover:not(:disabled) {
+  box-shadow: 0 8px 24px rgba(22, 163, 74, 0.4);
+}
+
+/* 특수 버튼 스타일 */
+.menu-btn-icon {
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+.menu-btn-main {
+  background: linear-gradient(135deg, var(--bronze), #d2691e);
+  font-size: 16px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+}
+
+.menu-btn-toggle {
+  background: linear-gradient(135deg, rgba(139, 69, 19, 0.8), rgba(193, 129, 53, 0.6));
+  border: 1px solid rgba(139, 69, 19, 0.4);
+  margin-bottom: 20px;
+}
+
+/* 메뉴 그리드 */
+.menu-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.menu-grid .menu-btn {
+  margin-bottom: 0;
+  font-size: 12px;
+  padding: 10px 8px;
+}
+
+/* 메뉴 리스트 */
+.menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.menu-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.menu-list-item:last-child {
+  border-bottom: none;
+}
+
+.menu-list-label {
+  color: #ccc;
+  font-size: 14px;
+}
+
+.menu-list-value {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.menu-list-item.available .menu-list-value {
+  color: #68d391;
+}
+
+.menu-list-item.locked .menu-list-value {
+  color: #fca5a5;
+}
+
+/* 메뉴 상태 그리드 */
+.menu-status-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+.menu-status-item {
+  text-align: center;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+.menu-status-label {
+  display: block;
+  color: #ccc;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.menu-status-value {
+  display: block;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* 메뉴 액션 힌트 */
+.menu-action-hint {
+  color: #ccc;
+  font-size: 12px;
+  text-align: center;
+  margin: 0;
+  opacity: 0.8;
+}
+
+/* 메뉴 구분선 */
+.menu-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 20px 0;
+}
+
+/* 메뉴 스크롤바 스타일 */
+.menu-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.menu-panel::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.menu-panel::-webkit-scrollbar-thumb {
+  background: var(--bronze);
+  border-radius: 4px;
+}
+
+.menu-panel::-webkit-scrollbar-thumb:hover {
+  background: #d2691e;
+}
+
+/* 반응형 조정 */
+@media (max-width: 1200px) {
+  .menu-panel {
+    padding: 16px;
+  }
+
+  .menu-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1000px) {
+  .menu-panel-title {
+    font-size: 18px;
+  }
+
+  .menu-section-title {
+    font-size: 14px;
+  }
+
+  .menu-btn {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .menu-btn-main {
+    font-size: 14px;
+    padding: 14px 18px;
+  }
+}

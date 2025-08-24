@@ -1,5 +1,5 @@
 @echo off
-setlocal EnableExtensions EnableDelayedExpansion
+setlocal
 
 rem External access via port-forwarding (router)
 rem - Uses your DDNS host for origins
@@ -10,7 +10,7 @@ rem ===== Configure your DDNS host here =====
 set HOST=vindexarena.iptime.org
 
 rem Ensure Node/npm available on PATH
-set "PATH=%APPDATA%\npm;%ProgramFiles%\nodejs;%ProgramFiles(x86)%\nodejs;%PATH%"
+set PATH=%APPDATA%\npm;%ProgramFiles%\nodejs;%ProgramFiles(x86)%\nodejs;%PATH%
 
 cd /d "%~dp0"
 
@@ -70,10 +70,8 @@ if not exist node_modules (
 )
 set VITE_SERVER_ORIGIN=http://%HOST%:5174
 set ALLOWED_HOSTS=%HOST%
-set HMR_HOST=%HOST%
-set HMR_PROTOCOL=ws
 echo [web] Start Vite dev on :5173 (0.0.0.0) with VITE_SERVER_ORIGIN=%VITE_SERVER_ORIGIN%
-start "battle-web-dev" cmd /k "set VITE_SERVER_ORIGIN=%VITE_SERVER_ORIGIN% && set ALLOWED_HOSTS=%ALLOWED_HOSTS% && set HMR_HOST=%HMR_HOST% && set HMR_PROTOCOL=%HMR_PROTOCOL% && npm run dev -- --host 0.0.0.0 --strictPort --port 5173"
+start "battle-web-dev" cmd /k "set VITE_SERVER_ORIGIN=%VITE_SERVER_ORIGIN% && set ALLOWED_HOSTS=%ALLOWED_HOSTS% && npm run dev -- --host 0.0.0.0 --strictPort --port 5173"
 popd
 
 set URL_LOCAL=http://127.0.0.1:5173
@@ -85,5 +83,3 @@ start "" %URL_EXT%
 
 endlocal
 pause
-
-

@@ -1,0 +1,6 @@
+/* ===== MAIN CSS IMPORTS ===== */
+@import './theme.css';
+@import './components/menu-panel.css';
+@import './components/training.css';
+@import './components/battle.css';
+@import './components/matching.css';

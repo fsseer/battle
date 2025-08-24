@@ -4,6 +4,14 @@ import { socket } from '../lib/socket.ts'
 import { SERVER_ORIGIN } from '../lib/api'
 import { useAuthStore } from '../store/auth'
 import ResourceBar from '../components/ResourceBar'
+import GameHeader from '../components/GameHeader'
+import LandscapeLayout, {
+  LandscapeMenuPanel,
+  LandscapeSection,
+  LandscapeCard,
+  LandscapeButton,
+} from '../components/LandscapeLayout'
+import { useLandscapeLayout } from '../hooks/useLandscapeLayout'
 
 export default function MatchPrep() {
   const navigate = useNavigate()
@@ -19,6 +27,10 @@ export default function MatchPrep() {
   const [oneOpen, setOneOpen] = useState(false)
   const [twoOpen, setTwoOpen] = useState(false)
   const [dualOpen, setDualOpen] = useState(false)
+
+  // 가로형 레이아웃 상태 및 최적화 훅 사용
+  const { canDisplayGame } = useLandscapeLayout()
+
   // Deprecated: 이 화면은 곧 제거 예정. Training.tsx로 분리됨.
   useEffect(() => {
     let mounted = true
@@ -32,9 +44,11 @@ export default function MatchPrep() {
       mounted = false
     }
   }, [])
+
   // 훈련 실행 VFX(간단한 메시지 플래시)
   const [flash, setFlash] = useState<string>('')
   const flashTimer = useRef<number | null>(null)
+
   async function call(path: string, payload: any) {
     if (!token) return
     setBusy(true)
@@ -63,6 +77,7 @@ export default function MatchPrep() {
       setBusy(false)
     }
   }
+
   useEffect(() => {
     const onFound = (m: unknown) => {
       console.log('match.found', m)
@@ -84,230 +99,125 @@ export default function MatchPrep() {
     }
   }, [navigate])
 
+  // 해상도나 방향이 유효하지 않으면 기본 메시지 표시
+  if (!canDisplayGame) {
+    return null // App.tsx에서 처리됨
+  }
+
   return (
-    <div className="arena-frame">
-      <div className="panel">
-        <h3>대전 준비</h3>
-        <div className="parchment" style={{ marginTop: 8, marginBottom: 8 }}>
-          {flash ? (
-            <div className="row" style={{ justifyContent: 'center', marginBottom: 8 }}>
-              <span style={{ color: '#2a8f2a' }}>{flash}</span>
-            </div>
-          ) : null}
-          <ResourceBar />
-          <div className="column" style={{ gap: 10, marginTop: 8 }}>
-            <div className="column" style={{ gap: 6 }}>
-              <SectionHeader
-                title="기초 훈련"
-                open={basicOpen}
-                onToggle={() => setBasicOpen((v) => !v)}
-              />
-              {basicOpen && (
-                <div className="column" style={{ gap: 6, paddingLeft: 8 }}>
-                  <SubHeader
-                    title="힘 훈련"
-                    open={strOpen}
-                    onToggle={() => setStrOpen((v) => !v)}
-                  />
-                  {strOpen &&
-                    catalog
-                      .filter((x: any) => x.id.startsWith('basic.str.'))
-                      .map((it: any) => (
-                        <Row
-                          key={it.id}
-                          it={it}
-                          busy={busy}
-                          run={(id: string) => call('/training/run', { id })}
-                        />
-                      ))}
-                  <SubHeader
-                    title="민첩 훈련"
-                    open={agiOpen}
-                    onToggle={() => setAgiOpen((v) => !v)}
-                  />
-                  {agiOpen &&
-                    catalog
-                      .filter((x: any) => x.id.startsWith('basic.agi.'))
-                      .map((it: any) => (
-                        <Row
-                          key={it.id}
-                          it={it}
-                          busy={busy}
-                          run={(id: string) => call('/training/run', { id })}
-                        />
-                      ))}
-                  <SubHeader
-                    title="지능 훈련"
-                    open={intOpen}
-                    onToggle={() => setIntOpen((v) => !v)}
-                  />
-                  {intOpen &&
-                    catalog
-                      .filter((x: any) => x.id.startsWith('basic.int.'))
-                      .map((it: any) => (
-                        <Row
-                          key={it.id}
-                          it={it}
-                          busy={busy}
-                          run={(id: string) => call('/training/run', { id })}
-                        />
-                      ))}
+    <div className="match-prep-layout landscape-layout">
+      {/* 상단 헤더 */}
+      <GameHeader location="대전 준비" />
+
+      {/* 메인 콘텐츠 - 새로운 가로형 레이아웃 사용 */}
+      <LandscapeLayout
+        leftPanel={
+          <LandscapeMenuPanel title="🏋️ 훈련 카테고리" subtitle="기초 및 무기술 훈련">
+            <LandscapeSection title="💪 기초 훈련">
+              <LandscapeCard>
+                <div className="landscape-list">
+                  <div className="list-item">
+                    <span className="item-label">힘 훈련</span>
+                    <span className="item-value">근력 증가</span>
+                  </div>
+                  <div className="list-item">
+                    <span className="item-label">민첩 훈련</span>
+                    <span className="item-value">민첩성 증가</span>
+                  </div>
+                  <div className="list-item">
+                    <span className="item-label">지능 훈련</span>
+                    <span className="item-value">지능 증가</span>
+                  </div>
                 </div>
-              )}
-            </div>
+              </LandscapeCard>
+            </LandscapeSection>
 
-            <div className="column" style={{ gap: 6 }}>
-              <SectionHeader
-                title="무기술 훈련"
-                open={weaponOpen}
-                onToggle={() => setWeaponOpen((v) => !v)}
-              />
-              {weaponOpen && (
-                <div className="column" style={{ gap: 6, paddingLeft: 8 }}>
-                  <SubHeader
-                    title="한손검 훈련"
-                    open={oneOpen}
-                    onToggle={() => setOneOpen((v) => !v)}
-                  />
-                  {oneOpen &&
-                    catalog
-                      .filter((x: any) => x.id.startsWith('weapon.one_hand.'))
-                      .map((it: any) => (
-                        <Row
-                          key={it.id}
-                          it={it}
-                          busy={busy}
-                          run={(id: string) => call('/training/run', { id })}
-                        />
-                      ))}
-                  <SubHeader
-                    title="양손검 훈련"
-                    open={twoOpen}
-                    onToggle={() => setTwoOpen((v) => !v)}
-                  />
-                  {twoOpen &&
-                    catalog
-                      .filter((x: any) => x.id.startsWith('weapon.two_hand.'))
-                      .map((it: any) => (
-                        <Row
-                          key={it.id}
-                          it={it}
-                          busy={busy}
-                          run={(id: string) => call('/training/run', { id })}
-                        />
-                      ))}
-                  <SubHeader
-                    title="쌍검 훈련"
-                    open={dualOpen}
-                    onToggle={() => setDualOpen((v) => !v)}
-                  />
-                  {dualOpen &&
-                    catalog
-                      .filter((x: any) => x.id.startsWith('weapon.dual.'))
-                      .map((it: any) => (
-                        <Row
-                          key={it.id}
-                          it={it}
-                          busy={busy}
-                          run={(id: string) => call('/training/run', { id })}
-                        />
-                      ))}
+            <LandscapeSection title="⚔️ 무기술 훈련">
+              <LandscapeCard>
+                <div className="landscape-list">
+                  <div className="list-item">
+                    <span className="item-label">한손검</span>
+                    <span className="item-value">검술 숙련</span>
+                  </div>
+                  <div className="list-item">
+                    <span className="item-label">양손검</span>
+                    <span className="item-value">대검 숙련</span>
+                  </div>
+                  <div className="list-item">
+                    <span className="item-label">쌍검</span>
+                    <span className="item-value">쌍검 숙련</span>
+                  </div>
                 </div>
-              )}
+              </LandscapeCard>
+            </LandscapeSection>
+          </LandscapeMenuPanel>
+        }
+        rightPanel={
+          <LandscapeMenuPanel title="🎮 게임 액션" subtitle="매칭 및 이동">
+            <LandscapeSection title="⚔️ 전투 매칭">
+              <LandscapeCard>
+                <LandscapeButton
+                  onClick={() => navigate('/match')}
+                  variant="primary"
+                  className="match-btn"
+                >
+                  ⚔️ 전투 매칭 시작
+                </LandscapeButton>
+                <p className="action-hint">다른 플레이어와 전투를 시작합니다</p>
+              </LandscapeCard>
+            </LandscapeSection>
+
+            <LandscapeSection title="🏛️ 로비 이동">
+              <LandscapeCard>
+                <LandscapeButton
+                  onClick={() => navigate('/lobby')}
+                  variant="secondary"
+                  className="back-btn"
+                >
+                  🏛️ 로비로 돌아가기
+                </LandscapeButton>
+                <p className="action-hint">로비로 돌아갑니다</p>
+              </LandscapeCard>
+            </LandscapeSection>
+          </LandscapeMenuPanel>
+        }
+      >
+        {/* 중앙 대전 준비 영역 */}
+        <div className="match-prep-center-area landscape-center-content">
+          <div className="match-prep-info">
+            <h2>⚔️ 대전 준비</h2>
+            <p>전투 전에 훈련을 통해 능력을 향상시키세요</p>
+
+            {flash ? (
+              <div className="flash-message">
+                <span className="flash-text">{flash}</span>
+              </div>
+            ) : null}
+
+            <div className="resource-display">
+              <ResourceBar />
             </div>
-            <div className="row" style={{ gap: 8 }}>
-              <button
-                className="ghost-btn"
-                disabled={busy}
-                onClick={() => call('/train/earn', { apCost: 5, gold: 10 })}
-              >
-                [훈련] AP-5 → Gold+10
-              </button>
-              <button
-                className="ghost-btn"
-                disabled={busy}
-                onClick={() => call('/train/rest', { apCost: 2, stressRelief: 5 })}
-              >
-                [휴식] AP-2 → Stress-5
-              </button>
+
+            <div className="prep-tips">
+              <h4>💡 준비 팁</h4>
+              <div className="landscape-list">
+                <div className="list-item">
+                  <span className="item-label">훈련</span>
+                  <span className="item-value">기초 능력 향상</span>
+                </div>
+                <div className="list-item">
+                  <span className="item-label">무기술</span>
+                  <span className="item-value">전투 기술 숙련</span>
+                </div>
+                <div className="list-item">
+                  <span className="item-label">전략</span>
+                  <span className="item-value">상대방 분석</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        <div className="parchment">
-          <p>간단한 설명: 여기에서 장비/스킬 선택(추후 확장)</p>
-          <div className="row" style={{ gap: 8 }}>
-            <button className="ghost-btn" onClick={() => navigate('/lobby')}>
-              뒤로
-            </button>
-            <button className="gold-btn" onClick={() => navigate('/match')}>
-              매칭하러 가기
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function Row({ it, busy, run }: { it: any; busy: boolean; run: (id: string) => void }) {
-  return (
-    <div className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
-      <div>
-        <div style={{ fontWeight: 600 }}>
-          {it.name} {it.goldCost ? `(Gold-${it.goldCost})` : ''}
-        </div>
-        {it.description ? (
-          <div className="text-sm" style={{ opacity: 0.9 }}>
-            {it.description}
-          </div>
-        ) : null}
-      </div>
-      <button className="ghost-btn" disabled={busy} onClick={() => run(it.id)}>
-        실행 (AP-{it.apCost}, Stress{it.stressDelta >= 0 ? '+' : ''}
-        {it.stressDelta})
-      </button>
-    </div>
-  )
-}
-
-function SectionHeader({
-  title,
-  open,
-  onToggle,
-}: {
-  title: string
-  open: boolean
-  onToggle: () => void
-}) {
-  return (
-    <div
-      className="row"
-      style={{ justifyContent: 'space-between', cursor: 'pointer' }}
-      onClick={onToggle}
-    >
-      <div style={{ fontWeight: 700 }}>{title}</div>
-      <div>{open ? '▼' : '▶'}</div>
-    </div>
-  )
-}
-
-function SubHeader({
-  title,
-  open,
-  onToggle,
-}: {
-  title: string
-  open: boolean
-  onToggle: () => void
-}) {
-  return (
-    <div
-      className="row"
-      style={{ justifyContent: 'space-between', cursor: 'pointer', paddingLeft: 2 }}
-      onClick={onToggle}
-    >
-      <div style={{ fontWeight: 600, opacity: 0.9 }}>{title}</div>
-      <div style={{ opacity: 0.8 }}>{open ? '▾' : '▸'}</div>
+      </LandscapeLayout>
     </div>
   )
 }

@@ -1,0 +1,329 @@
+/* ===== BASE STYLES FOR LANDSCAPE + 720P+ ===== */
+
+:root {
+  --bg-dark: #0e0c0a;
+  --bg-deep: #191410;
+  --sand: #d8b98a;
+  --parchment: #f3e9d6;
+  --parchment-ink: #3a2e22;
+  --blood: #8e1f1f;
+  --bronze: #c18135;
+  --bronze-dark: #7b4f20;
+  --ink: #eae6df;
+  --ink-dim: #cfc7bb;
+  --ink-strong: #fff9ee;
+}
+
+/* 기본 배경 및 타이포그래피 */
+html,
+body,
+#root {
+  background: radial-gradient(60% 50% at 50% 110%, rgba(206, 130, 25, 0.12), transparent 60%),
+    radial-gradient(25% 20% at 10% 10%, rgba(255, 230, 160, 0.06), transparent 50%),
+    radial-gradient(25% 20% at 90% 15%, rgba(255, 230, 160, 0.06), transparent 50%),
+    linear-gradient(180deg, var(--bg-dark), var(--bg-deep));
+  color: var(--ink);
+  min-height: 100vh;
+}
+
+/* 가로형 기준 기본 레이아웃 */
+.landscape-layout {
+  display: flex;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* 가로형 패널 기본 스타일 */
+.landscape-panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  padding: 28px;
+  overflow-y: auto;
+}
+
+/* 가로형 메뉴 패널 */
+.landscape-menu-panel {
+  width: 320px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(139, 69, 19, 0.15), rgba(160, 82, 45, 0.25));
+  border: 1px solid var(--bronze);
+  border-radius: 10px;
+  padding: 20px;
+}
+
+/* 가로형 중앙 콘텐츠 영역 */
+.landscape-center-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+}
+
+/* 가로형 버튼 기본 스타일 */
+.landscape-btn {
+  background: linear-gradient(135deg, var(--bronze), var(--bronze-dark));
+  color: #fff;
+  border: 2px solid #8b4513;
+  border-radius: 8px;
+  padding: 12px 16px;
+  cursor: pointer;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 0 #5b3a14, 0 8px 16px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.landscape-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #5b3a14, 0 12px 20px rgba(0, 0, 0, 0.4);
+}
+
+.landscape-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 0 #5b3a14, 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* 가로형 그리드 레이아웃 */
+.landscape-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  width: 100%;
+  max-width: 1200px;
+}
+
+/* 가로형 카드 스타일 */
+.landscape-card {
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(20, 20, 20, 0.9));
+  border: 2px solid var(--bronze);
+  border-radius: 16px;
+  padding: 24px;
+  transition: all 0.2s ease;
+}
+
+.landscape-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(139, 69, 19, 0.3);
+}
+
+/* 가로형 타이틀 스타일 */
+.landscape-title {
+  color: #fff;
+  font-size: 32px;
+  font-weight: 700;
+  margin: 0 0 16px 0;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+  text-align: center;
+}
+
+.landscape-subtitle {
+  color: #ccc;
+  font-size: 18px;
+  margin: 0 0 24px 0;
+  text-align: center;
+  opacity: 0.8;
+}
+
+/* 가로형 섹션 스타일 */
+.landscape-section {
+  margin-bottom: 32px;
+}
+
+.landscape-section-title {
+  color: #fff;
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 20px 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  text-align: center;
+}
+
+/* 가로형 상태 표시 */
+.landscape-status {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.landscape-status-item {
+  text-align: center;
+  padding: 12px 16px;
+  background: rgba(139, 69, 19, 0.3);
+  border: 1px solid var(--bronze);
+  border-radius: 8px;
+  min-width: 120px;
+}
+
+.landscape-status-label {
+  display: block;
+  color: #ccc;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.landscape-status-value {
+  display: block;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* 가로형 리스트 스타일 */
+.landscape-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.landscape-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.landscape-list-item:hover {
+  background: rgba(0, 0, 0, 0.6);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* 가로형 폼 스타일 */
+.landscape-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 400px;
+  width: 100%;
+}
+
+.landscape-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.landscape-form-label {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+.landscape-form-input {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: #fff;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.landscape-form-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.landscape-form-input:focus {
+  outline: none;
+  border-color: var(--bronze);
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.3);
+}
+
+/* 가로형 애니메이션 */
+@keyframes landscapeFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landscapeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.landscape-fade-in {
+  animation: landscapeFadeIn 0.5s ease-out;
+}
+
+.landscape-slide-in {
+  animation: landscapeSlideIn 0.5s ease-out;
+}
+
+/* 가로형 반응형 (720p 이상 기준) */
+@media (max-width: 1600px) {
+  .landscape-menu-panel {
+    width: 280px;
+    padding: 18px;
+  }
+
+  .landscape-title {
+    font-size: 28px;
+  }
+
+  .landscape-subtitle {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 1366px) {
+  .landscape-menu-panel {
+    width: 260px;
+    padding: 16px;
+  }
+
+  .landscape-title {
+    font-size: 24px;
+  }
+
+  .landscape-subtitle {
+    font-size: 14px;
+  }
+
+  .landscape-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .landscape-menu-panel {
+    width: 240px;
+    padding: 14px;
+  }
+
+  .landscape-center-content {
+    padding: 30px;
+  }
+
+  .landscape-grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+  }
+}
+
+/* 720p 이하 해상도는 지원하지 않음 - resolution-required-message로 대체 */

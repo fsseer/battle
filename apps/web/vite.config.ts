@@ -7,10 +7,8 @@ const envAllowed = (process.env.ALLOWED_HOSTS ?? '')
   .map((s: string) => s.trim())
   .filter(Boolean)
 
-const defaultExternalHost = 'gladiator-web.loca.lt'
-const hmrProtocol = (process.env.HMR_PROTOCOL || 'wss') as 'ws' | 'wss'
-const hmrHost = process.env.HMR_HOST || defaultExternalHost
-const hmrClientPort = Number(process.env.HMR_PORT || (hmrProtocol === 'wss' ? 443 : 5173))
+// iptime.org 도메인에서는 HMR 비활성화 (WebSocket 문제 방지)
+const isIptimeDomain = envAllowed.some((host) => host.includes('iptime.org'))
 
 export default defineConfig({
   plugins: [react()],
@@ -18,12 +16,15 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     strictPort: true,
-    // Allow external tunneling host or user-provided hosts via env
-    allowedHosts: [defaultExternalHost, ...envAllowed],
-    hmr: {
-      protocol: hmrProtocol,
-      host: hmrHost,
-      clientPort: hmrClientPort,
-    },
+    // Allow user-provided hosts via env (포트포워딩 환경)
+    allowedHosts: envAllowed,
+    // iptime.org 도메인에서는 HMR 비활성화
+    hmr: isIptimeDomain
+      ? false
+      : {
+          protocol: 'ws',
+          host: 'localhost',
+          port: 5173,
+        },
   },
 })

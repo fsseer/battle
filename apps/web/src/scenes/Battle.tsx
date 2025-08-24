@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { socket } from '../lib/socket.ts'
+import { useTokenValidation } from '../hooks/useTokenValidation'
 import ResourceBar from '../components/ResourceBar'
 import { Hearts } from '../components/Battle/Hearts'
 import { MomentumBar } from '../components/Battle/MomentumBar'
 import { SkillButton } from '../components/Battle/SkillButton'
 import { battleReducer, createInitialState } from './battleReducer'
 import { loadAssets } from '../lib/assets'
+import { useLandscapeLayout } from '../hooks/useLandscapeLayout'
 
 type Role = 'ATTACK' | 'DEFENSE'
 type Skill = { id: string; name: string; role: Role }
@@ -21,9 +23,25 @@ const SKILLS: Skill[] = [
   { id: 'counter', name: '반격', role: 'DEFENSE' },
 ]
 
+interface BattleState {
+  opponent: string
+  role: string
+  myInfo: any
+  opponentInfo: any
+}
+
 export default function Battle() {
   const navigate = useNavigate()
-  const [state, dispatch] = useReducer(battleReducer, createInitialState('ATTACK'))
+  const location = useLocation()
+  const battleData = location.state as BattleState
+
+  // 가로형 레이아웃 상태 및 최적화 훅 사용
+  const { canDisplayGame } = useLandscapeLayout()
+
+  const [state, dispatch] = useReducer(
+    battleReducer,
+    createInitialState(battleData?.role || 'ATTACK')
+  )
   const {
     round,
     role,
@@ -38,8 +56,10 @@ export default function Battle() {
     selfInjuries,
     oppInjuries,
   } = state as any
+
   const [timeLeft, setTimeLeft] = useState(10)
   const timerRef = useRef<number | null>(null)
+
   // Camera shake & hitstop
   const [shakeMs, setShakeMs] = useState(0)
   const [hitstopMs, setHitstopMs] = useState(0)
@@ -52,20 +72,63 @@ export default function Battle() {
 
   const available = useMemo(() => SKILLS.filter((s) => s.role === role), [role])
 
+  // 토큰 유효성 검증 훅 사용
+  useTokenValidation()
+
+  // 해상도나 방향이 유효하지 않으면 기본 메시지 표시
+  if (!canDisplayGame) {
+    return null // App.tsx에서 처리됨
+  }
+
   useEffect(() => {
+    if (!battleData) {
+      navigate('/match')
+      return
+    }
+
     // 서버 연결 이벤트
     const onHello = (m: { id: string }) => console.log('server.hello', m)
     const onFound = (m: unknown) => console.log('match.found', m)
+    const onBattleStart = (m: any) => {
+      console.log('battle.start', m)
+      // 전투 시작 이벤트 처리
+    }
+    const onBattleResolve = (m: any) => {
+      console.log('battle.resolve', m)
+      resolveRound(m)
+    }
+    const onBattleDecisive = (m: any) => {
+      console.log('battle.decisive', m)
+      // 결정타 이벤트 처리
+    }
+    const onBattleEnd = (m: any) => {
+      console.log('battle.end', m)
+      // 전투 종료 처리
+      navigate('/result', { state: { result: m } })
+    }
+
     socket.on('server.hello', onHello)
     socket.on('match.found', onFound)
+    socket.on('battle.start', onBattleStart)
+    socket.on('battle.resolve', onBattleResolve)
+    socket.on('battle.decisive', onBattleDecisive)
+    socket.on('battle.end', onBattleEnd)
+
     return () => {
       socket.off('server.hello', onHello)
       socket.off('match.found', onFound)
+      socket.off('battle.start', onBattleStart)
+      socket.off('battle.resolve', onBattleResolve)
+      socket.off('battle.decisive', onBattleDecisive)
+      socket.off('battle.end', onBattleEnd)
     }
-  }, [])
+  }, [navigate, battleData])
 
   useEffect(() => {
     loadAssets().catch(() => {})
+  }, [])
+
+  useEffect(() => {
     // 라운드 타이머
     if (timerRef.current) window.clearInterval(timerRef.current)
     setTimeLeft(10)
@@ -74,6 +137,9 @@ export default function Battle() {
         if (hitstopMs > 0) return t // 히트스톱 중엔 시간 멈춤
         if (t <= 1) {
           window.clearInterval(timerRef.current!)
+          // 시간 초과 시 자동 선택 (기본 스킬)
+          const defaultSkill = available[0]?.id || 'light'
+          onSelect(defaultSkill)
         }
         return t - 1
       })
@@ -81,11 +147,14 @@ export default function Battle() {
     return () => {
       if (timerRef.current) window.clearInterval(timerRef.current)
     }
-  }, [round, hitstopMs])
+  }, [round, hitstopMs, available])
 
-  const resolveRound = useCallback((msg: { round: number; self: string; opp: string; result: 0 | 1 | 2; nextRole: Role }) => {
-    dispatch({ type: 'resolve', msg })
-  }, [])
+  const resolveRound = useCallback(
+    (msg: { round: number; self: string; opp: string; result: 0 | 1 | 2; nextRole: Role }) => {
+      dispatch({ type: 'resolve', msg })
+    },
+    []
+  )
 
   const onSelect = (id: string) => {
     dispatch({ type: 'select', id })
@@ -95,316 +164,264 @@ export default function Battle() {
     socket.emit('battle.choose', id)
   }
 
+  // 카메라 흔들림 효과
   useEffect(() => {
-    const onResolved = (m: {
-      round: number
-      self: string
-      opp: string
-      result: 0 | 1 | 2
-      nextRole: 0 | 1
-      momentum?: number
-    }) => {
-      // reducer에서 모멘텀/라운드/역할 처리
-      // 히트스톱 & 카메라 흔들림 트리거
-      setHitstopMs(120)
-      setShakeMs(200)
-      // 간단한 스파크 VFX
-      setSpark({ x: 200, y: 110, t: 200 })
-      // 파티클 스폰
-      setParticles((prev) => {
-        const burst: Particle[] = []
-        for (let i = 0; i < 12; i++) {
-          const ang = Math.random() * Math.PI * 2
-          const spd = 1 + Math.random() * 2
-          burst.push({
-            x: 200,
-            y: 110,
-            vx: Math.cos(ang) * spd,
-            vy: Math.sin(ang) * spd - 0.5,
-            life: 300,
-            ttl: 300,
-          })
-        }
-        return [...prev, ...burst]
+    if (shakeMs <= 0) return
+    const frame = () => {
+      setCam({
+        x: (Math.random() - 0.5) * 8,
+        y: (Math.random() - 0.5) * 8,
       })
-      resolveRound({ ...m, nextRole: m.nextRole === 0 ? 'ATTACK' : 'DEFENSE' })
+      frameRef.current = requestAnimationFrame(frame)
     }
-    const onDecisive = (d: {
-      round: number
-      hitter: string
-      target: string
-      damage: number
-      injured: Array<'ARM' | 'LEG' | 'TORSO'>
-      hp: number
-    }) => {
-      const isMeTarget = d.target === socket.id
-      dispatch({
-        type: 'decisive',
-        hitterIsMe: !isMeTarget,
-        damage: d.damage ?? 1,
-        injured: d.injured ?? [],
-        hp: d.hp,
-      })
-    }
-    const onEnd = (e: { reason: string; winner?: string }) => {
-      dispatch({ type: 'end', reason: e.reason, winner: e.winner })
-      setTimeout(() => navigate('/result'), 600)
-    }
-    socket.on('battle.resolve', onResolved)
-    socket.on('battle.decisive', onDecisive)
-    socket.on('battle.end', onEnd)
+    frameRef.current = requestAnimationFrame(frame)
+    const timer = setTimeout(() => {
+      setShakeMs(0)
+      setCam({ x: 0, y: 0 })
+    }, shakeMs)
     return () => {
-      socket.off('battle.resolve', onResolved)
-      socket.off('battle.decisive', onDecisive)
-      socket.off('battle.end', onEnd)
+      if (frameRef.current) cancelAnimationFrame(frameRef.current)
+      clearTimeout(timer)
     }
-  }, [resolveRound, navigate])
+  }, [shakeMs])
 
-  // 프레임 루프: 히트스톱/카메라 쉐이크 처리
+  // 히트스톱 효과
   useEffect(() => {
-    let mounted = true
-    function loop() {
-      if (!mounted) return
-      if (shakeMs > 0) {
-        const mag = 4
-        setCam({ x: (Math.random() - 0.5) * mag, y: (Math.random() - 0.5) * mag })
-        setShakeMs((ms) => Math.max(0, ms - 16))
-      } else {
-        setCam({ x: 0, y: 0 })
-      }
-      if (hitstopMs > 0) setHitstopMs((ms) => Math.max(0, ms - 16))
-      if (spark && spark.t > 0) setSpark((s) => (s ? { ...s, t: Math.max(0, s.t - 16) } : s))
-      // 파티클 물리 업데이트
-      setParticles((ps) =>
-        ps.length
-          ? ps
-              .map((p) => ({
-                ...p,
-                x: p.x + p.vx,
-                y: p.y + p.vy,
-                vy: p.vy + 0.05,
-                life: Math.max(0, p.life - 16),
-              }))
-              .filter((p) => p.life > 0)
-          : ps
+    if (hitstopMs <= 0) return
+    const timer = setTimeout(() => setHitstopMs(0), hitstopMs)
+    return () => clearTimeout(timer)
+  }, [hitstopMs])
+
+  // 파티클 시스템
+  useEffect(() => {
+    if (particles.length === 0) return
+    const frame = () => {
+      setParticles((prev) =>
+        prev
+          .map((p) => ({
+            ...p,
+            x: p.x + p.vx,
+            y: p.y + p.vy,
+            life: p.life + 1,
+          }))
+          .filter((p) => p.life < p.ttl)
       )
-      // 트레일 시간 감소
-      if (trail && trail.t > 0) setTrail((t) => (t ? { ...t, t: Math.max(0, t.t - 16) } : t))
-      frameRef.current = requestAnimationFrame(loop)
+      frameRef.current = requestAnimationFrame(frame)
     }
-    frameRef.current = requestAnimationFrame(loop)
+    frameRef.current = requestAnimationFrame(frame)
     return () => {
-      mounted = false
       if (frameRef.current) cancelAnimationFrame(frameRef.current)
     }
-  }, [shakeMs, hitstopMs, spark, trail])
+  }, [particles])
 
-  const canUseSkill = useCallback(
-    (s: Skill) => {
-      if (s.role === 'ATTACK' && selfInjuries.includes('ARM')) return false
-      if (s.role === 'DEFENSE' && s.id === 'dodge' && selfInjuries.includes('LEG')) return false
-      return !choice
-    },
-    [selfInjuries, choice]
-  )
+  // 스파크 효과
+  useEffect(() => {
+    if (!spark) return
+    const timer = setTimeout(() => setSpark(null), 200)
+    return () => clearTimeout(timer)
+  }, [spark])
+
+  // 트레일 효과
+  useEffect(() => {
+    if (!trail) return
+    const frame = () => {
+      setTrail((prev) => {
+        if (!prev) return null
+        if (prev.t >= prev.ttl) return null
+        return { ...prev, t: prev.t + 16 }
+      })
+      frameRef.current = requestAnimationFrame(frame)
+    }
+    frameRef.current = requestAnimationFrame(frame)
+    return () => {
+      if (frameRef.current) cancelAnimationFrame(frameRef.current)
+    }
+  }, [trail])
 
   return (
-    <div className="arena-frame">
-      <div className="panel">
-        <h3>인게임 전투</h3>
-        <ResourceBar />
-        <div className="parchment" style={{ marginTop: 8 }}>
-          <div className="row" style={{ gap: 24, marginBottom: 12, alignItems: 'center' }}>
-            <div>라운드: {round}</div>
-            <div>역할: {role === 'ATTACK' ? '공격' : '방어'}</div>
-            <div>남은 시간: {timeLeft}s</div>
-            <div style={{ flex: 1 }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <MomentumBar value={momentum} />
-              <span style={{ fontSize: 12 }}>기세</span>
-            </div>
+    <div className="battle-scene">
+      {/* 배경 */}
+      <div className="battle-background">
+        <div className="arena-ground" />
+        <div className="arena-pillars" />
+        <div className="crowd-background" />
+      </div>
+
+      {/* 전투 UI */}
+      <div className="battle-ui">
+        {/* 상단 정보 바 */}
+        <div className="battle-header">
+          <div className="round-info">
+            <span className="round-label">라운드</span>
+            <span className="round-number">{round}</span>
           </div>
-          <div
-            style={{
-              border: '1px solid #ddd',
-              borderRadius: 8,
-              overflow: 'hidden',
-              width: 480,
-              height: 260,
-              background: '#f7f1e1',
-              position: 'relative',
-            }}
-          >
-            {/* 모래바닥 */}
-            <div
-              style={{
-                position: 'absolute',
-                left: cam.x + 0,
-                top: cam.y + 180,
-                width: 480,
-                height: 60,
-                background: '#e5d3a1',
-              }}
-            />
-            {/* 적(우상단) */}
-            <img
-              src="/sprites/fighter_red.svg"
-              style={{
-                position: 'absolute',
-                left: cam.x + 360,
-                top: cam.y + 40,
-                width: 72,
-                height: 72,
-              }}
-            />
-            <div style={{ position: 'absolute', left: cam.x + 360, top: cam.y + 12 }}>
-              <Hearts n={oppHp} max={oppMaxHp} />
-            </div>
-            {/* 나(좌하단) */}
-            <img
-              src="/sprites/fighter_blue.svg"
-              style={{
-                position: 'absolute',
-                left: cam.x + 80,
-                top: cam.y + 140,
-                width: 72,
-                height: 72,
-                transform: 'scaleX(-1)',
-              }}
-            />
-            <div style={{ position: 'absolute', left: cam.x + 80, top: cam.y + 216 }}>
-              <Hearts n={selfHp} max={selfMaxHp} />
-            </div>
-            {/* 간단한 효과 */}
-            {choice === 'heavy' && (
-              <div
-                style={{
-                  position: 'absolute',
-                  left: cam.x + 150,
-                  top: cam.y + 180,
-                  width: 50,
-                  height: 3,
-                  background: '#aa0000',
-                  transform: 'rotate(-20deg)',
-                }}
-              />
-            )}
-            {choice === 'light' && (
-              <div
-                style={{
-                  position: 'absolute',
-                  left: cam.x + 150,
-                  top: cam.y + 180,
-                  width: 40,
-                  height: 3,
-                  background: '#aa8800',
-                }}
-              />
-            )}
-            {choice === 'block' && (
-              <div
-                style={{
-                  position: 'absolute',
-                  left: cam.x + 220,
-                  top: cam.y + 160,
-                  width: 20,
-                  height: 40,
-                  background: '#888',
-                }}
-              />
-            )}
-            {choice === 'counter' && (
-              <img
-                src="/sprites/spark.svg"
-                style={{
-                  position: 'absolute',
-                  left: cam.x + 240,
-                  top: cam.y + 180,
-                  width: 24,
-                  height: 24,
-                  filter: 'hue-rotate(120deg)',
-                }}
-              />
-            )}
-            {spark && spark.t > 0 && (
-              <img
-                src="/sprites/spark.svg"
-                style={{
-                  position: 'absolute',
-                  left: cam.x + spark.x,
-                  top: cam.y + spark.y,
-                  width: 14,
-                  height: 14,
-                  opacity: Math.max(0, spark.t / 200),
-                }}
-              />
-            )}
-            {particles.map((p, idx) => (
-              <img
-                key={idx}
-                src="/sprites/spark.svg"
-                style={{
-                  position: 'absolute',
-                  left: cam.x + p.x,
-                  top: cam.y + p.y,
-                  width: 6,
-                  height: 6,
-                  opacity: Math.max(0.1, p.life / p.ttl),
-                }}
-              />
-            ))}
-            {trail && trail.t > 0 && (
-              <div
-                style={{
-                  position: 'absolute',
-                  left: cam.x + 150,
-                  top: cam.y + 175,
-                  width: 60,
-                  height: 4,
-                  background: '#ffaa66',
-                  opacity: Math.max(0, trail.t / trail.ttl),
-                }}
-              />
-            )}
+          <div className="timer-display">
+            <span className="timer-label">남은 시간</span>
+            <span className="timer-value">{timeLeft}</span>
           </div>
-          <div className="row" style={{ gap: 8, marginTop: 12 }}>
-            {available.map((s) => (
-              <SkillButton
-                key={s.id}
-                id={s.id}
-                label={s.name}
-                disabled={!canUseSkill(s)}
-                onClick={onSelect}
-              />
-            ))}
-          </div>
-          <div className="row" style={{ gap: 24, marginTop: 12 }}>
-            <div>내 선택: {choice ?? '-'}</div>
-            <div>상대 선택: {opponentChoice ?? '-'}</div>
-            <div style={{ fontSize: 12, opacity: 0.85 }}>
-              내 부상: {selfInjuries.join(',') || '-'}
-            </div>
-            <div style={{ fontSize: 12, opacity: 0.85 }}>
-              상대 부상: {oppInjuries.join(',') || '-'}
-            </div>
-          </div>
-          <div className="row" style={{ gap: 8, marginTop: 12 }}>
-            <button className="ghost-btn" onClick={() => navigate('/result')}>
-              항복/종료
-            </button>
-            <button className="ghost-btn" onClick={() => socket.emit('battle.surrender')}>
-              항복(서버)
-            </button>
-            <button className="gold-btn" onClick={() => navigate('/lobby')}>
-              로비로
-            </button>
-          </div>
-          <div style={{ marginTop: 16 }}>
-            <h4>로그</h4>
-            <pre>{log.join('\n')}</pre>
+          <div className="role-display">
+            <span className="role-label">역할</span>
+            <span className="role-value">{role === 'ATTACK' ? '⚔️ 공격자' : '🛡️ 방어자'}</span>
           </div>
         </div>
+
+        {/* 캐릭터 정보 */}
+        <div className="character-info-panels">
+          {/* 내 캐릭터 */}
+          <div className="character-panel my-character">
+            <div className="character-portrait">
+              <div className="character-sprite fighter-blue" />
+            </div>
+            <div className="character-details">
+              <div className="character-name">{battleData?.myInfo?.name || '내 검투사'}</div>
+              <div className="character-level">Lv.{battleData?.myInfo?.level || 1}</div>
+              <Hearts current={selfHp} max={selfMaxHp} />
+            </div>
+            <div className="character-stats">
+              <div className="stat-item">
+                <span className="stat-label">근력</span>
+                <span className="stat-value">{battleData?.myInfo?.stats?.str || 5}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">민첩</span>
+                <span className="stat-value">{battleData?.myInfo?.stats?.agi || 5}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">체력</span>
+                <span className="stat-value">{battleData?.myInfo?.stats?.sta || 5}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 상대방 캐릭터 */}
+          <div className="character-panel opponent-character">
+            <div className="character-portrait">
+              <div className="character-sprite fighter-red" />
+            </div>
+            <div className="character-details">
+              <div className="character-name">
+                {battleData?.opponentInfo?.name || '상대 검투사'}
+              </div>
+              <div className="character-level">Lv.{battleData?.opponentInfo?.level || 1}</div>
+              <Hearts current={oppHp} max={oppMaxHp} />
+            </div>
+            <div className="character-stats">
+              <div className="stat-item">
+                <span className="stat-label">근력</span>
+                <span className="stat-value">{battleData?.opponentInfo?.stats?.str || 5}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">민첩</span>
+                <span className="stat-value">{battleData?.opponentInfo?.stats?.agi || 5}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">체력</span>
+                <span className="stat-value">{battleData?.opponentInfo?.stats?.sta || 5}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 모멘텀 바 */}
+        <MomentumBar momentum={momentum} />
+
+        {/* 스킬 선택 버튼 */}
+        <div className="skill-selection">
+          <div className="skill-buttons">
+            {available.map((skill) => (
+              <SkillButton
+                key={skill.id}
+                skill={skill}
+                isSelected={choice === skill.id}
+                onSelect={() => onSelect(skill.id)}
+                disabled={choice !== null}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* 전투 로그 */}
+        <div className="battle-log">
+          <div className="log-header">
+            <h4>⚔️ 전투 기록</h4>
+          </div>
+          <div className="log-content">
+            {log.map((entry, index) => (
+              <div key={index} className="log-entry">
+                <span className="log-time">{entry.time}</span>
+                <span className="log-message">{entry.message}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 하단 액션 바 */}
+        <div className="battle-actions">
+          <button
+            className="action-btn surrender-btn"
+            onClick={() => {
+              socket.emit('battle.surrender')
+              navigate('/result', { state: { result: { reason: 'surrender' } } })
+            }}
+          >
+            🏳️ 항복
+          </button>
+          <button className="action-btn escape-btn" onClick={() => navigate('/lobby')}>
+            🏃 도망
+          </button>
+        </div>
       </div>
+
+      {/* 시각적 효과들 */}
+      {shakeMs > 0 && (
+        <div
+          className="camera-shake"
+          style={{
+            transform: `translate(${cam.x}px, ${cam.y}px)`,
+          }}
+        />
+      )}
+
+      {spark && (
+        <div
+          className="spark-effect"
+          style={{
+            left: spark.x,
+            top: spark.y,
+            transform: `scale(${1 - spark.t / 200})`,
+          }}
+        >
+          ✨
+        </div>
+      )}
+
+      {trail && (
+        <div
+          className="swing-trail"
+          style={{
+            opacity: 1 - trail.t / trail.ttl,
+            transform: `rotate(${trail.t * 2}deg)`,
+          }}
+        >
+          ⚔️
+        </div>
+      )}
+
+      {/* 파티클 효과 */}
+      {particles.map((particle, index) => (
+        <div
+          key={index}
+          className="particle"
+          style={{
+            left: particle.x,
+            top: particle.y,
+            opacity: 1 - particle.life / particle.ttl,
+            transform: `scale(${1 - particle.life / particle.ttl})`,
+          }}
+        >
+          ✨
+        </div>
+      ))}
     </div>
   )
 }

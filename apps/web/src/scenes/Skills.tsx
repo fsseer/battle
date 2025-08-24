@@ -1,198 +1,171 @@
-import { useEffect, useRef, useState } from 'react'
-import ResourceBar from '../components/ResourceBar'
-import { SERVER_ORIGIN } from '../lib/api'
 import { useNavigate } from 'react-router-dom'
-
-type SkillState = 'usable' | 'locked_prof' | 'locked_stat' | 'locked_item'
+import { useAuthStore } from '../store/auth'
+import { useTokenValidation } from '../hooks/useTokenValidation'
+import GameHeader from '../components/GameHeader'
+import LandscapeLayout, {
+  LandscapeMenuPanel,
+  LandscapeSection,
+  LandscapeCard,
+  LandscapeButton,
+} from '../components/LandscapeLayout'
+import { useLandscapeLayout } from '../hooks/useLandscapeLayout'
 
 export default function Skills() {
-  const [data, setData] = useState<any>({ weaponSkills: [], characterSkills: [], traits: [] })
-  const [me, setMe] = useState<any>(null)
   const navigate = useNavigate()
-  const didInitRef = useRef(false)
-  const load = async () => {
-    try {
-      const headers = authHeader()
-      const skillsRes = await fetch(`${SERVER_ORIGIN}/skills`, { headers })
-      let meRes: Response | null = null
-      if (headers.Authorization) {
-        meRes = await fetch(`${SERVER_ORIGIN}/me`, { headers })
-      }
-      // 세션 만료(401)만 자동 로그아웃 처리. 404는 비로그인 상태로 계속 표시
-      if (meRes && meRes.status === 401) {
-        try {
-          localStorage.removeItem('auth')
-        } catch {}
-        alert('세션이 만료되었습니다. 다시 로그인해 주세요.')
-        navigate('/login')
-        return
-      }
-      const s = await skillsRes.json()
-      const m = meRes && meRes.ok ? await meRes.json() : null
-      setData(s)
-      if (m?.ok) setMe(m.user)
-      else setMe(null)
-    } catch {}
-  }
-  useEffect(() => {
-    if (didInitRef.current) return
-    didInitRef.current = true
-    load()
-  }, [])
+  const { user } = useAuthStore()
 
-  const renderSkill = (s: any) => (
-    <div
-      key={s.skill.id}
-      style={{
-        padding: 8,
-        border: '1px solid #ddd',
-        borderRadius: 8,
-        marginBottom: 8,
-        opacity: s.state === 'usable' ? 1 : 0.6,
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <div>
-          <b>{s.skill.name}</b> <small>({s.skill.category})</small>
-        </div>
-        <StateBadge state={s.state} />
-      </div>
-      {s.missing?.prof ? (
-        <div style={{ fontSize: 12 }}>
-          요구 숙련: {s.missing.prof.kind} Lv{s.missing.prof.need} (현재 {s.missing.prof.have})
-        </div>
-      ) : null}
-      {s.missing?.stats ? (
-        <div style={{ fontSize: 12 }}>
-          요구 능력치:{' '}
-          {s.missing.stats.map((x: any) => `${x.key}:${x.need}(현재 ${x.have})`).join(', ')}
-        </div>
-      ) : null}
-      {s.missing?.itemId ? <div style={{ fontSize: 12 }}>전용 아이템 필요</div> : null}
-    </div>
-  )
+  // 가로형 레이아웃 상태 및 최적화 훅 사용
+  const { canDisplayGame } = useLandscapeLayout()
+
+  // 토큰 유효성 검증 훅 사용
+  useTokenValidation()
+
+  if (!user) {
+    navigate('/login')
+    return null
+  }
+
+  // 해상도나 방향이 유효하지 않으면 기본 메시지 표시
+  if (!canDisplayGame) {
+    return null // App.tsx에서 처리됨
+  }
 
   return (
-    <div className="arena-frame">
-      <div className="panel">
-        <h3>스킬 / 특성</h3>
-        <ResourceBar />
-        <div className="parchment" style={{ marginTop: 8 }}>
-          {data?.meta ? (
-            <div className="text-sm" style={{ marginBottom: 8, opacity: 0.85 }}>
-              <div><b>기본 능력치 기준</b>: 힘/민첩/지능/행운=5, 운명=0 (주인공만 보유)</div>
-              <div>
-                <b>생명력 기준</b>: 소형 야수 1 / 인간·중형 야수 2 / 대형 야수 3~4 / 초현세 존재 5+
-              </div>
-            </div>
-          ) : null}
-          {me ? (
-            <div style={{ marginBottom: 8, fontSize: 12 }}>
-              <div>
-                <b>AP</b>: {me.characters?.[0]?.ap ?? 0} / 100
-              </div>
-              <div>
-                <b>숙련도</b>:{' '}
-                {me.characters?.[0]?.proficiencies
-                  ?.map((p: any) => `${p.kind}:Lv${p.level}(xp:${p.xp})`)
-                  .join(' / ') || '없음'}
-              </div>
-            </div>
-          ) : null}
-          <h4>무기 스킬</h4>
-          <div>{data.weaponSkills.map(renderSkill)}</div>
-          <h4>캐릭터 스킬</h4>
-          <div>{data.characterSkills.map(renderSkill)}</div>
-          <h4>특성</h4>
-          <div>
-            {data.traits.map((t: any) => (
-              <div
-                key={t.trait.id}
-                style={{
-                  padding: 8,
-                  border: '1px solid #ddd',
-                  borderRadius: 8,
-                  marginBottom: 8,
-                  opacity: t.unlocked ? 1 : 0.6,
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <div>
-                    <b>{t.trait.name}</b>
+    <div className="skills-layout landscape-layout">
+      {/* 상단 헤더 */}
+      <GameHeader location="스킬" />
+
+      {/* 메인 콘텐츠 - 새로운 가로형 레이아웃 사용 */}
+      <LandscapeLayout
+        leftPanel={
+          <LandscapeMenuPanel title="⚔️ 무기 스킬" subtitle="무기별 전투 기술">
+            <LandscapeSection title="🗡️ 한손검 스킬">
+              <LandscapeCard>
+                <div className="landscape-list">
+                  <div className="list-item available">
+                    <span className="item-label">베기</span>
+                    <span className="item-value">기본적인 베기 공격</span>
                   </div>
-                  <span style={{ fontSize: 12 }}>{t.unlocked ? 'UNLOCKED' : 'LOCKED'}</span>
+                  <div className="list-item locked">
+                    <span className="item-label">급습</span>
+                    <span className="item-value">빠른 속도로 공격</span>
+                  </div>
                 </div>
-                <div style={{ fontSize: 12 }}>{t.trait.description ?? ''}</div>
+              </LandscapeCard>
+            </LandscapeSection>
+
+            <LandscapeSection title="⚔️ 양손검 스킬">
+              <LandscapeCard>
+                <div className="landscape-list">
+                  <div className="list-item locked">
+                    <span className="item-label">강타</span>
+                    <span className="item-value">강력한 한 방 공격</span>
+                  </div>
+                </div>
+              </LandscapeCard>
+            </LandscapeSection>
+
+            <LandscapeSection title="⚔️ 쌍검 스킬">
+              <LandscapeCard>
+                <div className="landscape-list">
+                  <div className="list-item locked">
+                    <span className="item-label">회전베기</span>
+                    <span className="item-value">360도 회전 공격</span>
+                  </div>
+                </div>
+              </LandscapeCard>
+            </LandscapeSection>
+          </LandscapeMenuPanel>
+        }
+        rightPanel={
+          <LandscapeMenuPanel title="🎭 캐릭터 스킬" subtitle="방어 및 공격 기술">
+            <LandscapeSection title="🛡️ 방어 스킬">
+              <LandscapeCard>
+                <div className="landscape-list">
+                  <div className="list-item available">
+                    <span className="item-label">가드</span>
+                    <span className="item-value">공격을 막아내는 방어 자세</span>
+                  </div>
+                  <div className="list-item locked">
+                    <span className="item-label">회피</span>
+                    <span className="item-value">공격을 피하는 회피 동작</span>
+                  </div>
+                </div>
+              </LandscapeCard>
+            </LandscapeSection>
+
+            <LandscapeSection title="🔥 공격 스킬">
+              <LandscapeCard>
+                <div className="landscape-list">
+                  <div className="list-item locked">
+                    <span className="item-label">분노</span>
+                    <span className="item-value">공격력과 공격 속도 증가</span>
+                  </div>
+                </div>
+              </LandscapeCard>
+            </LandscapeSection>
+
+            <LandscapeSection title="⭐ 특성">
+              <LandscapeCard>
+                <div className="landscape-list">
+                  <div className="list-item active">
+                    <span className="item-label">강인함</span>
+                    <span className="item-value">체력과 방어력 증가 (레벨 1/5)</span>
+                  </div>
+                  <div className="list-item inactive">
+                    <span className="item-label">민첩함</span>
+                    <span className="item-value">공격 속도와 회피율 증가 (레벨 0/5)</span>
+                  </div>
+                  <div className="list-item inactive">
+                    <span className="item-label">지혜</span>
+                    <span className="item-value">스킬 효과와 경험치 증가 (레벨 0/5)</span>
+                  </div>
+                </div>
+              </LandscapeCard>
+            </LandscapeSection>
+          </LandscapeMenuPanel>
+        }
+      >
+        {/* 중앙 스킬 정보 영역 */}
+        <div className="skills-center-area landscape-center-content">
+          <div className="skills-info">
+            <h2>✨ 스킬 & 특성</h2>
+            <p>무기 스킬과 캐릭터 특성을 관리하여 전투력을 향상시키세요</p>
+
+            <div className="skills-summary">
+              <div className="summary-item">
+                <span className="summary-label">사용 가능한 스킬:</span>
+                <span className="summary-value">2개</span>
               </div>
-            ))}
+              <div className="summary-item">
+                <span className="summary-label">잠긴 스킬:</span>
+                <span className="summary-value">6개</span>
+              </div>
+              <div className="summary-item">
+                <span className="summary-label">활성 특성:</span>
+                <span className="summary-value">1개</span>
+              </div>
+            </div>
+
+            <div className="skills-actions">
+              <LandscapeButton
+                onClick={() => navigate('/training')}
+                variant="primary"
+                className="training-btn"
+              >
+                🏋️ 훈련하러 가기
+              </LandscapeButton>
+              <LandscapeButton
+                onClick={() => navigate('/lobby')}
+                variant="secondary"
+                className="back-btn"
+              >
+                🏠 로비로 돌아가기
+              </LandscapeButton>
+            </div>
           </div>
         </div>
-        <div className="section" style={{ display: 'flex', gap: 8 }}>
-          <button
-            className="ghost-btn"
-            disabled={!me || (me?.characters?.[0]?.ap ?? 0) <= 0}
-            onClick={() => trainOneHand().then(load)}
-          >
-            한손 무기 훈련(+100xp, AP-1)
-          </button>
-        </div>
-      </div>
+      </LandscapeLayout>
     </div>
   )
-}
-
-function StateBadge({ state }: { state: SkillState }) {
-  const color =
-    state === 'usable'
-      ? '#2a8f2a'
-      : state === 'locked_prof'
-      ? '#b96f00'
-      : state === 'locked_stat'
-      ? '#b93838'
-      : '#555'
-  const text =
-    state === 'usable'
-      ? 'USABLE'
-      : state === 'locked_prof'
-      ? 'PROFICIENCY'
-      : state === 'locked_stat'
-      ? 'STATS'
-      : 'EQUIP/ITEM'
-  return <span style={{ fontSize: 12, color }}>{text}</span>
-}
-
-function authHeader(): Record<string, string> {
-  try {
-    const raw = localStorage.getItem('auth')
-    if (!raw) return {}
-    const token = JSON.parse(raw)?.user?.token
-    if (!token) return {}
-    return { Authorization: `Bearer ${token}` }
-  } catch {
-    return {}
-  }
-}
-
-async function trainOneHand() {
-  try {
-    const headers = authHeader()
-    if (!headers.Authorization) {
-      alert('로그인이 필요합니다. 먼저 로그인해 주세요.')
-      return
-    }
-    const res = await fetch(`${SERVER_ORIGIN}/train/proficiency`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...headers },
-      body: JSON.stringify({ kind: 'ONE_HAND', xp: 100 }),
-    })
-    if (res.status === 401) {
-      try {
-        localStorage.removeItem('auth')
-      } catch {}
-      alert('세션이 만료되었습니다. 다시 로그인해 주세요.')
-      // navigate는 훅 컨텍스트가 아니라 사용 불가하므로 단순 이동
-      location.href = '/login'
-      return
-    }
-  } catch {}
 }

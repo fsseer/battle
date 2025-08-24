@@ -1,747 +1,508 @@
-import Fastify from 'fastify'
-import cors from '@fastify/cors'
-import formbody from '@fastify/formbody'
-import { Server } from 'socket.io'
 import { PrismaClient } from '@prisma/client'
-import bcrypt from 'bcryptjs'
-import { evaluateSkills, evaluateTraits, type StatKey } from './skills.registry'
-import { TRAINING_CATALOG, type TrainingId } from './training.registry'
-import {
-  BattleState,
-  Role,
-  SkillId,
-  ATTACK_SKILLS,
-  DEFENSE_SKILLS,
-  BATTLE_DEADLINE_MS,
-} from './battle/types'
-import { isSkillAllowedConsideringInjury, applyDecisiveDamage } from './battle/engine'
+import { Server } from 'socket.io'
 import msgpackParser from 'socket.io-msgpack-parser'
-
-const fastify = Fastify({ logger: { level: 'warn' } })
-// Allow CORS from local dev and optionally any origin via env (for quick testing over internet)
-const corsEnv = process.env.CORS_ORIGIN || ''
-const extraCorsOrigin = corsEnv
-  ? corsEnv
-      .split(',')
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0)
-  : []
-const allowAll = corsEnv.trim() === '*'
-await fastify.register(cors, {
-  origin: allowAll ? true : ['http://127.0.0.1:5173', 'http://localhost:5173', ...extraCorsOrigin],
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-})
-// Parse application/x-www-form-urlencoded bodies (to avoid JSON preflight on client)
-await fastify.register(formbody)
-
-fastify.get('/health', async () => ({ ok: true }))
-
-const io = new Server(fastify.server, {
-  cors: allowAll
-    ? {
-        origin: (origin: string | undefined, cb: (err: Error | null, ok: boolean) => void) =>
-          cb(null, true),
-        methods: ['GET', 'POST', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization'],
-        credentials: false,
-      }
-    : {
-        origin: ['http://127.0.0.1:5173', 'http://localhost:5173', ...extraCorsOrigin],
-        methods: ['GET', 'POST', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization'],
-        credentials: false,
-      },
-  pingTimeout: 45000,
-  pingInterval: 20000,
-  perMessageDeflate: false,
-  httpCompression: false,
-  parser: msgpackParser,
-})
+import { createServer } from 'http'
+import { HybridSyncService } from './services/hybridSync'
+import { ResourceManager } from './services/resourceManager'
+import { SmartCache } from './services/smartCache'
+import { logger } from './utils/logger'
+import { hashPassword, verifyPassword } from './utils/security'
+import { generateTokens, verifyToken } from './utils/jwt'
 
 const prisma = new PrismaClient()
-const AP_REGEN_MS = Number(process.env.AP_REGEN_MS ?? 6 * 1000)
-// AP regen: 6분당 1, 최대 100
-function applyApRegen(ch: any) {
-  const now = Date.now()
-  const last = new Date(ch.apUpdatedAt).getTime()
-  const elapsedMs = Math.max(0, now - last)
-  const gained = Math.floor(elapsedMs / AP_REGEN_MS)
-  if (gained <= 0) return ch
-  const nextAp = Math.min(100, (ch.ap ?? 0) + gained)
-  return { ...ch, ap: nextAp, apUpdatedAt: new Date(now) }
-}
+const server = createServer()
 
-async function saveApIfChanged(chBefore: any, chAfter: any) {
-  if (chAfter.ap !== chBefore.ap) {
-    await prisma.character.update({
-      where: { id: chBefore.id },
-      data: { ap: chAfter.ap, apUpdatedAt: chAfter.apUpdatedAt },
-    })
-  }
-}
-
-function parseLoginIdFromToken(bearer?: string): string | null {
-  if (!bearer) return null
-  const token = bearer.replace(/^Bearer\s+/i, '')
-  try {
-    const decoded = Buffer.from(token, 'base64').toString('utf8')
-    const [loginId] = decoded.split(':')
-    return loginId || null
-  } catch {
-    return null
-  }
-}
-// Simple auth route with persistence
-const SPECIAL_PASSWORDS: Record<string, string> = { fsseer: '0608' }
-
-fastify.post('/auth/login', async (request, reply) => {
-  try {
-    const body = request.body as { id?: string; password?: string }
-    const id = (body?.id ?? '').trim()
-    const pw = body?.password ?? ''
-    const isAlnum = (s: string) => /^[A-Za-z0-9]+$/.test(s)
-    const invalid =
-      !id ||
-      !pw ||
-      id.length < 4 ||
-      id.length > 24 ||
-      pw.length < 4 ||
-      pw.length > 24 ||
-      /\s/.test(id) ||
-      /\s/.test(pw) ||
-      !isAlnum(id) ||
-      !isAlnum(pw)
-    if (invalid) {
-      return reply.code(400).send({ ok: false, error: 'INVALID_INPUT' })
-    }
-    // Special-case credential check for demo accounts
-    const expected = SPECIAL_PASSWORDS[id]
-    if (expected && pw !== expected) {
-      return reply.code(401).send({ ok: false, error: 'WRONG_PASSWORD' })
-    }
-
-    // Find user (no auto-create here)
-    const user = await prisma.user.findUnique({
-      where: { loginId: id },
-      include: { characters: true },
-    })
-    if (!user) return reply.code(404).send({ ok: false, error: 'USER_NOT_FOUND' })
-    if (!expected) {
-      const ok = await bcrypt.compare(pw, user.pwHash)
-      if (!ok) return reply.code(401).send({ ok: false, error: 'WRONG_PASSWORD' })
-    }
-    // small delay guard for extremely slow tunnels to reduce race on first connect
-    // await new Promise((r) => setTimeout(r, 50))
-    const token = Buffer.from(`${user.loginId}:${Date.now()}`).toString('base64')
-    return {
-      ok: true,
-      token,
-      user: {
-        id: user.loginId,
-        name: user.name,
-        characters: user.characters.map((c) => ({
-          id: c.id,
-          name: c.name,
-          level: c.level,
-          stats: { str: c.str, agi: c.agi, sta: c.sta },
-        })),
-      },
-    }
-  } catch (e) {
-    request.log.error(e)
-    return reply.code(500).send({ ok: false, error: 'SERVER_ERROR' })
-  }
+const io = new Server(server, {
+  parser: msgpackParser as any,
+  cors: {
+    origin: [
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+      'http://vindexarena.iptime.org:5173',
+      'http://192.168.0.2:5173',
+    ],
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+  // 성능 최적화 설정
+  transports: ['websocket'],
+  allowEIO3: true,
+  pingTimeout: 20000,
+  pingInterval: 25000,
+  upgradeTimeout: 10000,
+  maxHttpBufferSize: 1e6,
+  allowRequest: (req, callback) => {
+    // CORS preflight 요청 허용
+    callback(null, true)
+  },
 })
 
-fastify.get('/me', async (request, reply) => {
-  const loginId = parseLoginIdFromToken(request.headers.authorization)
-  if (!loginId) return reply.code(401).send({ ok: false })
-  request.log.info({ route: '/me', loginId }, 'me request')
-  const user = await prisma.user.findUnique({
-    where: { loginId },
-    include: {
-      characters: {
-        include: {
-          proficiencies: true,
-          traits: { include: { trait: true } },
-          skills: { include: { skill: true } },
-        },
-      },
-    },
-  })
-  if (!user) {
-    request.log.warn({ route: '/me', loginId }, 'user not found')
-    return reply.code(404).send({ ok: false })
-  }
-  // apply AP regen on first character for now
-  const ch0 = user.characters?.[0]
-  if (ch0) {
-    const updated = applyApRegen(ch0)
-    await saveApIfChanged(ch0, updated)
-    user.characters[0] = updated as any
-  }
-  // enrich with lightweight meta for client UI
-  return {
-    ok: true,
-    user: { id: user.loginId, name: user.name, characters: user.characters },
-    meta: {
-      statDescriptions: {
-        str: '근력/타격 위력과 장비 착용 난이도에 영향',
-        agi: '민첩/명중과 회피, 선공 확률에 영향',
-        int: '지능/특수기 숙련과 전술 판단에 영향',
-        luck: '행운/치명타와 이벤트 발생에 소폭 영향',
-        fate: '운명/주인공 전용의 드문 판정 가중치',
-      },
-      hpScale: { HUMAN: 2, SMALL_BEAST: 1, MEDIUM_BEAST: 2, LARGE_BEAST_3: 3, LARGE_BEAST_4: 4, LEGENDARY_5p: 5 },
-      statBaseline: { str: 5, agi: 5, int: 5, luck: 5, fate: 0 },
-      statXp: { str: 0, agi: 0, int: 0, luck: 0, fate: 0 },
-    },
-  }
+// 핵심 서비스 초기화
+const smartCache = new SmartCache({
+  maxSize: 2000,
+  defaultTTL: 300000, // 5분
+  enableCompression: true,
 })
 
-// Skills/Traits evaluation (temporary, using registry + basic mapping)
-fastify.get('/skills', async (request) => {
-  const loginId = parseLoginIdFromToken(request.headers.authorization) ?? 'fsseer'
-  const user = await prisma.user.findUnique({
-    where: { loginId },
-    include: { characters: { include: { proficiencies: true } } },
-  })
-  const ch = user?.characters?.[0]
-  const stats: Record<StatKey, number> = {
-    str: ch?.str ?? 5,
-    agi: ch?.agi ?? 5,
-    int: (ch as any)?.int ?? 5,
-    luck: (ch as any)?.luck ?? 5,
-    fate: (ch as any)?.fate ?? 0,
-  }
-  const profs = Object.fromEntries((ch?.proficiencies ?? []).map((p) => [p.kind, p.level])) as any
-  // naive equipped kinds until equipment model exists
-  const equippedKinds: any[] = ['ONE_HAND']
-  const weaponSkills = evaluateSkills({ stats, profs, equippedKinds })
-  const traits = evaluateTraits({ stats, profs })
-  return {
-    weaponSkills,
-    characterSkills: weaponSkills.filter((w) => w.skill.category !== 'WEAPON'),
-    traits,
-    meta: {
-      hpScale: {
-        HUMAN: 2,
-        SMALL_BEAST: 1,
-        MEDIUM_BEAST: 2,
-        LARGE_BEAST_3: 3,
-        LARGE_BEAST_4: 4,
-        LEGENDARY_5p: 5,
-      },
-      statBaseline: { str: 5, agi: 5, int: 5, luck: 5, fate: 0 },
-    },
-  }
-})
+const hybridSync = new HybridSyncService(io)
+const resourceManager = new ResourceManager(hybridSync)
 
-fastify.post('/train/proficiency', async (request, reply) => {
-  const loginId = parseLoginIdFromToken(request.headers.authorization)
-  if (!loginId) return reply.code(401).send({ ok: false })
-  request.log.info({ route: '/train/proficiency', loginId }, 'train request')
-  const body = request.body as { kind: any; xp?: number }
-  const kind = body?.kind
-  if (!kind) return reply.code(400).send({ ok: false })
-  const user = await prisma.user.findUnique({ where: { loginId }, include: { characters: true } })
-  const ch = user?.characters?.[0]
-  if (!ch) {
-    request.log.warn({ route: '/train/proficiency', loginId }, 'character not found')
-    return reply.code(404).send({ ok: false })
-  }
-  // consume 1 AP to train
-  const chUpdated = applyApRegen(ch)
-  const cost = 1
-  if ((chUpdated.ap ?? 0) < cost) {
-    return reply.code(400).send({ ok: false, error: 'NOT_ENOUGH_AP' })
-  }
-  const afterSpend = { ...chUpdated, ap: chUpdated.ap - cost, apUpdatedAt: new Date() }
-  await saveApIfChanged(ch, afterSpend)
-  const xpGain = body.xp ?? 100
-  const prof = await prisma.weaponProficiency.upsert({
-    where: { characterId_kind: { characterId: ch.id, kind } },
-    update: { xp: { increment: xpGain } },
-    create: { characterId: ch.id, kind, xp: xpGain, level: 0 },
-  })
-  // recompute level: 100 xp per level
-  const newLevel = Math.floor(prof.xp / 100)
-  if (newLevel !== prof.level) {
-    await prisma.weaponProficiency.update({ where: { id: prof.id }, data: { level: newLevel } })
-  }
-  const all = await prisma.weaponProficiency.findMany({ where: { characterId: ch.id } })
-  return { ok: true, proficiencies: all, ap: afterSpend.ap }
-})
+// 세션 관리
+const activeSessions = new Map<string, { token: string; lastActivity: number }>()
 
-// Simple training: earn gold by spending AP
-fastify.post('/train/earn', async (request, reply) => {
-  const loginId = parseLoginIdFromToken(request.headers.authorization)
-  if (!loginId) return reply.code(401).send({ ok: false })
-  const body = request.body as { apCost?: number; gold?: number }
-  const apCost = Math.max(1, Math.min(50, body?.apCost ?? 5))
-  const goldGain = Math.max(1, Math.min(1000, body?.gold ?? 10))
-  const user = await prisma.user.findUnique({ where: { loginId }, include: { characters: true } })
-  const ch = user?.characters?.[0]
-  if (!ch) return reply.code(404).send({ ok: false })
-  const afterRegen = applyApRegen(ch)
-  if ((afterRegen.ap ?? 0) < apCost)
-    return reply.code(400).send({ ok: false, error: 'NOT_ENOUGH_AP' })
-  const updated = await prisma.character.update({
-    where: { id: ch.id },
-    data: { ap: afterRegen.ap - apCost, apUpdatedAt: new Date(), gold: { increment: goldGain } },
-  })
-  return {
-    ok: true,
-    character: { id: updated.id, ap: updated.ap, gold: updated.gold, stress: updated.stress },
-  }
-})
-
-// Simple training: rest to reduce stress by spending AP
-fastify.post('/train/rest', async (request, reply) => {
-  const loginId = parseLoginIdFromToken(request.headers.authorization)
-  if (!loginId) return reply.code(401).send({ ok: false })
-  const body = request.body as { apCost?: number; stressRelief?: number }
-  const apCost = Math.max(0, Math.min(50, body?.apCost ?? 2))
-  const relief = Math.max(1, Math.min(100, body?.stressRelief ?? 5))
-  const user = await prisma.user.findUnique({ where: { loginId }, include: { characters: true } })
-  const ch = user?.characters?.[0]
-  if (!ch) return reply.code(404).send({ ok: false })
-  const afterRegen = applyApRegen(ch)
-  if ((afterRegen.ap ?? 0) < apCost)
-    return reply.code(400).send({ ok: false, error: 'NOT_ENOUGH_AP' })
-  const newStress = Math.max(0, (afterRegen.stress ?? 0) - relief)
-  const updated = await prisma.character.update({
-    where: { id: ch.id },
-    data: { ap: afterRegen.ap - apCost, apUpdatedAt: new Date(), stress: newStress },
-  })
-  return {
-    ok: true,
-    character: { id: updated.id, ap: updated.ap, gold: updated.gold, stress: updated.stress },
-  }
-})
-
-// Catalog + run specific training item (BASIC/WEAPON)
-fastify.get('/training/catalog', async () => ({ ok: true, items: TRAINING_CATALOG }))
-
-fastify.post('/training/run', async (request, reply) => {
-  const loginId = parseLoginIdFromToken(request.headers.authorization)
-  if (!loginId) return reply.code(401).send({ ok: false })
-  const body = request.body as { id?: TrainingId }
-  const id = body?.id
-  const item = TRAINING_CATALOG.find((t) => t.id === id)
-  if (!item) return reply.code(400).send({ ok: false, error: 'INVALID_TRAINING' })
-  const user = await prisma.user.findUnique({ where: { loginId }, include: { characters: true } })
-  const ch = user?.characters?.[0]
-  if (!ch) return reply.code(404).send({ ok: false })
-  const staged = applyApRegen(ch)
-  if ((staged.ap ?? 0) < item.apCost)
-    return reply.code(400).send({ ok: false, error: 'NOT_ENOUGH_AP' })
-  if ((item.goldCost ?? 0) > 0 && (staged.gold ?? 0) < (item.goldCost ?? 0))
-    return reply.code(400).send({ ok: false, error: 'NOT_ENOUGH_GOLD' })
-  const data: any = {
-    ap: staged.ap - item.apCost,
-    apUpdatedAt: new Date(),
-    stress: Math.max(0, (staged.stress ?? 0) + item.stressDelta),
-  }
-  if (item.goldCost) data.gold = { decrement: item.goldCost }
-  const updated = await prisma.character.update({ where: { id: ch.id }, data })
-  if (item.weaponKind && item.weaponXp) {
-    await prisma.weaponProficiency.upsert({
-      where: { characterId_kind: { characterId: ch.id, kind: item.weaponKind } },
-      update: { xp: { increment: item.weaponXp } },
-      create: { characterId: ch.id, kind: item.weaponKind, xp: item.weaponXp, level: 0 },
-    })
-  }
-  return {
-    ok: true,
-    character: { id: updated.id, ap: updated.ap, gold: updated.gold, stress: updated.stress },
-  }
-})
-
-// Debug: echo who the server sees from the Authorization header
-fastify.get('/debug/whoami', async (request) => {
-  const loginId = parseLoginIdFromToken(request.headers.authorization)
-  return { loginId }
-})
-// Registration endpoint
-fastify.post('/auth/register', async (request, reply) => {
-  try {
-    const body = request.body as { id?: string; password?: string; confirm?: string }
-    const id = (body?.id ?? '').trim()
-    const pw = body?.password ?? ''
-    const confirm = body?.confirm ?? ''
-    const invalidLenId = id.length < 4 || id.length > 24
-    const invalidLenPw = pw.length < 4 || pw.length > 24
-    const invalidWsId = /\s/.test(id)
-    const invalidWsPw = /\s/.test(pw)
-    const invalidCsId = !/^[A-Za-z0-9]+$/.test(id)
-    const invalidCsPw = !/^[A-Za-z0-9]+$/.test(pw)
-    if (
-      !id ||
-      !pw ||
-      !confirm ||
-      invalidLenId ||
-      invalidLenPw ||
-      invalidWsId ||
-      invalidWsPw ||
-      invalidCsId ||
-      invalidCsPw ||
-      pw !== confirm
-    ) {
-      return reply.code(400).send({
-        ok: false,
-        error: 'INVALID_INPUT',
-        errorDetails: {
-          idLength: invalidLenId,
-          pwLength: invalidLenPw,
-          idWhitespace: invalidWsId,
-          pwWhitespace: invalidWsPw,
-          idCharset: invalidCsId,
-          pwCharset: invalidCsPw,
-          mismatch: pw !== confirm,
-        },
-      })
-    }
-    const exists = await prisma.user.findUnique({ where: { loginId: id } })
-    if (exists) return reply.code(409).send({ ok: false, error: 'DUPLICATE_ID' })
-    const pwHash = await bcrypt.hash(pw, 10)
-    const user = await prisma.user.create({
-      data: {
-        loginId: id,
-        pwHash,
-        name: id,
-        characters: { create: [{ name: 'Novice Gladiator', level: 1, str: 5, agi: 5, sta: 5 }] },
-      },
-      include: { characters: true },
-    })
-    const token = Buffer.from(`${user.loginId}:${Date.now()}`).toString('base64')
-    return {
-      ok: true,
-      token,
-      user: {
-        id: user.loginId,
-        name: user.name,
-        characters: user.characters.map((c) => ({
-          id: c.id,
-          name: c.name,
-          level: c.level,
-          stats: { str: c.str, agi: c.agi, sta: c.sta },
-        })),
-      },
-    }
-  } catch (e) {
-    request.log.error({ err: e }, 'register failed')
-    return reply.code(500).send({ ok: false, error: 'SERVER_ERROR' })
-  }
-})
-
-// Check ID availability
-fastify.post('/auth/check-id', async (request, reply) => {
-  try {
-    const body = request.body as { id?: string }
-    const id = (body?.id ?? '').trim()
-    if (!id || id.length < 4 || id.length > 24 || /\s/.test(id) || !/^[A-Za-z0-9]+$/.test(id)) {
-      reply.header('Cache-Control', 'no-store')
-      return reply.code(400).send({ ok: false, error: 'INVALID_ID' })
-    }
-    const exists = await prisma.user.findUnique({ where: { loginId: id } })
-    reply.header('Cache-Control', 'no-store')
-    return { ok: true, available: !exists }
-  } catch (e) {
-    request.log.error({ err: e }, 'check-id failed')
-    reply.header('Cache-Control', 'no-store')
-    return reply.code(500).send({ ok: false })
-  }
-})
-
-// Also provide GET variant to avoid CORS preflight on JSON POST in tunnel
-fastify.get('/auth/check-id', async (request, reply) => {
-  try {
-    const q = request.query as { id?: string }
-    const id = (q?.id ?? '').trim()
-    if (!id || id.length < 4 || id.length > 24 || /\s/.test(id) || !/^[A-Za-z0-9]+$/.test(id)) {
-      reply.header('Cache-Control', 'no-store')
-      return reply.code(400).send({ ok: false, error: 'INVALID_ID' })
-    }
-    const exists = await prisma.user.findUnique({ where: { loginId: id } })
-    reply.header('Cache-Control', 'no-store')
-    return { ok: true, available: !exists }
-  } catch (e) {
-    request.log.error({ err: e }, 'check-id(get) failed')
-    reply.header('Cache-Control', 'no-store')
-    return reply.code(500).send({ ok: false })
-  }
-})
-
-// DEV ONLY: admin delete user (no auth)
-fastify.post('/admin/delete-user', async (request, reply) => {
-  const body = request.body as { id?: string }
-  const id = (body?.id ?? '').trim()
-  if (!id) return reply.code(400).send({ ok: false })
-  const u = await prisma.user.findUnique({ where: { loginId: id } })
-  if (!u) return { ok: true, deleted: 0 }
-  await prisma.character.deleteMany({ where: { userId: u.id } })
-  await prisma.user.delete({ where: { id: u.id } })
-  return { ok: true, deleted: 1 }
-})
-
-// Simple in-memory matching and battle state
-const waitingQueue: string[] = []
-const sidToBattle: Map<string, BattleState> = new Map()
-
+// 소켓 연결 핸들러
 io.on('connection', (socket) => {
-  fastify.log.info({ sid: socket.id }, 'socket connected')
-  socket.emit('server.hello', { id: socket.id })
+  console.log('[Socket] 새로운 연결:', socket.id)
+  console.log('[Socket] 현재 연결된 소켓 수:', io.engine.clientsCount)
 
-  socket.on('queue.join', () => {
-    fastify.log.info({ sid: socket.id }, 'queue.join received')
-    if (sidToBattle.has(socket.id)) return
-    if (!waitingQueue.includes(socket.id)) waitingQueue.push(socket.id)
-    // 현재 대기 정보 피드백
-    const pos = waitingQueue.indexOf(socket.id)
-    io.to(socket.id).emit('queue.status', {
-      state: 'WAITING',
-      position: pos + 1,
-      size: waitingQueue.length,
-    })
-    if (waitingQueue.length >= 2) {
-      const a = waitingQueue.shift()!
-      const b = waitingQueue.shift()!
-      const roomId = `battle:${a}:${b}`
-      // 초기 선공/후공: 능력치가 같다면 먼저 대기한 a를 선공으로
-      const firstAttacker = a
-      const firstDefender = firstAttacker === a ? b : a
-      const state: BattleState = {
-        roomId,
-        round: 1,
-        players: [a, b],
-        roles: { [firstAttacker]: 'ATTACK', [firstDefender]: 'DEFENSE' },
-        choices: {},
-        momentum: 0,
-        decisiveThreshold: 2,
-        deadlineAt: Date.now() + BATTLE_DEADLINE_MS,
-        hp: { [a]: 2, [b]: 2 },
-        injuries: { [a]: [], [b]: [] },
-        weapon: { [a]: 'ONE_HAND', [b]: 'ONE_HAND' },
-      }
-      sidToBattle.set(a, state)
-      sidToBattle.set(b, state)
-      io.sockets.sockets.get(a)?.join(roomId)
-      io.sockets.sockets.get(b)?.join(roomId)
-      io.to(a).emit('queue.status', { state: 'MATCHED', opponent: b })
-      io.to(b).emit('queue.status', { state: 'MATCHED', opponent: a })
-      io.to(a).emit('match.found', { opponent: b, role: state.roles[a] })
-      io.to(b).emit('match.found', { opponent: a, role: state.roles[b] })
-    }
+  // 핑/퐁 핸들러
+  socket.on('ping', (data: { timestamp: number }) => {
+    socket.emit('pong', { timestamp: data.timestamp })
   })
 
-  socket.on('queue.leave', () => {
-    const idx = waitingQueue.indexOf(socket.id)
-    if (idx >= 0) waitingQueue.splice(idx, 1)
-    io.to(socket.id).emit('queue.status', { state: 'LEFT' })
-  })
+  // 인증 핸들러
+  socket.on('auth.login', async (userId: string) => {
+    try {
+      console.log('[Socket] auth.login 요청:', userId, '소켓 ID:', socket.id)
+      socket.data.userId = userId
+      socket.data.authenticated = true
 
-  socket.on('battle.choose', (skillId: SkillId) => {
-    const state = sidToBattle.get(socket.id)
-    if (!state) return
-    // 역할에 맞는 스킬만 허용 (+부상 제약)
-    const role = state.roles[socket.id]
-    if (!isSkillAllowedConsideringInjury(state, socket.id, role, skillId)) {
-      io.to(socket.id).emit('battle.error', {
-        reason: 'INVALID_SKILL_FOR_ROLE',
-        role,
-        skill: skillId,
-      })
-      return
-    }
-    state.choices[socket.id] = skillId
-    const [a, b] = state.players
-    const ca = state.choices[a]
-    const cb = state.choices[b]
-    if (!ca || !cb) return
-    // 현재 공격자/방어자 식별
-    const attacker = state.roles[a] === 'ATTACK' ? a : b
-    const defender = attacker === a ? b : a
-    const attChoice = state.choices[attacker]! as SkillId
-    const defChoice = state.choices[defender]! as SkillId
-    // 가위바위보 판정 (공격 vs 방어)
-    let outcome: 'ATTACKER' | 'DEFENDER' | 'DRAW' = 'DRAW'
-    // judgeOutcome is provided by engine; to reduce imports we inline minimal logic here
-    // Outcome computation using imported beats is encapsulated in applyDecisiveDamage path
-    // For clarity, reproduce logic via simple maps
-    const aWins =
-      (attChoice === 'heavy' && defChoice === 'block') ||
-      (attChoice === 'light' && defChoice === 'dodge') ||
-      (attChoice === 'poke' && defChoice === 'counter')
-    const dWins =
-      (defChoice === 'block' && attChoice === 'poke') ||
-      (defChoice === 'dodge' && attChoice === 'heavy') ||
-      (defChoice === 'counter' && attChoice === 'light')
-    if (aWins) outcome = 'ATTACKER'
-    else if (dWins) outcome = 'DEFENDER'
-    // 모멘텀 변경
-    if (outcome === 'ATTACKER') state.momentum += 1
-    else if (outcome === 'DEFENDER') state.momentum -= 1
-
-    // 결정타 체크
-    let decisive: undefined | { side: 'ATTACKER' | 'DEFENDER'; success: boolean }
-    const threshold = state.decisiveThreshold
-    if (state.momentum >= threshold || state.momentum <= -threshold) {
-      const side: 'ATTACKER' | 'DEFENDER' = state.momentum > 0 ? 'ATTACKER' : 'DEFENDER'
-      const success = Math.random() < 0.6
-      decisive = { side, success }
-      if (success) {
-        const hitter = side === 'ATTACKER' ? attacker : defender
-        const target = side === 'ATTACKER' ? defender : attacker
-        const impact = applyDecisiveDamage(state, hitter, target)
-        io.to(state.roomId).emit('battle.decisive', {
-          round: state.round,
-          hitter,
-          target,
-          damage: impact.dmg,
-          injured: impact.injured,
-          hp: state.hp?.[target] ?? 0,
-        })
-        if ((state.hp?.[target] ?? 0) <= 0) {
-          io.to(state.roomId).emit('battle.end', { reason: 'knockout', winner: hitter })
-          state.players.forEach((sid) => sidToBattle.delete(sid))
-          return
+      // 기존 세션이 있다면 제거
+      if (activeSessions.has(userId)) {
+        const existingSocket = Array.from(io.sockets.sockets.values()).find(
+          (s) => s.data.userId === userId && s.id !== socket.id
+        )
+        if (existingSocket) {
+          console.log('[Socket] 기존 소켓 연결 해제:', existingSocket.id)
+          existingSocket.disconnect(true)
         }
-      } else {
-        // 실패 시 상대에게 공세 유리(역전 기회): 역할 스왑, 모멘텀 반전 후 -1로 설정
-        state.momentum = side === 'ATTACKER' ? -1 : 1
-        const newRoles: Record<string, Role> = {}
-        newRoles[attacker] = 'DEFENSE'
-        newRoles[defender] = 'ATTACK'
-        state.roles = newRoles
       }
-    } else {
-      // 결정타 아님: 모멘텀 부호에 따라 역할 유지/전환
-      if (state.momentum < 0) {
-        const newRoles: Record<string, Role> = {}
-        newRoles[attacker] = 'DEFENSE'
-        newRoles[defender] = 'ATTACK'
-        state.roles = newRoles
-      }
-      // momentum > 0 이면 공격 유지, 0이면 그대로 유지
-    }
 
-    // 각자에게 결과 브로드캐스트
-    const resForA: 0 | 1 | 2 =
-      a === attacker
-        ? outcome === 'ATTACKER'
-          ? 1
-          : outcome === 'DEFENDER'
-          ? 2
-          : 0
-        : outcome === 'ATTACKER'
-        ? 2
-        : outcome === 'DEFENDER'
-        ? 1
-        : 0
-    const resForB: 0 | 1 | 2 = resForA === 1 ? 2 : resForA === 2 ? 1 : 0
+      // 새 세션 등록
+      activeSessions.set(userId, {
+        token: '',
+        lastActivity: Date.now(),
+      })
 
-    io.to(a).emit('battle.resolve', {
-      round: state.round,
-      self: ca,
-      opp: cb,
-      result: resForA,
-      nextRole: state.roles[a] === 'ATTACK' ? 0 : 1,
-      momentum: state.momentum,
-      decisive,
-    })
-    io.to(b).emit('battle.resolve', {
-      round: state.round,
-      self: cb,
-      opp: ca,
-      result: resForB,
-      nextRole: state.roles[b] === 'ATTACK' ? 0 : 1,
-      momentum: state.momentum,
-      decisive,
-    })
-    state.round += 1
-    state.choices = {}
-    state.deadlineAt = Date.now() + BATTLE_DEADLINE_MS
-  })
-
-  socket.on('disconnect', () => {
-    const idx = waitingQueue.indexOf(socket.id)
-    if (idx >= 0) waitingQueue.splice(idx, 1)
-    const state = sidToBattle.get(socket.id)
-    if (state) {
-      const opponent = state.players.find((s) => s !== socket.id)
-      if (opponent) io.to(opponent).emit('battle.end', { reason: 'opponent_disconnected' })
-      state.players.forEach((sid) => sidToBattle.delete(sid))
+      console.log('[Socket] 인증 성공:', userId, '소켓 ID:', socket.id)
+      socket.emit('auth.success', { userId })
+    } catch (error) {
+      console.error('[Socket] 인증 실패:', error)
+      socket.emit('auth.error', { message: '인증에 실패했습니다.' })
     }
   })
 
-  // surrender handling
-  socket.on('battle.surrender', () => {
-    const state = sidToBattle.get(socket.id)
-    if (!state) return
-    const opponent = state.players.find((s) => s !== socket.id)
-    if (opponent) io.to(state.roomId).emit('battle.end', { reason: 'surrender', winner: opponent })
-    state.players.forEach((sid) => sidToBattle.delete(sid))
+  // 연결 해제 처리
+  socket.on('disconnect', (reason) => {
+    console.log('[Socket] 연결 해제:', socket.id, '사유:', reason)
+    if (socket.data.userId) {
+      activeSessions.delete(socket.data.userId)
+      console.log('[Socket] 사용자 세션 정리됨:', socket.data.userId)
+    }
+  })
+
+  // 에러 처리
+  socket.on('error', (error) => {
+    console.error('[Socket] 소켓 에러:', error)
   })
 })
 
-// Round deadline watchdog: handles cases where no one or only one chose in time
-setInterval(() => {
-  const processed = new Set<string>()
-  for (const [sid, state] of sidToBattle.entries()) {
-    if (!state.deadlineAt || Date.now() < state.deadlineAt) continue
-    if (processed.has(state.roomId)) continue
-    processed.add(state.roomId)
-    const [a, b] = state.players
-    const ca = state.choices[a]
-    const cb = state.choices[b]
-    // nobody chose → draw and advance
-    if (!ca && !cb) {
-      state.momentum = 0
-      io.to(a).emit('battle.resolve', {
-        round: state.round,
-        self:
-          state.roles[a] === 'ATTACK'
-            ? (ATTACK_SKILLS[0] as SkillId)
-            : (DEFENSE_SKILLS[0] as SkillId),
-        opp:
-          state.roles[b] === 'ATTACK'
-            ? (ATTACK_SKILLS[0] as SkillId)
-            : (DEFENSE_SKILLS[0] as SkillId),
-        result: 0,
-        nextRole: state.roles[a],
-        momentum: state.momentum,
-      })
-      io.to(b).emit('battle.resolve', {
-        round: state.round,
-        self:
-          state.roles[b] === 'ATTACK'
-            ? (ATTACK_SKILLS[0] as SkillId)
-            : (DEFENSE_SKILLS[0] as SkillId),
-        opp:
-          state.roles[a] === 'ATTACK'
-            ? (ATTACK_SKILLS[0] as SkillId)
-            : (DEFENSE_SKILLS[0] as SkillId),
-        result: 0,
-        nextRole: state.roles[b],
-        momentum: state.momentum,
-      })
-      state.round += 1
-      state.choices = {}
-      state.deadlineAt = Date.now() + BATTLE_DEADLINE_MS
-      continue
-    }
-    // exactly one chose → chosen side wins decisively
-    if (!!ca !== !!cb) {
-      const winner = ca ? a : b
-      io.to(state.roomId).emit('battle.end', { reason: 'timeout_decisive', winner })
-      state.players.forEach((pid) => sidToBattle.delete(pid))
-      continue
-    }
-  }
-}, 1000)
+// HTTP 서버 설정 완료
 
-const PORT = Number(process.env.PORT ?? 5174)
-await fastify.listen({ port: PORT, host: '0.0.0.0' })
-fastify.log.info(`Server listening on http://localhost:${PORT}`)
+// HTTP 서버를 0.0.0.0에 바인딩
+server.listen(5174, '0.0.0.0', async () => {
+  console.log('[HTTP Server] 0.0.0.0:5174에 바인딩됨')
+  console.log('[Socket.IO] 서버 준비됨')
+
+  // 데이터베이스 연결 테스트
+  try {
+    await prisma.$connect()
+    console.log('[Database] 연결 성공')
+
+    // 사용자 수 확인
+    const userCount = await prisma.user.count()
+    console.log(`[Database] 총 사용자 수: ${userCount}`)
+
+    // fsseer 계정 확인
+    const fsseerUser = await prisma.user.findUnique({
+      where: { loginId: 'fsseer' },
+      select: { id: true, loginId: true, nickname: true },
+    })
+
+    if (fsseerUser) {
+      console.log(`[Database] fsseer 계정 발견: ${fsseerUser.nickname}`)
+    } else {
+      console.log('[Database] fsseer 계정이 존재하지 않습니다')
+    }
+  } catch (error) {
+    console.error('[Database] 연결 실패:', error)
+  }
+})
+
+// HTTP 서버 직접 처리 준비 완료
+
+// HTTP 요청을 직접 처리 (Fastify 대신)
+server.on('request', async (req, res) => {
+  // CORS 헤더 설정
+  const requestOrigin = req.headers.origin || ''
+  const allowedOrigins = new Set([
+    'http://vindexarena.iptime.org:5173',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://192.168.0.2:5173',
+  ])
+  const originToUse = allowedOrigins.has(requestOrigin)
+    ? requestOrigin
+    : 'http://vindexarena.iptime.org:5173'
+
+  res.setHeader('Access-Control-Allow-Origin', originToUse)
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  res.setHeader('Access-Control-Allow-Credentials', 'true')
+
+  // OPTIONS 요청 처리 (preflight)
+  if (req.method === 'OPTIONS') {
+    res.writeHead(200)
+    res.end()
+    return
+  }
+
+  // 헬스체크
+  if (req.url === '/health' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(
+      JSON.stringify({
+        ok: true,
+        timestamp: new Date().toISOString(),
+        message: 'Server running on 0.0.0.0:5174',
+      })
+    )
+    return
+  }
+
+  // ID 중복 확인 API
+  if (req.url?.startsWith('/auth/check-id') && req.method === 'GET') {
+    try {
+      const url = new URL(req.url, `http://${req.headers.host}`)
+      const id = url.searchParams.get('id')
+
+      if (!id) {
+        res.writeHead(400, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ ok: false }))
+        return
+      }
+
+      console.log(`[Check-ID] 중복 확인: ${id}`)
+
+      const existing = await prisma.user.findUnique({
+        where: { loginId: id },
+        select: { id: true },
+      })
+
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(
+        JSON.stringify({
+          ok: true,
+          available: !existing,
+        })
+      )
+
+      console.log(`[Check-ID] 결과: ${id} - ${existing ? '중복' : '사용가능'}`)
+    } catch (error) {
+      console.error('[Check-ID] 오류:', error)
+      res.writeHead(500, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false }))
+    }
+    return
+  }
+
+  // 회원가입 API
+  if (req.url === '/auth/register' && req.method === 'POST') {
+    try {
+      let body = ''
+      req.on('data', (chunk) => {
+        body += chunk.toString()
+      })
+
+      req.on('end', async () => {
+        try {
+          const params = new URLSearchParams(body)
+          const id = params.get('id') || params.get('loginId')
+          const password = params.get('password')
+          const confirm = params.get('confirm')
+          const nickname = params.get('nickname') || id
+
+          if (!id || !password || !confirm) {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ ok: false, error: 'INVALID_INPUT' }))
+            return
+          }
+
+          if (password !== confirm) {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ ok: false, error: 'INVALID_INPUT' }))
+            return
+          }
+
+          console.log(`[Register] 회원가입 시도: ${id}`)
+
+          // 중복 확인
+          const exists = await prisma.user.findFirst({
+            where: {
+              OR: [{ loginId: id }, { nickname: nickname || id }],
+            },
+            select: { id: true, loginId: true },
+          })
+
+          if (exists) {
+            res.writeHead(409, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ ok: false, error: 'DUPLICATE_ID' }))
+            return
+          }
+
+          // 실제 비밀번호 해싱
+          const hashedPassword = await hashPassword(password)
+          console.log(`[Register] 비밀번호 해싱 완료: ${id}`)
+
+          // 사용자 생성
+          const user = await prisma.user.create({
+            data: {
+              loginId: id,
+              nickname: nickname || id,
+              pwHash: hashedPassword,
+            },
+          })
+
+          console.log(`[Register] 사용자 생성 성공: ${id}`)
+
+          // 회원가입 성공 시 JWT 토큰 생성
+          const { accessToken, refreshToken } = await generateTokens(user.loginId)
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(
+            JSON.stringify({
+              ok: true,
+              token: accessToken,
+              refreshToken: refreshToken,
+              user: { id: user.loginId, name: user.nickname },
+            })
+          )
+        } catch (error) {
+          console.error('[Register] 처리 오류:', error)
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: false, error: 'INTERNAL' }))
+        }
+      })
+    } catch (error) {
+      console.error('[Register] 요청 처리 오류:', error)
+      res.writeHead(500, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, error: 'INTERNAL' }))
+    }
+    return
+  }
+
+  // 로그인 API
+  if (req.url === '/auth/login' && req.method === 'POST') {
+    try {
+      let body = ''
+      req.on('data', (chunk) => {
+        body += chunk.toString()
+      })
+
+      req.on('end', async () => {
+        try {
+          const params = new URLSearchParams(body)
+          const id = params.get('id')
+          const password = params.get('password')
+
+          if (!id || !password) {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ ok: false, error: 'ID와 비밀번호가 필요합니다.' }))
+            return
+          }
+
+          console.log(`[Login] 사용자 검색: ${id}`)
+
+          const user = await prisma.user.findUnique({
+            where: { loginId: id },
+            select: { id: true, loginId: true, pwHash: true, nickname: true },
+          })
+
+          console.log(`[Login] 검색 결과:`, user ? '사용자 발견' : '사용자 없음')
+
+          if (!user) {
+            res.writeHead(401, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ ok: false, error: 'USER_NOT_FOUND' }))
+            return
+          }
+
+          // 실제 비밀번호 해시 검증
+          try {
+            console.log(`[Login] 입력된 비밀번호: ${password}`)
+            console.log(`[Login] DB 해시: ${user.pwHash}`)
+
+            console.log('[Login] 해시 검증 시도 중...')
+            const isValidPassword = await verifyPassword(password, user.pwHash)
+            console.log(`[Login] 해시 검증 결과: ${isValidPassword}`)
+
+            if (isValidPassword) {
+              // 로그인 성공 - JWT 토큰 생성 (loginId 사용)
+              const { accessToken, refreshToken } = await generateTokens(user.loginId)
+
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(
+                JSON.stringify({
+                  ok: true,
+                  token: accessToken,
+                  refreshToken: refreshToken,
+                  user: { id: user.id, name: user.nickname },
+                })
+              )
+
+              console.log(`[Login] 로그인 성공: ${id}`)
+            } else {
+              res.writeHead(401, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ ok: false, error: 'WRONG_PASSWORD' }))
+            }
+          } catch (error) {
+            console.error('[Login] 로그인 처리 오류:', error)
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ ok: false, error: '서버 오류가 발생했습니다.' }))
+          }
+        } catch (error) {
+          console.error('[Login] 처리 오류:', error)
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: false, error: '서버 오류가 발생했습니다.' }))
+        }
+      })
+    } catch (error) {
+      console.error('[Login] 요청 처리 오류:', error)
+      res.writeHead(500, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, error: '서버 오류가 발생했습니다.' }))
+    }
+    return
+  }
+
+  // 토큰 검증 API
+  if (req.url === '/api/auth/validate' && req.method === 'GET') {
+    try {
+      const token = req.headers.authorization?.replace('Bearer ', '')
+
+      if (!token) {
+        res.writeHead(401, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ ok: false, error: 'No token' }))
+        return
+      }
+
+      // 실제 JWT 토큰 검증
+      try {
+        const decoded = await verifyToken(token)
+
+        if (decoded && typeof decoded === 'object' && 'sub' in decoded) {
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(
+            JSON.stringify({
+              ok: true,
+              valid: true,
+              user: { id: decoded.sub, name: decoded.sub },
+            })
+          )
+        } else {
+          res.writeHead(401, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: false, error: 'Invalid token' }))
+        }
+      } catch (tokenError) {
+        console.error('[Validate] 토큰 검증 오류:', tokenError)
+        res.writeHead(401, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ ok: false, error: 'Invalid token' }))
+      }
+    } catch (error) {
+      console.error('[Validate] 오류:', error)
+      res.writeHead(500, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, error: 'Internal error' }))
+    }
+    return
+  }
+
+  // 사용자 자원 API
+  if (req.url === '/api/user/resources' && req.method === 'GET') {
+    try {
+      const token = req.headers.authorization?.replace('Bearer ', '')
+
+      if (!token) {
+        res.writeHead(401, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ ok: false, error: 'No token' }))
+        return
+      }
+
+      // 사용자 정보 및 자원 정보 반환
+      try {
+        const decoded = await verifyToken(token)
+        console.log('[Resources] 토큰 디코딩 결과:', decoded)
+
+        if (decoded && typeof decoded === 'object' && 'sub' in decoded) {
+          console.log('[Resources] 사용자 ID로 검색:', decoded.sub)
+
+          // 실제 사용자 정보 조회
+          const user = await prisma.user.findFirst({
+            where: { loginId: decoded.sub },
+            select: { id: true, loginId: true, nickname: true },
+          })
+
+          console.log('[Resources] 데이터베이스 검색 결과:', user)
+
+          if (user) {
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(
+              JSON.stringify({
+                ok: true,
+                character: {
+                  level: 1,
+                  exp: 0,
+                  reputation: 0,
+                },
+                resources: {
+                  ap: 100,
+                  gold: 1000,
+                  stress: 0,
+                  lastApUpdate: Date.now(),
+                },
+              })
+            )
+          } else {
+            res.writeHead(404, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ ok: false, error: 'User not found' }))
+          }
+        } else {
+          res.writeHead(401, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: false, error: 'Invalid token' }))
+        }
+      } catch (tokenError) {
+        console.error('[Resources] 토큰 검증 오류:', tokenError)
+        res.writeHead(401, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ ok: false, error: 'Invalid token' }))
+      }
+    } catch (error) {
+      console.error('[Resources] 오류:', error)
+      res.writeHead(500, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, error: 'Internal error' }))
+    }
+    return
+  }
+
+  // 기본 응답
+  res.writeHead(404, { 'Content-Type': 'application/json' })
+  res.end(JSON.stringify({ ok: false, error: 'Not Found' }))
+})
+
+// 서버 시작
+const start = async () => {
+  try {
+    logger.info(`서버가 포트 5174에서 실행 중입니다.`)
+    logger.info('서비스 초기화 완료')
+  } catch (err) {
+    logger.error('서버 시작 실패:', err)
+    process.exit(1)
+  }
+}
+
+start()

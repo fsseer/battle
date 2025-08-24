@@ -1,0 +1,332 @@
+.training-result-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.result-content {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 15px;
+}
+
+.result-header h2 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 24px;
+}
+
+.close-result-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #7f8c8d;
+  padding: 5px;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.close-result-btn:hover {
+  background: #ecf0f1;
+  color: #2c3e50;
+}
+
+.result-summary {
+  text-align: center;
+  margin-bottom: 25px;
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px;
+  color: white;
+}
+
+.result-icon {
+  font-size: 48px;
+  margin-bottom: 10px;
+}
+
+.result-message {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.checkpoints-summary {
+  margin: 20px 0;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+}
+
+.checkpoints-summary h4 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 16px;
+  text-align: center;
+}
+
+.checkpoint-summary-item {
+  margin: 10px 0;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 6px;
+  border-left: 4px solid #3498db;
+}
+
+.checkpoint-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.checkpoint-time {
+  font-weight: bold;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.checkpoint-result {
+  font-weight: bold;
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.checkpoint-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.checkpoint-message {
+  color: #555;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.checkpoint-effects {
+  display: flex;
+  gap: 15px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.exp-effect {
+  color: #27ae60;
+  background: rgba(39, 174, 96, 0.1);
+  padding: 3px 6px;
+  border-radius: 3px;
+}
+
+.stress-effect {
+  color: #e74c3c;
+  background: rgba(231, 76, 60, 0.1);
+  padding: 3px 6px;
+  border-radius: 3px;
+}
+
+.result-details {
+  margin: 25px 0;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+/* 기본 경험치 정보 스타일 */
+.base-exp-info {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+  border-radius: 8px;
+  color: white;
+}
+
+.base-exp-info h4 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  text-align: center;
+  color: white;
+}
+
+.base-exp-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.base-exp {
+  color: #fdcb6e;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+/* 수정자 적용 과정 스타일 */
+.modifier-calculation {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%);
+  border-radius: 8px;
+  color: white;
+}
+
+.modifier-calculation h4 {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  text-align: center;
+  color: white;
+}
+
+.modifier-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+}
+
+.modifier-item:last-child {
+  margin-bottom: 0;
+}
+
+.modifier-time {
+  font-weight: bold;
+  color: #fdcb6e;
+  font-size: 14px;
+}
+
+.modifier-result {
+  font-weight: 500;
+  font-size: 14px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.modifier-effect {
+  font-weight: bold;
+  font-size: 14px;
+  color: #00b894;
+}
+
+/* 최종 결과 스타일 */
+.final-result {
+  padding: 15px;
+  background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
+  border-radius: 8px;
+  color: white;
+}
+
+.final-result h4 {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  text-align: center;
+  color: white;
+}
+
+.final-result .detail-item {
+  margin-bottom: 12px;
+}
+
+.final-result .detail-item:last-child {
+  margin-bottom: 0;
+}
+
+.final-result .detail-label {
+  color: white;
+  font-weight: 500;
+}
+
+.final-result .detail-value {
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.final-result .exp-gained {
+  color: #fdcb6e;
+}
+
+.final-result .stress-change {
+  color: #fd79a8;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.detail-item:last-child {
+  margin-bottom: 0;
+}
+
+.detail-label {
+  font-weight: 500;
+  color: #2c3e50;
+  font-size: 16px;
+}
+
+.detail-value {
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.exp-gained {
+  color: #27ae60;
+}
+
+.stress-change {
+  color: #e74c3c;
+}
+
+.result-actions {
+  text-align: center;
+  margin-top: 25px;
+}
+
+.continue-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 25px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.continue-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.continue-btn:active {
+  transform: translateY(0);
+}

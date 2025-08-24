@@ -46,6 +46,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
+          port: 5175
           source: 'web-dist/*'
           target: ${{ secrets.WEB_ROOT || '/var/www/battle-web/dist' }}
           strip_components: 1
@@ -56,6 +57,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
+          port: 5175
           script: |
             # install node & pm2 assumed pre-installed
             cd ${{ secrets.API_DIR || '/opt/gladiator/apps/server' }} || exit 1

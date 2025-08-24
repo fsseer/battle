@@ -301,13 +301,28 @@
   font-weight: 700;
 }
 
-/* ===== 중앙 배경 영역 ===== */
+/* ===== 중앙 콘텐츠 전용 레이아웃 ===== */
+.center-content-wrapper {
+  width: 100%;
+  height: calc(100vh - 70px); /* 상단 헤더 높이 제외 */
+  padding-top: 70px; /* 상단 헤더 높이만큼 여백 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
 .center-background-area {
   width: 100%;
   height: 100%;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  display: flex;
+  align-items: flex-end; /* 하단 메뉴 바를 위해 하단 정렬 */
+  justify-content: center;
+  position: relative;
 }
 
 /* ===== Epic Seven 스타일 하단 메뉴 바 ===== */

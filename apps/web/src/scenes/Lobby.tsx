@@ -5,12 +5,6 @@ import { useResourceSync } from '../hooks/useResourceSync'
 import { useTokenValidation } from '../hooks/useTokenValidation'
 import GameHeader from '../components/GameHeader'
 // import { useApRecovery } from '../hooks/useApRecovery' // 성능 문제로 완전 비활성화
-import LandscapeLayout, {
-  LandscapeMenuPanel,
-  LandscapeSection,
-  LandscapeCard,
-  LandscapeButton,
-} from '../components/LandscapeLayout'
 import { useLandscapeLayout } from '../hooks/useLandscapeLayout'
 
 export default function Lobby() {
@@ -121,173 +115,8 @@ export default function Lobby() {
         style={{ backgroundImage: 'url(/images/lobby-background.jpg)' }}
       />
 
-      {/* 메인 콘텐츠 - 새로운 가로형 레이아웃 사용 */}
-      <LandscapeLayout
-        leftPanel={
-          <LandscapeMenuPanel title="캐릭터 정보" subtitle="상태 및 장비">
-            {/* 캐릭터 상태 */}
-            <LandscapeSection title="캐릭터 상태">
-              <LandscapeCard>
-                <div className="landscape-status-grid">
-                  <div className="status-item">
-                    <span className="status-label">레벨</span>
-                    <span className="status-value">{characterData?.level || 1}</span>
-                  </div>
-                  <div className="status-item">
-                    <span className="status-label">경험치</span>
-                    <span className="status-value">{characterData?.exp || 0}/100</span>
-                  </div>
-                  <div className="status-item">
-                    <span className="status-label">명성</span>
-                    <span className="status-value">{characterData?.reputation || 0}</span>
-                  </div>
-                </div>
-              </LandscapeCard>
-            </LandscapeSection>
-
-            {/* 장비 */}
-            <LandscapeSection title="장비">
-              <LandscapeCard>
-                <div className="landscape-list">
-                  <div className="list-item">
-                    <span className="item-label">무기</span>
-                    <span className="item-value">한손검</span>
-                  </div>
-                  <div className="list-item">
-                    <span className="item-label">방어구</span>
-                    <span className="item-value">튜닉</span>
-                  </div>
-                  <div className="list-item">
-                    <span className="item-label">장신구</span>
-                    <span className="item-value">없음</span>
-                  </div>
-                </div>
-              </LandscapeCard>
-            </LandscapeSection>
-
-            {/* 스킬 */}
-            <LandscapeSection title="스킬">
-              <LandscapeCard>
-                <div className="landscape-list">
-                  <div className="list-item available">
-                    <span className="item-label">베기</span>
-                    <span className="item-value">사용 가능</span>
-                  </div>
-                  <div className="list-item available">
-                    <span className="item-label">가드</span>
-                    <span className="item-value">사용 가능</span>
-                  </div>
-                  <div className="list-item locked">
-                    <span className="item-label">급습</span>
-                    <span className="item-value">잠김</span>
-                  </div>
-                </div>
-              </LandscapeCard>
-            </LandscapeSection>
-
-            {/* 시스템 기능 */}
-            <LandscapeSection title="시스템">
-              <div className="landscape-grid">
-                <LandscapeButton
-                  onClick={() => setShowSystemModal(true)}
-                  variant="secondary"
-                  className="landscape-icon-btn"
-                >
-                  ⚙️ 설정
-                </LandscapeButton>
-                <LandscapeButton
-                  onClick={() => console.log('도움말')}
-                  variant="secondary"
-                  className="landscape-icon-btn"
-                >
-                  ❓ 도움말
-                </LandscapeButton>
-                <LandscapeButton
-                  onClick={handleLogout}
-                  variant="danger"
-                  className="landscape-icon-btn"
-                >
-                  🚪 로그아웃
-                </LandscapeButton>
-              </div>
-            </LandscapeSection>
-          </LandscapeMenuPanel>
-        }
-        rightPanel={
-          <LandscapeMenuPanel title="게임 메뉴" subtitle="위치 이동 및 기능">
-            {/* 퀘스트 섹션 */}
-            <LandscapeSection title="퀘스트">
-              <LandscapeCard>
-                <div className="quest-section">
-                  <div className="quest-item">
-                    <div className="quest-icon">📜</div>
-                    <div className="quest-info">
-                      <div className="quest-title">노력하는 검투사</div>
-                      <div className="quest-progress">0/5 완료</div>
-                    </div>
-                  </div>
-                  <div className="quest-item">
-                    <div className="quest-icon">🏛️</div>
-                    <div className="quest-info">
-                      <div className="quest-title">콜로세움 도전</div>
-                      <div className="quest-progress">0/3 완료</div>
-                    </div>
-                  </div>
-                </div>
-              </LandscapeCard>
-            </LandscapeSection>
-
-            {/* 메인 액션 섹션 */}
-            <LandscapeSection title="주요 이동">
-              <LandscapeCard>
-                <LandscapeButton
-                  onClick={() => handleLocationMove('training')}
-                  className="main-action-btn"
-                >
-                  ⚔️ 훈련소로 이동
-                </LandscapeButton>
-                <p className="action-hint">훈련소로 이동합니다</p>
-              </LandscapeCard>
-            </LandscapeSection>
-
-            {/* 빠른 이동 */}
-            <LandscapeSection title="빠른 이동">
-              <div className="landscape-grid">
-                <LandscapeButton onClick={() => handleLocationMove('skills')} variant="success">
-                  🛡️ 스킬
-                </LandscapeButton>
-                <LandscapeButton onClick={() => handleLocationMove('match')} variant="primary">
-                  ⚔️ 전투
-                </LandscapeButton>
-              </div>
-            </LandscapeSection>
-
-            {/* 추가 위치 */}
-            <LandscapeSection title="추가 위치">
-              <div className="landscape-grid">
-                <LandscapeButton
-                  onClick={() => handleLocationMove('blacksmith')}
-                  variant="secondary"
-                >
-                  🔨 대장간
-                </LandscapeButton>
-                <LandscapeButton onClick={() => handleLocationMove('market')} variant="secondary">
-                  🛒 시장
-                </LandscapeButton>
-                <LandscapeButton onClick={() => handleLocationMove('coliseum')} variant="secondary">
-                  🏛️ 콜로세움
-                </LandscapeButton>
-                <LandscapeButton
-                  onClick={() => handleLocationMove('restaurant')}
-                  variant="secondary"
-                >
-                  🍽️ 식당
-                </LandscapeButton>
-              </div>
-            </LandscapeSection>
-          </LandscapeMenuPanel>
-        }
-      >
+      {/* 메인 콘텐츠 - 중앙 콘텐츠만 표시 */}
+      <div className="center-content-wrapper">
         {/* 중앙 배경 영역 - Epic Seven 스타일의 하단 메뉴 바 */}
         <div className="center-background-area">
           {/* 하단 메뉴 바 - Epic Seven 스타일 */}
@@ -337,7 +166,7 @@ export default function Lobby() {
             </div>
           </div>
         </div>
-      </LandscapeLayout>
+      </div>
 
       {/* 시스템 모달 */}
       {showSystemModal && (

@@ -1194,7 +1194,8 @@ body,
   border-color: #f39c12;
 }
 
-.modal-header {
+/* 기존 모달 스타일 - 시스템 메뉴와 구분 */
+.legacy-modal-header {
   background: linear-gradient(135deg, #e74c3c, #c0392b);
   color: white;
   padding: 20px;
@@ -1202,7 +1203,7 @@ body,
   text-align: center;
 }
 
-.modal-header h3 {
+.legacy-modal-header h3 {
   margin: 0;
   font-size: 1.5rem;
   font-weight: bold;

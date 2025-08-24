@@ -331,8 +331,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(0, 0, 0, 0.9);
-  backdrop-filter: blur(20px);
+  background: rgba(0, 0, 0, 0.95); /* backdrop-filter 제거하고 단순한 배경 사용 */
   border-top: 2px solid rgba(255, 255, 255, 0.15);
   padding: 16px 24px;
   display: flex;
@@ -380,15 +379,14 @@
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
-/* 시스템 모달 */
+/* 시스템 모달 - 로그인 창과 동일한 스타일 */
 .system-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(10px);
+  background: rgba(0, 0, 0, 0.6); /* 블러 대신 단순한 투명도 사용 */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -396,8 +394,7 @@
 }
 
 .system-modal {
-  background: rgba(20, 20, 20, 0.95);
-  backdrop-filter: blur(20px);
+  background: rgba(0, 0, 0, 0.9); /* 단순한 검은색 배경 */
   border: 2px solid rgba(255, 255, 255, 0.15);
   border-radius: 20px;
   padding: 0;
@@ -424,6 +421,7 @@
   align-items: center;
   padding: 24px 24px 16px 24px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05); /* 헤더 배경 추가 */
 }
 
 .modal-header h3 {
@@ -431,26 +429,29 @@
   color: #ffffff;
   font-size: 20px;
   font-weight: 600;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
 
 .close-btn {
-  background: none;
-  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: #ffffff;
   font-size: 24px;
   cursor: pointer;
-  padding: 4px;
+  padding: 8px;
   border-radius: 50%;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .close-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
 }
 
 .modal-content {
@@ -461,8 +462,8 @@
 }
 
 .modal-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   color: #ffffff;
   padding: 16px 20px;
   border-radius: 12px;
@@ -474,23 +475,26 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
 .modal-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
   transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .modal-btn.danger {
-  background: rgba(220, 53, 69, 0.2);
-  border-color: rgba(220, 53, 69, 0.4);
+  background: rgba(220, 53, 69, 0.15);
+  border-color: rgba(220, 53, 69, 0.3);
   color: #ff6b6b;
 }
 
 .modal-btn.danger:hover {
-  background: rgba(220, 53, 69, 0.3);
-  border-color: rgba(220, 53, 69, 0.6);
+  background: rgba(220, 53, 69, 0.25);
+  border-color: rgba(220, 53, 69, 0.4);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
 }
 
 /* 퀘스트 섹션 */

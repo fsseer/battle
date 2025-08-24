@@ -437,12 +437,12 @@
 .system-modal .modal-content {
   display: flex !important;
   flex-direction: column !important;
-  gap: 16px !important;
+  gap: 8px !important;
 }
 
 .system-modal .modal-btn {
   background: linear-gradient(135deg, #f39c12, #e67e22) !important;
-  border: 2px solid #f39c12 !important;
+  border: none !important;
   color: #ffffff !important;
   padding: 16px 24px !important;
   border-radius: 8px !important;
@@ -461,7 +461,6 @@
 
 .system-modal .modal-btn:hover {
   background: linear-gradient(135deg, #e67e22, #d35400) !important;
-  border-color: #e67e22 !important;
   transform: translateY(-3px) !important;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4) !important;
 }
@@ -473,13 +472,12 @@
 
 .system-modal .modal-btn.danger {
   background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
-  border: 2px solid #e74c3c !important;
+  border: none !important;
   color: #ffffff !important;
 }
 
 .system-modal .modal-btn.danger:hover {
   background: linear-gradient(135deg, #c0392b, #a93226) !important;
-  border-color: #c0392b !important;
   transform: translateY(-3px) !important;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4) !important;
 }

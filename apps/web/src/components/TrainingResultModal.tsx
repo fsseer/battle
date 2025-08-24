@@ -51,11 +51,26 @@ const TrainingResultModal: React.FC<TrainingResultModalProps> = ({
     }
   }
 
+  const getResultIcon = (result: string) => {
+    switch (result) {
+      case '대실패':
+        return '💥'
+      case '실패':
+        return '😞'
+      case '성공':
+        return '👍'
+      case '대성공':
+        return '🎉'
+      default:
+        return '❓'
+    }
+  }
+
   return (
     <div className="training-result-modal">
       <div className="result-content">
         <div className="result-header">
-          <h2>훈련 결과</h2>
+          <h2>🏆 훈련 결과</h2>
           <button className="close-result-btn" onClick={onClose}>
             ×
           </button>
@@ -63,13 +78,24 @@ const TrainingResultModal: React.FC<TrainingResultModalProps> = ({
 
         <div className="result-summary">
           <div className="result-icon">⚔️</div>
-          <div className="result-message">훈련 결과</div>
+          <div className="result-message">{trainingName || '훈련'} 완료!</div>
         </div>
+
+        {/* 기본 경험치 정보 */}
+        {baseExp && (
+          <div className="base-exp-info">
+            <h4>📚 기본 경험치</h4>
+            <div className="base-exp-item">
+              <span className="detail-label">{trainingName || '훈련'}</span>
+              <span className="detail-value base-exp">+{baseExp}</span>
+            </div>
+          </div>
+        )}
 
         {/* 체크포인트 결과 표시 */}
         {checkpoints && checkpoints.length > 0 && (
           <div className="checkpoints-summary">
-            <h4>중간 결과</h4>
+            <h4>🎯 중간 판정 결과</h4>
             {checkpoints.map((checkpoint, index) => (
               <div key={index} className="checkpoint-summary-item">
                 <div className="checkpoint-header">
@@ -78,19 +104,20 @@ const TrainingResultModal: React.FC<TrainingResultModalProps> = ({
                     className="checkpoint-result"
                     style={{ color: getResultColor(checkpoint.result) }}
                   >
-                    {checkpoint.result}
+                    {getResultIcon(checkpoint.result)} {checkpoint.result}
                   </span>
                 </div>
                 <div className="checkpoint-details">
                   <span className="checkpoint-message">{checkpoint.message}</span>
                   <div className="checkpoint-effects">
-                    <span className="exp-effect">EXP: {formatEffect(checkpoint.expEffect)}</span>
-                    <span className="stress-effect">
-                      Stress:{' '}
-                      {checkpoint.stressEffect > 0
-                        ? `+${checkpoint.stressEffect}`
-                        : checkpoint.stressEffect}
-                    </span>
+                    {checkpoint.expEffect !== 0 && (
+                      <span className="exp-effect">EXP: {formatEffect(checkpoint.expEffect)}</span>
+                    )}
+                    {checkpoint.stressEffect !== 0 && (
+                      <span className="stress-effect">
+                        Stress: {checkpoint.stressEffect > 0 ? `+${checkpoint.stressEffect}` : checkpoint.stressEffect}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -98,22 +125,11 @@ const TrainingResultModal: React.FC<TrainingResultModalProps> = ({
           </div>
         )}
 
-        <div className="result-details">
-          {/* 기본 경험치 정보 */}
-          {baseExp && (
-            <div className="base-exp-info">
-              <h4>기본 경험치</h4>
-              <div className="base-exp-item">
-                <span className="detail-label">{trainingName || '훈련'}</span>
-                <span className="detail-value base-exp">+{baseExp}</span>
-              </div>
-            </div>
-          )}
-
-          {/* 수정자 적용 과정 */}
-          {checkpoints && checkpoints.length > 0 && (
-            <div className="modifier-calculation">
-              <h4>수정자 적용 과정</h4>
+        {/* 수정자 적용 과정 */}
+        {checkpoints && checkpoints.length > 0 && (
+          <div className="modifier-calculation">
+            <h4>📊 경험치 수정 과정</h4>
+            <div className="modifier-list">
               {checkpoints.map((checkpoint, index) => (
                 <div key={index} className="modifier-item">
                   <span className="modifier-time">{checkpoint.time}초</span>
@@ -125,15 +141,17 @@ const TrainingResultModal: React.FC<TrainingResultModalProps> = ({
                 </div>
               ))}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* 최종 결과 */}
-          <div className="final-result">
-            <h4>최종 결과</h4>
-            <div className="detail-item">
-              <span className="detail-label">획득 경험치:</span>
-              <span className="detail-value exp-gained">+{result.expGained}</span>
-            </div>
+        {/* 최종 결과 */}
+        <div className="final-result">
+          <h4>🎖️ 최종 결과</h4>
+          <div className="detail-item">
+            <span className="detail-label">획득 경험치:</span>
+            <span className="detail-value exp-gained">+{result.expGained}</span>
+          </div>
+          {result.stressChange !== 0 && (
             <div className="detail-item">
               <span className="detail-label">스트레스 변화:</span>
               <span className="detail-value stress-change">
@@ -141,7 +159,7 @@ const TrainingResultModal: React.FC<TrainingResultModalProps> = ({
                 {result.stressChange}
               </span>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="result-actions">

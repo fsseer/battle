@@ -457,13 +457,13 @@ server.on('request', async (req, res) => {
     return
   }
 
-    // 훈련 실행 API
+  // 훈련 실행 API
   if (req.url === '/training/run' && req.method === 'POST') {
     console.log('[Training] 훈련 실행 API 호출됨')
     console.log('[Training] 요청 URL:', req.url)
     console.log('[Training] 요청 메서드:', req.method)
     console.log('[Training] 요청 헤더:', req.headers)
-    
+
     try {
       let body = ''
       req.on('data', (chunk) => {
@@ -476,7 +476,7 @@ server.on('request', async (req, res) => {
           console.log('[Training] 훈련 실행 요청 body 완료:', body)
           console.log('[Training] body 길이:', body.length)
           console.log('[Training] body 타입:', typeof body)
-          
+
           // JSON 요청 처리
           let requestData
           try {
@@ -512,8 +512,11 @@ server.on('request', async (req, res) => {
           const trainingItem = TRAINING_CATALOG.find((item) => item.id === trainingId)
           console.log('[Training] TRAINING_CATALOG 길이:', TRAINING_CATALOG.length)
           console.log('[Training] 찾으려는 ID:', trainingId)
-          console.log('[Training] 사용 가능한 ID들:', TRAINING_CATALOG.map(item => item.id))
-          
+          console.log(
+            '[Training] 사용 가능한 ID들:',
+            TRAINING_CATALOG.map((item) => item.id)
+          )
+
           if (!trainingItem) {
             console.log('[Training] 훈련 아이템을 찾을 수 없음')
             res.writeHead(404, { 'Content-Type': 'application/json' })

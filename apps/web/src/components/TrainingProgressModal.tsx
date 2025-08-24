@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import './TrainingProgressModal.css'
 
 export interface TrainingResult {
   success: boolean
@@ -33,41 +34,39 @@ export default function TrainingProgressModal({
   onComplete,
 }: TrainingProgressModalProps) {
   const [progress, setProgress] = useState(0)
-  const [currentTime, setCurrentTime] = useState(0)
   const [checkpoints, setCheckpoints] = useState<CheckpointResult[]>([])
   const [isCompleted, setIsCompleted] = useState(false)
 
   useEffect(() => {
     if (!isOpen) {
       setProgress(0)
-      setCurrentTime(0)
       setCheckpoints([])
       setIsCompleted(false)
       return
     }
 
     const interval = setInterval(() => {
-      setCurrentTime((prevTime) => {
-        const newTime = prevTime + 1
-        const newProgress = (newTime / duration) * 100
+      setProgress((prevProgress) => {
+        const newProgress = prevProgress + (100 / duration)
 
         // 5초마다 점검 (시작점 제외, 중복 방지)
-        if (newTime % 5 === 0 && newTime > 0 && newTime <= duration) {
+        const currentTime = Math.floor((newProgress / 100) * duration)
+        if (currentTime % 5 === 0 && currentTime > 0 && currentTime <= duration) {
           // 함수형 업데이트를 사용하여 최신 상태로 중복 체크
           setCheckpoints((prevCheckpoints) => {
             // 이미 해당 시간에 체크포인트가 있는지 확인
-            if (prevCheckpoints.some((c) => c.time === newTime)) {
+            if (prevCheckpoints.some((c) => c.time === currentTime)) {
               return prevCheckpoints
             }
 
-            const checkpointResult = generateCheckpointResult(newTime)
-            console.log(`[Training] ${newTime}초 판정: ${checkpointResult.result}`)
+            const checkpointResult = generateCheckpointResult(currentTime)
+            console.log(`[Training] ${currentTime}초 판정: ${checkpointResult.result}`)
             return [...prevCheckpoints, checkpointResult]
           })
         }
 
         // 훈련 완료
-        if (newTime >= duration) {
+        if (newProgress >= 100) {
           setIsCompleted(true)
           // 함수형 업데이트를 사용하여 최신 체크포인트 상태로 최종 결과 생성
           setCheckpoints((prevCheckpoints) => {
@@ -79,9 +78,7 @@ export default function TrainingProgressModal({
           })
         }
 
-        // 진행률 업데이트
-        setProgress(newProgress)
-        return newTime
+        return newProgress
       })
     }, 1000)
 
@@ -222,11 +219,6 @@ export default function TrainingProgressModal({
       <div className="progress-content">
         <div className="progress-header">
           <h2>🏋️ {trainingName} 훈련 진행 중...</h2>
-          <div className="progress-time-display">
-            <span>
-              진행 시간: {currentTime}초 / {duration}초
-            </span>
-          </div>
         </div>
 
         <div className="progress-bar-container">
@@ -259,13 +251,14 @@ export default function TrainingProgressModal({
                 <span className="checkpoint-result-text">{checkpoint.result}</span>
                 <span className="checkpoint-message">{checkpoint.message}</span>
                 <div className="checkpoint-effects">
-                  <span className="exp-effect">EXP: {formatEffect(checkpoint.expEffect)}</span>
-                  <span className="stress-effect">
-                    Stress:{' '}
-                    {checkpoint.stressEffect > 0
-                      ? `+${checkpoint.stressEffect}`
-                      : checkpoint.stressEffect}
-                  </span>
+                  {checkpoint.expEffect !== 0 && (
+                    <span className="exp-effect">EXP: {formatEffect(checkpoint.expEffect)}</span>
+                  )}
+                  {checkpoint.stressEffect !== 0 && (
+                    <span className="stress-effect">
+                      Stress: {checkpoint.stressEffect > 0 ? `+${checkpoint.stressEffect}` : checkpoint.stressEffect}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}

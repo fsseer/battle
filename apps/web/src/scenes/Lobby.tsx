@@ -174,9 +174,6 @@ export default function Lobby() {
           <div className="system-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>시스템 메뉴</h3>
-              <button className="close-btn" onClick={() => setShowSystemModal(false)}>
-                ×
-              </button>
             </div>
             <div className="modal-content">
               <button className="modal-btn" onClick={() => console.log('설정')}>

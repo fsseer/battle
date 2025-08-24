@@ -1,10 +1,11 @@
 import { useCallback, useReducer, useRef, useState } from 'react'
 import { battleReducer, createInitialState } from '../../scenes/battleReducer'
+import type { Role } from '../../scenes/battleReducer'
 
 export interface BattleLogicProps {
-  role: string
-  onRoundComplete?: (roundData: any) => void
-  onBattleEnd?: (result: any) => void
+  role: Role
+  onRoundComplete?: (roundData: string) => void
+  onBattleEnd?: (result: string) => void
 }
 
 export function useBattleLogic({ role, onRoundComplete, onBattleEnd }: BattleLogicProps) {
@@ -12,24 +13,9 @@ export function useBattleLogic({ role, onRoundComplete, onBattleEnd }: BattleLog
   const [timeLeft, setTimeLeft] = useState(10)
   const timerRef = useRef<number | null>(null)
 
-  const {
-    round,
-    role: currentRole,
-    choice,
-    oppChoice: opponentChoice,
-    log,
-    momentum,
-    selfHp,
-    selfMaxHp,
-    oppHp,
-    oppMaxHp,
-    selfInjuries,
-    oppInjuries,
-  } = state
-
   // 라운드 해결 함수
   const resolveRound = useCallback(
-    (roundData: any) => {
+    (roundData: string) => {
       dispatch({ type: 'RESOLVE_ROUND', payload: roundData })
       onRoundComplete?.(roundData)
     },
@@ -38,7 +24,7 @@ export function useBattleLogic({ role, onRoundComplete, onBattleEnd }: BattleLog
 
   // 전투 종료 처리
   const handleBattleEnd = useCallback(
-    (result: any) => {
+    (result: string) => {
       dispatch({ type: 'BATTLE_END', payload: result })
       onBattleEnd?.(result)
     },

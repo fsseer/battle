@@ -1,9 +1,9 @@
-import React from 'react'
+import type { ReactNode } from 'react'
 
 interface LandscapeLayoutProps {
-  leftPanel?: React.ReactNode
-  rightPanel?: React.ReactNode
-  children: React.ReactNode
+  leftPanel?: ReactNode
+  rightPanel?: ReactNode
+  children: ReactNode
   className?: string
 }
 
@@ -40,7 +40,7 @@ export function LandscapeMenuPanel({
   title,
   subtitle,
 }: {
-  children: React.ReactNode
+  children: ReactNode
   className?: string
   title?: string
   subtitle?: string
@@ -62,7 +62,7 @@ export function LandscapeSection({
   className = '',
   title,
 }: {
-  children: React.ReactNode
+  children: ReactNode
   className?: string
   title?: string
 }) {
@@ -83,7 +83,7 @@ export function LandscapeCard({
   onClick,
   hoverable = true,
 }: {
-  children: React.ReactNode
+  children: ReactNode
   className?: string
   onClick?: () => void
   hoverable?: boolean
@@ -109,7 +109,7 @@ export function LandscapeButton({
   disabled = false,
   variant = 'primary',
 }: {
-  children: React.ReactNode
+  children: ReactNode
   className?: string
   onClick?: () => void
   disabled?: boolean

@@ -18,6 +18,10 @@ export type BattleState = {
 export type BattleAction =
   | { type: 'init'; role: Role }
   | { type: 'select'; id: string }
+  | { type: 'MAKE_CHOICE'; payload: string }
+  | { type: 'TIME_OUT' }
+  | { type: 'BATTLE_END'; payload: string }
+  | { type: 'RESOLVE_ROUND'; payload: string }
   | {
       type: 'resolve'
       msg: {
@@ -61,6 +65,14 @@ export function battleReducer(state: BattleState, action: BattleAction): BattleS
       return createInitialState(action.role)
     case 'select':
       return { ...state, choice: action.id }
+    case 'MAKE_CHOICE':
+      return { ...state, choice: action.payload }
+    case 'TIME_OUT':
+      return { ...state, choice: null }
+    case 'BATTLE_END':
+      return { ...state, log: [`전투 종료: ${action.payload}`, ...state.log] }
+    case 'RESOLVE_ROUND':
+      return { ...state, log: [`라운드 해결: ${action.payload}`, ...state.log] }
     case 'resolve': {
       const label =
         action.msg.result === 1 ? '라운드 승' : action.msg.result === 2 ? '라운드 패' : '무승부'
@@ -93,7 +105,7 @@ export function battleReducer(state: BattleState, action: BattleAction): BattleS
           ...state,
           selfHp: action.hp,
           selfMaxHp: nextSelfMax,
-          selfInjuries: [...state.selfInjuries, ...action.injured],
+          selfInjuries: [...state.oppInjuries, ...action.injured],
           log: [`[결정타] 피격 - 피해:${action.damage}, 남은HP:${action.hp}`, ...state.log],
         }
       }

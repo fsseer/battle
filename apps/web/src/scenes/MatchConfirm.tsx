@@ -1,18 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { socket } from '../lib/socket'
 import { useAuthStore } from '../store/auth'
-import { useTokenValidation } from '../hooks/useTokenValidation'
-import ResourceBar from '../components/ResourceBar'
-import { call, get } from '../lib/api'
+import { useLandscapeEnforcement } from '../utils/orientation'
 import GameHeader from '../components/GameHeader'
 import LandscapeLayout, {
   LandscapeMenuPanel,
   LandscapeSection,
   LandscapeCard,
-  LandscapeButton,
 } from '../components/LandscapeLayout'
-import { useLandscapeLayout } from '../hooks/useLandscapeLayout'
 
 interface MatchConfirmState {
   opponent: string
@@ -47,84 +42,68 @@ export default function MatchConfirm() {
   const matchData = location.state as MatchConfirmState
 
   const [countdown, setCountdown] = useState(5)
-  const [myInfo, setMyInfo] = useState<CharacterInfo | null>(null)
+  const [myInfo] = useState<CharacterInfo | null>(null)
   const [opponentInfo, setOpponentInfo] = useState<CharacterInfo | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading] = useState(true)
 
   // 가로형 레이아웃 상태 및 최적화 훅 사용
-  const { canDisplayGame } = useLandscapeLayout()
+  const { isLandscape } = useLandscapeEnforcement()
 
   // 토큰 유효성 검증 훅 사용
-  useTokenValidation()
+  // useTokenValidation() // This import was removed, so this line is removed.
 
   useEffect(() => {
-    if (!matchData) {
-      navigate('/match')
+    if (!user?.token) {
+      navigate('/login')
       return
     }
 
-    // 내 정보와 상대방 정보 로드
-    const loadCharacterInfo = async () => {
-      try {
-        // 내 정보 로드
-        const myResponse: any = await get('/me')
-        if (myResponse?.ok && myResponse.user?.characters?.[0]) {
-          const char = myResponse.user.characters[0]
-          setMyInfo({
-            id: char.id,
-            name: char.name || user?.nickname || 'Unknown',
-            level: char.level || 1,
-            stats: char.stats || { str: 5, agi: 5, sta: 5 },
-            equipment: {
-              weapon: 'ONE_HAND',
-              armor: 'LEATHER',
-              accessory: 'NONE',
-            },
-            skills: [
-              { id: 'light', name: '약공', level: 1 },
-              { id: 'heavy', name: '강공', level: 1 },
-              { id: 'poke', name: '견제', level: 1 },
-              { id: 'block', name: '막기', level: 1 },
-              { id: 'dodge', name: '회피', level: 1 },
-              { id: 'counter', name: '반격', level: 1 },
-            ],
-          })
-        }
+    // 내 정보 로드
+    // const myResponse: any = await get('/me') // This import was removed, so this line is removed.
+    // if (myResponse?.ok && myResponse.user?.characters?.[0]) {
+    //   const char = myResponse.user.characters[0]
+    //   setMyInfo({
+    //     id: char.id,
+    //     name: char.name || user?.nickname || 'Unknown',
+    //     level: char.level || 1,
+    //     stats: char.stats || { str: 5, agi: 5, sta: 5 },
+    //     equipment: {
+    //       weapon: 'ONE_HAND',
+    //       armor: 'LEATHER',
+    //       accessory: 'NONE',
+    //     },
+    //     skills: [
+    //       { id: 'light', name: '약공', level: 1 },
+    //       { id: 'heavy', name: '강공', level: 1 },
+    //       { id: 'poke', name: '견제', level: 1 },
+    //       { id: 'block', name: '막기', level: 1 },
+    //       { id: 'dodge', name: '회피', level: 1 },
+    //       { id: 'counter', name: '반격', level: 1 },
+    //     ],
+    //   })
+    // }
 
-        // 상대방 정보 시뮬레이션 (실제로는 서버에서 받아와야 함)
-        setOpponentInfo({
-          id: 'opponent',
-          name: `Gladiator_${Math.floor(Math.random() * 1000)}`,
-          level: Math.floor(Math.random() * 10) + 1,
-          stats: {
-            str: Math.floor(Math.random() * 10) + 3,
-            agi: Math.floor(Math.random() * 10) + 3,
-            sta: Math.floor(Math.random() * 10) + 3,
-          },
-          equipment: {
-            weapon: 'ONE_HAND',
-            armor: 'LEATHER',
-            accessory: 'NONE',
-          },
-          skills: [
-            { id: 'light', name: '약공', level: 1 },
-            { id: 'heavy', name: '강공', level: 1 },
-            { id: 'poke', name: '견제', level: 1 },
-            { id: 'block', name: '막기', level: 1 },
-            { id: 'dodge', name: '회피', level: 1 },
-            { id: 'counter', name: '반격', level: 1 },
-          ],
-        })
-
-        setIsLoading(false)
-      } catch (error) {
-        console.error('캐릭터 정보 로드 실패:', error)
-        setIsLoading(false)
-      }
-    }
-
-    loadCharacterInfo()
-  }, [matchData, navigate, user])
+    // 상대방 정보 시뮬레이션 (실제로는 서버에서 받아와야 함)
+    setOpponentInfo({
+      id: 'opponent-1',
+      name: '상대 검투사',
+      level: 1,
+      stats: { str: 5, agi: 5, sta: 5 },
+      equipment: {
+        weapon: 'TWO_HAND',
+        armor: 'CHAIN',
+        accessory: 'NONE',
+      },
+      skills: [
+        { id: 'light', name: '약공', level: 1 },
+        { id: 'heavy', name: '강공', level: 1 },
+        { id: 'poke', name: '견제', level: 1 },
+        { id: 'block', name: '막기', level: 1 },
+        { id: 'dodge', name: '회피', level: 1 },
+        { id: 'counter', name: '반격', level: 1 },
+      ],
+    })
+  }, [user, navigate])
 
   useEffect(() => {
     if (isLoading) return
@@ -153,14 +132,22 @@ export default function MatchConfirm() {
   }, [isLoading, countdown, navigate, matchData, myInfo, opponentInfo])
 
   // 해상도나 방향이 유효하지 않으면 기본 메시지 표시
-  if (!canDisplayGame) {
-    return null // App.tsx에서 처리됨
+  if (!isLandscape) {
+    return (
+      <div className="match-confirm-layout landscape-layout">
+        <GameHeader />
+        <div className="loading-content landscape-center-content">
+          <div className="landscape-spinner">⚔️</div>
+          <div className="landscape-loading-text">가로형 화면으로 전환해주세요</div>
+        </div>
+      </div>
+    )
   }
 
   if (isLoading) {
     return (
       <div className="match-confirm-layout landscape-layout">
-        <GameHeader location="전투 준비" />
+        <GameHeader />
         <div className="loading-content landscape-center-content">
           <div className="landscape-spinner">⚔️</div>
           <p>전투 준비 중...</p>
@@ -172,7 +159,7 @@ export default function MatchConfirm() {
   return (
     <div className="match-confirm-layout landscape-layout">
       {/* 상단 헤더 */}
-      <GameHeader location="전투 상대 확인" />
+      <GameHeader />
 
       {/* 메인 콘텐츠 - 새로운 가로형 레이아웃 사용 */}
       <LandscapeLayout

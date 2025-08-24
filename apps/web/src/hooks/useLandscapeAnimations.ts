@@ -28,7 +28,7 @@ export function useLandscapeAnimations() {
 
   // 애니메이션 시작
   const startAnimation = useCallback((animationName: string, config: AnimationConfig = {}) => {
-    const { duration = 1000, easing = 'ease-out', delay = 0, onComplete } = config
+    const { duration = 1000, delay = 0, onComplete } = config
 
     setAnimationState((prev) => ({
       ...prev,

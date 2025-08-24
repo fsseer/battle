@@ -27,7 +27,7 @@ export default function Result() {
   return (
     <div className="result-layout landscape-layout">
       {/* 상단 헤더 */}
-      <GameHeader location="전투 결과" />
+      <GameHeader />
 
       {/* 메인 콘텐츠 - 새로운 가로형 레이아웃 사용 */}
       <LandscapeLayout

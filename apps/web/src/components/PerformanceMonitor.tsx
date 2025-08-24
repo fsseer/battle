@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor'
 import { useLandscapeLayout } from '../hooks/useLandscapeLayout'
 

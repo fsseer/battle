@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
 import { socket } from '../lib/socket'
@@ -21,11 +21,6 @@ export default function Login() {
   const [pwErr, setPwErr] = useState<string>('')
   const [idHint, setIdHint] = useState<string>('')
   const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false)
-  const [socketStatus, setSocketStatus] = useState<'connecting' | 'connected' | 'disconnected'>(
-    'disconnected'
-  )
-
-  // 중복 로그인 확인 팝업 상태
   const [showDuplicateLoginModal, setShowDuplicateLoginModal] = useState(false)
   const [duplicateLoginInfo, setDuplicateLoginInfo] = useState<{
     user: {
@@ -49,16 +44,16 @@ export default function Login() {
   // 소켓 연결 상태 확인
   useEffect(() => {
     // 초기 상태 설정
-    setSocketStatus(socket.connected ? 'connected' : 'disconnected')
+    // setSocketStatus(socket.connected ? 'connected' : 'disconnected') // Removed
 
     const handleConnect = () => {
       console.log('[Login] 소켓 연결됨')
-      setSocketStatus('connected')
+      // setSocketStatus('connected') // Removed
     }
 
     const handleDisconnect = () => {
       console.log('[Login] 소켓 연결 해제됨')
-      setSocketStatus('disconnected')
+      // setSocketStatus('disconnected') // Removed
     }
 
     const handleAuthSuccess = (data: { userId: string }) => {
@@ -277,7 +272,7 @@ export default function Login() {
         console.log('[Login] auth.login 이벤트 전송됨 (연결된 상태)')
       } else {
         console.log('[Login] 소켓 연결 시도 중...')
-        setSocketStatus('connecting')
+        // setSocketStatus('connecting') // Removed
 
         // 연결 시도 전 현재 상태 확인
         console.log('[Login] 연결 시도 전 소켓 상태:', {
@@ -291,7 +286,7 @@ export default function Login() {
         const connectionPromise = new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => {
             console.log('[Login] 소켓 연결 타임아웃 발생')
-            setSocketStatus('disconnected')
+            // setSocketStatus('disconnected') // Removed
             reject(new Error('소켓 연결 타임아웃'))
           }, 5000) // 5초 타임아웃
 
@@ -306,7 +301,7 @@ export default function Login() {
           socket.once('connect_error', (error) => {
             console.error('[Login] 소켓 연결 에러:', error)
             clearTimeout(timeout)
-            setSocketStatus('disconnected')
+            // setSocketStatus('disconnected') // Removed
             reject(error)
           })
         })

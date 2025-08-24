@@ -33,7 +33,7 @@ export default function Skills() {
   return (
     <div className="skills-layout landscape-layout">
       {/* 상단 헤더 */}
-      <GameHeader location="스킬" />
+      <GameHeader />
 
       {/* 메인 콘텐츠 - 새로운 가로형 레이아웃 사용 */}
       <LandscapeLayout

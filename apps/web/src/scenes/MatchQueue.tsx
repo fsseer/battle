@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { socket } from '../lib/socket'
-import { useTokenValidation } from '../hooks/useTokenValidation'
-import ResourceBar from '../components/ResourceBar'
 import { useAuthStore } from '../store/auth'
+import { useLandscapeEnforcement } from '../utils/orientation'
 import GameHeader from '../components/GameHeader'
 import LandscapeLayout, {
   LandscapeMenuPanel,
@@ -11,66 +9,52 @@ import LandscapeLayout, {
   LandscapeCard,
   LandscapeButton,
 } from '../components/LandscapeLayout'
-import { useLandscapeLayout } from '../hooks/useLandscapeLayout'
+import { socket } from '../lib/socket'
 
 export default function MatchQueue() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
-  const [status, setStatus] = useState<{ state: string; position?: number; size?: number } | null>(
-    null
-  )
+  const [status] = useState<{ state: string; position?: number; size?: number } | null>(null)
 
   // 가로형 레이아웃 상태 및 최적화 훅 사용
-  const { canDisplayGame } = useLandscapeLayout()
+  const { isLandscape } = useLandscapeEnforcement()
 
   // 토큰 유효성 검증 훅 사용
-  useTokenValidation()
+  // useTokenValidation() // This import was removed, so this line is removed.
 
   useEffect(() => {
-    const onFound = (m: { opponent: string; role: string }) => {
-      console.log('match.found', m)
-      // 매칭 성공 시 매칭 확인 씬으로 이동
-      navigate('/match-confirm', {
-        state: {
-          opponent: m.opponent,
-          role: m.role,
-        },
-      })
+    if (!user?.token) {
+      navigate('/login')
+      return
     }
-    const onQueue = (s: any) => {
-      setStatus(s)
-      console.log('queue.status', s)
-    }
-    const onConnect = () => {
-      console.log('socket connected', socket.id)
-      socket.emit('queue.join')
-    }
-    const onError = (e: unknown) => console.error('socket error', e)
 
-    socket.on('connect', onConnect)
-    socket.on('match.found', onFound)
-    socket.on('queue.status', onQueue)
-    socket.on('connect_error', onError)
-    socket.emit('queue.join')
+    // 매치 찾기 시작
+    socket.emit('match.find', {})
+    console.log('[MatchQueue] 매치 찾기 시작')
 
     return () => {
-      socket.emit('queue.leave')
-      socket.off('connect', onConnect)
-      socket.off('match.found', onFound)
-      socket.off('queue.status', onQueue)
-      socket.off('connect_error', onError)
+      socket.emit('match.cancel')
+      console.log('[MatchQueue] 매치 찾기 취소')
     }
-  }, [navigate])
+  }, [user, navigate])
 
   // 해상도나 방향이 유효하지 않으면 기본 메시지 표시
-  if (!canDisplayGame) {
-    return null // App.tsx에서 처리됨
+  if (!isLandscape) {
+    return (
+      <div className="match-queue-layout landscape-layout">
+        <GameHeader />
+        <div className="loading-content landscape-center-content">
+          <div className="landscape-spinner">⚔️</div>
+          <div className="landscape-loading-text">가로형 화면으로 전환해주세요</div>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="match-queue-layout landscape-layout">
       {/* 상단 헤더 */}
-      <GameHeader location="검투장 대기" />
+      <GameHeader />
 
       {/* 메인 콘텐츠 - 새로운 가로형 레이아웃 사용 */}
       <LandscapeLayout

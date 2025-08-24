@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
+import type { ReactNode } from 'react'
 import { useAuthStore } from './store/auth'
 import { socket } from './lib/socket'
 import './index.css'
@@ -51,7 +52,7 @@ setInterval(() => {
 const { initializeFromStorage } = useAuthStore.getState()
 initializeFromStorage()
 
-function RequireAuth({ children }: { children: JSX.Element }) {
+function RequireAuth({ children }: { children: ReactNode }) {
   const { user } = useAuthStore()
   if (!user?.token) {
     return <Navigate to="/login" replace />
@@ -59,7 +60,7 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   return children
 }
 
-function RedirectIfAuthed({ children }: { children: JSX.Element }) {
+function RedirectIfAuthed({ children }: { children: ReactNode }) {
   const { user } = useAuthStore()
   if (user?.token) {
     return <Navigate to="/lobby" replace />

@@ -152,7 +152,7 @@ export default function Training() {
   return (
     <div className="training-layout landscape-layout">
       {/* 상단 헤더 */}
-      <GameHeader location="훈련소" />
+      <GameHeader />
 
       {/* 배경 이미지 */}
       <div

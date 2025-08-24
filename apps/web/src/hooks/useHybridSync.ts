@@ -1,286 +1,173 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
-import { useSocket } from './useSocket'
-import { RealTimeUpdate } from '../types/api'
-import { useGameStore } from '../store/game'
+import { socket } from '../lib/socket'
 
-export interface SyncConfig {
-  entity: string
-  entityId: string
-  strategy: 'REALTIME' | 'POLLING' | 'EVENT_DRIVEN'
-  pollingInterval?: number
-  autoSubscribe?: boolean
-  onUpdate?: (data: any) => void
-  onError?: (error: Error) => void
+// 간단한 타입 정의
+interface SimpleUpdate<T = unknown> {
+  type: string
+  data: T
+  timestamp: number
 }
 
-export function useHybridSync(config: SyncConfig) {
-  const {
-    entity,
-    entityId,
-    strategy,
-    pollingInterval,
-    autoSubscribe = true,
-    onUpdate,
-    onError,
-  } = config
-  const socket = useSocket()
+export function useHybridSync<T = unknown>(
+  config: {
+    endpoint: string
+    onData?: (data: T) => void
+    onError?: (error: Error) => void
+    autoSync?: boolean
+    syncInterval?: number
+  }
+) {
+  const { endpoint, onData, onError, autoSync = true, syncInterval = 5000 } = config
   const [isSubscribed, setIsSubscribed] = useState(false)
-  const [lastUpdate, setLastUpdate] = useState<RealTimeUpdate<any> | null>(null)
-  const [isPolling, setIsPolling] = useState(false)
+  const [lastUpdate, setLastUpdate] = useState<SimpleUpdate<T> | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
 
-  const subscriptionRef = useRef<string | null>(null)
-  const pollingTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const { updateCharacter, updateResources } = useGameStore()
+  const syncTimeoutRef = useRef<number | null>(null)
+
+  // 데이터 동기화
+  const syncData = useCallback(async () => {
+    if (!endpoint) return
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch(endpoint)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      
+      const update: SimpleUpdate<T> = {
+        type: 'sync',
+        data,
+        timestamp: Date.now()
+      }
+      
+      setLastUpdate(update)
+      onData?.(data)
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Unknown error')
+      setError(error)
+      onError?.(error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [endpoint, onData, onError])
+
+  // 자동 동기화 설정
+  useEffect(() => {
+    if (!autoSync) return
+
+    syncData()
+
+    if (syncInterval > 0) {
+      syncTimeoutRef.current = window.setInterval(syncData, syncInterval)
+    }
+
+    return () => {
+      if (syncTimeoutRef.current) {
+        window.clearInterval(syncTimeoutRef.current)
+      }
+    }
+  }, [autoSync, syncInterval, syncData])
 
   // 웹소켓 구독
-  const subscribeWebSocket = useCallback(() => {
-    if (!socket?.connected) {
-      console.warn('[useHybridSync] 웹소켓이 연결되지 않음')
-      return false
+  useEffect(() => {
+    if (!endpoint) return
+
+    const handleSocketUpdate = (data: unknown) => {
+      const update: SimpleUpdate<T> = {
+        type: 'socket',
+        data: data as T,
+        timestamp: Date.now()
+      }
+      
+      setLastUpdate(update)
+      onData?.(data as T)
     }
 
-    try {
-      socket.emit('subscribe', { entity, entityId })
-      setIsSubscribed(true)
-      subscriptionRef.current = `${entity}:${entityId}`
+    socket.on(endpoint, handleSocketUpdate)
+    setIsSubscribed(true)
 
-      console.log('[useHybridSync] 웹소켓 구독 성공', { entity, entityId, strategy })
-      return true
-    } catch (error) {
-      console.error('[useHybridSync] 웹소켓 구독 실패', error)
-      onError?.(error as Error)
-      return false
-    }
-  }, [socket, entity, entityId, strategy, onError])
-
-  // 웹소켓 구독 해제
-  const unsubscribeWebSocket = useCallback(() => {
-    if (!socket || !isSubscribed) return
-
-    try {
-      socket.emit('unsubscribe', { entity, entityId })
+    return () => {
+      socket.off(endpoint, handleSocketUpdate)
       setIsSubscribed(false)
-      subscriptionRef.current = null
-
-      console.log('[useHybridSync] 웹소켓 구독 해제됨', { entity, entityId })
-    } catch (error) {
-      console.error('[useHybridSync] 웹소켓 구독 해제 실패', error)
     }
-  }, [socket, entity, entityId, isSubscribed])
-
-  // 폴링 시작
-  const startPolling = useCallback(() => {
-    if (strategy !== 'POLLING' || !pollingInterval) return
-
-    if (pollingTimerRef.current) {
-      clearInterval(pollingTimerRef.current)
-    }
-
-    const timer = setInterval(async () => {
-      try {
-        // 폴링 API 호출
-        const response = await fetch(`/api/${entity}/${entityId}`)
-        if (response.ok) {
-          const data = await response.json()
-          handleUpdate(data)
-        }
-      } catch (error) {
-        console.error('[useHybridSync] 폴링 실패', error)
-        onError?.(error as Error)
-      }
-    }, pollingInterval)
-
-    pollingTimerRef.current = timer
-    setIsPolling(true)
-
-    console.log('[useHybridSync] 폴링 시작', { entity, entityId, interval: pollingInterval })
-  }, [strategy, pollingInterval, entity, entityId, onError])
-
-  // 폴링 정지
-  const stopPolling = useCallback(() => {
-    if (pollingTimerRef.current) {
-      clearInterval(pollingTimerRef.current)
-      pollingTimerRef.current = null
-      setIsPolling(false)
-
-      console.log('[useHybridSync] 폴링 정지', { entity, entityId })
-    }
-  }, [entity, entityId])
-
-  // 업데이트 처리
-  const handleUpdate = useCallback(
-    (data: any) => {
-      setLastUpdate({
-        type: 'UPDATE',
-        entity,
-        id: entityId,
-        data,
-        timestamp: new Date().toISOString(),
-        version: Date.now(),
-      })
-
-      // 게임 상태 자동 업데이트
-      if (entity === 'character') {
-        updateCharacter(data)
-      } else if (entity === 'resources') {
-        updateResources(data)
-      }
-
-      // 사용자 정의 콜백 실행
-      if (onUpdate) {
-        onUpdate(data)
-      }
-
-      console.log('[useHybridSync] 데이터 업데이트 수신', { entity, entityId, strategy })
-    },
-    [entity, entityId, onUpdate, updateCharacter, updateResources]
-  )
-
-  // 웹소켓 이벤트 리스너 설정
-  useEffect(() => {
-    if (!socket || strategy !== 'REALTIME') return
-
-    const handleDataUpdate = (update: RealTimeUpdate<any>) => {
-      if (update.entity === entity && update.id === entityId) {
-        handleUpdate(update.data)
-      }
-    }
-
-    socket.on('dataUpdate', handleDataUpdate)
-
-    return () => {
-      socket.off('dataUpdate', handleDataUpdate)
-    }
-  }, [socket, strategy, entity, entityId, handleUpdate])
-
-  // 자동 구독/해제 및 전략별 처리
-  useEffect(() => {
-    if (!autoSubscribe) return
-
-    if (strategy === 'REALTIME' && socket?.connected) {
-      // 실시간: 웹소켓 구독
-      subscribeWebSocket()
-    } else if (strategy === 'POLLING') {
-      // 폴링: 타이머 시작
-      startPolling()
-    } else if (strategy === 'EVENT_DRIVEN' && socket?.connected) {
-      // 이벤트 기반: 웹소켓 구독 (중요한 변경사항만)
-      subscribeWebSocket()
-    }
-
-    return () => {
-      if (strategy === 'REALTIME' || strategy === 'EVENT_DRIVEN') {
-        unsubscribeWebSocket()
-      } else if (strategy === 'POLLING') {
-        stopPolling()
-      }
-    }
-  }, [
-    autoSubscribe,
-    strategy,
-    socket?.connected,
-    subscribeWebSocket,
-    unsubscribeWebSocket,
-    startPolling,
-    stopPolling,
-  ])
-
-  // 소켓 연결 상태 변경 시 재구독
-  useEffect(() => {
-    if (
-      socket?.connected &&
-      isSubscribed &&
-      (strategy === 'REALTIME' || strategy === 'EVENT_DRIVEN')
-    ) {
-      subscribeWebSocket()
-    }
-  }, [socket?.connected, isSubscribed, strategy, subscribeWebSocket])
+  }, [endpoint, onData])
 
   return {
     isSubscribed,
-    isPolling,
     lastUpdate,
-    strategy,
-    subscribeWebSocket,
-    unsubscribeWebSocket,
-    startPolling,
-    stopPolling,
+    isLoading,
+    error,
+    syncData
   }
 }
 
-// 전투 전용 실시간 동기화 (빠른 응답 필요)
-export function useBattleSync(battleId: string, onUpdate?: (data: any) => void) {
+// 특정 용도별 훅들
+export function useBattleSync(battleId: string, onUpdate?: (data: unknown) => void) {
   return useHybridSync({
-    entity: 'battle',
-    entityId: battleId,
-    strategy: 'REALTIME',
-    onUpdate,
+    endpoint: `battle:${battleId}`,
+    onData: onUpdate,
   })
 }
 
-// 자원 전용 이벤트 기반 동기화 (중요한 변경사항만)
-export function useResourcesSync(characterId: string, onUpdate?: (data: any) => void) {
+export function useResourcesSync(characterId: string, onUpdate?: (data: unknown) => void) {
   return useHybridSync({
-    entity: 'resources',
-    entityId: characterId,
-    strategy: 'EVENT_DRIVEN',
-    onUpdate,
+    endpoint: `resources:${characterId}`,
+    onData: onUpdate,
   })
 }
 
-// 캐릭터 스탯 폴링 동기화 (트래픽 최소화)
-export function useCharacterStatsSync(characterId: string, onUpdate?: (data: any) => void) {
+export function useCharacterStatsSync(characterId: string, onUpdate?: (data: unknown) => void) {
   return useHybridSync({
-    entity: 'character',
-    entityId: characterId,
-    strategy: 'POLLING',
-    pollingInterval: 30000, // 30초
-    onUpdate,
+    endpoint: `character:${characterId}`,
+    onData: onUpdate,
+    autoSync: true,
+    syncInterval: 30000, // 30초
   })
 }
 
-// 훈련 결과 이벤트 기반 동기화
-export function useTrainingSync(characterId: string, onUpdate?: (data: any) => void) {
+export function useTrainingSync(characterId: string, onUpdate?: (data: unknown) => void) {
   return useHybridSync({
-    entity: 'training',
-    entityId: characterId,
-    strategy: 'EVENT_DRIVEN',
-    onUpdate,
+    endpoint: `training:${characterId}`,
+    onData: onUpdate,
   })
 }
 
 // 다중 엔티티 하이브리드 동기화
-export function useMultiEntityHybridSync(configs: SyncConfig[]) {
-  const socket = useSocket()
-  const [updates, setUpdates] = useState<Map<string, RealTimeUpdate<any>>>(new Map())
+export function useMultiEntityHybridSync(configs: { endpoint: string; onData?: (data: unknown) => void; autoSync?: boolean; syncInterval?: number }[]) {
+  const [updates, setUpdates] = useState<Map<string, SimpleUpdate<unknown>>>(new Map())
 
   useEffect(() => {
-    if (!socket) return
-
-    const handleDataUpdate = (update: RealTimeUpdate<any>) => {
-      const key = `${update.entity}:${update.id}`
-      setUpdates((prev) => new Map(prev).set(key, update))
+    const handleDataUpdate = (data: unknown) => {
+      const key = Object.keys(data as Record<string, unknown>)[0] // 웹소켓 이벤트에서 엔티티 이름이 키로 오므로
+      const update: SimpleUpdate<unknown> = {
+        type: 'socket',
+        data: (data as Record<string, unknown>)[key], // 실제 데이터는 값으로 오므로
+        timestamp: Date.now()
+      }
+      setUpdates((prev: Map<string, SimpleUpdate<unknown>>) => new Map(prev).set(key, update))
     }
-
-    socket.on('dataUpdate', handleDataUpdate)
 
     // 각 엔티티별로 적절한 전략 적용
     configs.forEach((config) => {
-      if (config.strategy === 'REALTIME' || config.strategy === 'EVENT_DRIVEN') {
-        socket.emit('subscribe', { entity: config.entity, entityId: config.entityId })
+      if (config.autoSync) {
+        socket.on(config.endpoint, handleDataUpdate)
       }
     })
 
     return () => {
-      socket.off('dataUpdate', handleDataUpdate)
-
+      // 정리
       configs.forEach((config) => {
-        if (config.strategy === 'REALTIME' || config.strategy === 'EVENT_DRIVEN') {
-          socket.emit('unsubscribe', { entity: config.entity, entityId: config.entityId })
+        if (config.autoSync) {
+          socket.off(config.endpoint, handleDataUpdate)
         }
       })
     }
-  }, [socket, configs])
+  }, [configs])
 
   return updates
 }

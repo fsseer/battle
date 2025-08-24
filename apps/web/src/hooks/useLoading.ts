@@ -71,7 +71,7 @@ export function useLoading(): UseLoadingReturn {
 }
 
 // 특정 작업에 대한 로딩 상태만 관리하는 훅
-export function useTaskLoading(taskId: string) {
+export function useTaskLoading() {
   const [isLoading, setIsLoading] = useState(false)
   const [startTime, setStartTime] = useState<number | null>(null)
 

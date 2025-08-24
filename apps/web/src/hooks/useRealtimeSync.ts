@@ -1,195 +1,133 @@
-import { useEffect, useRef, useCallback, useState } from 'react'
-import { useSocket } from './useSocket'
-import { RealTimeUpdate, DataSubscription } from '../types/api'
-import { useGameStore } from '../store/game'
+import { useEffect, useState, useCallback } from 'react'
+import { socket } from '../lib/socket'
 
-export function useRealtimeSync<T = any>(
-  entity: string,
-  entityId: string,
-  options: {
-    autoSubscribe?: boolean
-    onUpdate?: (data: T) => void
+// 간단한 타입 정의
+interface SimpleUpdate<T = unknown> {
+  type: string
+  data: T
+  timestamp: number
+}
+
+export function useRealtimeSync<T = unknown>(
+  config: {
+    endpoint: string
+    onData?: (data: T) => void
     onError?: (error: Error) => void
-  } = {}
+    autoSync?: boolean
+    syncInterval?: number
+  }
 ) {
-  const { autoSubscribe = true, onUpdate, onError } = options
-  const socket = useSocket()
+  const { endpoint, onData, onError, autoSync = true, syncInterval = 5000 } = config
   const [isSubscribed, setIsSubscribed] = useState(false)
-  const [lastUpdate, setLastUpdate] = useState<RealTimeUpdate<T> | null>(null)
-  const subscriptionRef = useRef<DataSubscription<T> | null>(null)
-  const { updateCharacter, updateResources } = useGameStore()
+  const [lastUpdate, setLastUpdate] = useState<SimpleUpdate<T> | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
 
-  // 구독 함수
-  const subscribe = useCallback(() => {
-    if (!socket || !socket.connected) {
-      console.warn('[useRealtimeSync] 소켓이 연결되지 않음')
-      return false
-    }
+  // 데이터 동기화
+  const syncData = useCallback(async () => {
+    if (!endpoint) return
+
+    setIsLoading(true)
+    setError(null)
 
     try {
-      socket.emit('subscribe', { entity, entityId })
-      setIsSubscribed(true)
-
-      // 구독 객체 생성
-      subscriptionRef.current = {
-        id: `${entity}:${entityId}:${Date.now()}`,
-        entity,
-        entityId,
-        callback: onUpdate || (() => {}),
-        isActive: true,
+      const response = await fetch(endpoint)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
-
-      console.log('[useRealtimeSync] 구독 성공', { entity, entityId })
-      return true
-    } catch (error) {
-      console.error('[useRealtimeSync] 구독 실패', error)
-      onError?.(error as Error)
-      return false
+      const data = await response.json()
+      
+      const update: SimpleUpdate<T> = {
+        type: 'sync',
+        data,
+        timestamp: Date.now()
+      }
+      
+      setLastUpdate(update)
+      onData?.(data)
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Unknown error')
+      setError(error)
+      onError?.(error)
+    } finally {
+      setIsLoading(false)
     }
-  }, [socket, entity, entityId, onUpdate, onError])
+  }, [endpoint, onData, onError])
 
-  // 구독 해제 함수
-  const unsubscribe = useCallback(() => {
-    if (!socket || !isSubscribed) return
+  // 자동 동기화 설정
+  useEffect(() => {
+    if (!autoSync) return
 
-    try {
-      socket.emit('unsubscribe', { entity, entityId })
+    syncData()
+
+    if (syncInterval > 0) {
+      const interval = setInterval(syncData, syncInterval)
+      return () => clearInterval(interval)
+    }
+  }, [autoSync, syncInterval, syncData])
+
+  // 웹소켓 구독
+  useEffect(() => {
+    if (!endpoint) return
+
+    const handleSocketUpdate = (data: unknown) => {
+      const update: SimpleUpdate<T> = {
+        type: 'socket',
+        data: data as T,
+        timestamp: Date.now()
+      }
+      
+      setLastUpdate(update)
+      onData?.(data as T)
+    }
+
+    socket.on(endpoint, handleSocketUpdate)
+    setIsSubscribed(true)
+
+    return () => {
+      socket.off(endpoint, handleSocketUpdate)
       setIsSubscribed(false)
-
-      if (subscriptionRef.current) {
-        subscriptionRef.current.isActive = false
-        subscriptionRef.current = null
-      }
-
-      console.log('[useRealtimeSync] 구독 해제됨', { entity, entityId })
-    } catch (error) {
-      console.error('[useRealtimeSync] 구독 해제 실패', error)
     }
-  }, [socket, entity, entityId, isSubscribed])
-
-  // 데이터 업데이트 처리
-  const handleDataUpdate = useCallback(
-    (update: RealTimeUpdate<T>) => {
-      if (update.entity === entity && update.id === entityId) {
-        setLastUpdate(update)
-
-        // 게임 상태 자동 업데이트
-        if (entity === 'character' && update.type === 'UPDATE') {
-          updateCharacter(update.data as any)
-        } else if (entity === 'resources' && update.type === 'UPDATE') {
-          updateResources(update.data as any)
-        }
-
-        // 사용자 정의 콜백 실행
-        if (onUpdate) {
-          onUpdate(update.data)
-        }
-
-        console.log('[useRealtimeSync] 데이터 업데이트 수신', {
-          entity,
-          entityId,
-          type: update.type,
-        })
-      }
-    },
-    [entity, entityId, onUpdate, updateCharacter, updateResources]
-  )
-
-  // 소켓 이벤트 리스너 설정
-  useEffect(() => {
-    if (!socket) return
-
-    socket.on('dataUpdate', handleDataUpdate)
-
-    return () => {
-      socket.off('dataUpdate', handleDataUpdate)
-    }
-  }, [socket, handleDataUpdate])
-
-  // 자동 구독/해제
-  useEffect(() => {
-    if (autoSubscribe && socket?.connected) {
-      subscribe()
-    }
-
-    return () => {
-      if (isSubscribed) {
-        unsubscribe()
-      }
-    }
-  }, [autoSubscribe, socket?.connected, subscribe, unsubscribe, isSubscribed])
-
-  // 소켓 연결 상태 변경 시 재구독
-  useEffect(() => {
-    if (socket?.connected && isSubscribed) {
-      // 연결이 끊어졌다가 다시 연결된 경우 재구독
-      subscribe()
-    }
-  }, [socket?.connected, isSubscribed, subscribe])
+  }, [endpoint, onData])
 
   return {
     isSubscribed,
     lastUpdate,
-    subscribe,
-    unsubscribe,
-    subscription: subscriptionRef.current,
+    isLoading,
+    error,
+    syncData
   }
 }
 
-// 특정 엔티티 타입별 전용 훅들
-export function useCharacterSync(characterId: string) {
-  return useRealtimeSync('character', characterId, {
-    onUpdate: (data) => {
-      console.log('[useCharacterSync] 캐릭터 업데이트', data)
-    },
-  })
-}
-
-export function useResourcesSync(characterId: string) {
-  return useRealtimeSync('resources', characterId, {
-    onUpdate: (data) => {
-      console.log('[useResourcesSync] 자원 업데이트', data)
-    },
-  })
-}
-
-export function useBattleSync(battleId: string) {
-  return useRealtimeSync('battle', battleId, {
-    onUpdate: (data) => {
-      console.log('[useBattleSync] 배틀 상태 업데이트', data)
-    },
-  })
-}
-
-// 다중 엔티티 동시 구독
-export function useMultiEntitySync(subscriptions: Array<{ entity: string; entityId: string }>) {
-  const socket = useSocket()
-  const [updates, setUpdates] = useState<Map<string, RealTimeUpdate<any>>>(new Map())
+// 다중 엔티티 실시간 동기화
+export function useMultiEntityRealtimeSync(configs: { endpoint: string; onData?: (data: unknown) => void; autoSync?: boolean; syncInterval?: number }[]) {
+  const [updates, setUpdates] = useState<Map<string, SimpleUpdate<unknown>>>(new Map())
 
   useEffect(() => {
-    if (!socket) return
-
-    const handleUpdate = (update: RealTimeUpdate<any>) => {
-      const key = `${update.entity}:${update.id}`
-      setUpdates((prev) => new Map(prev).set(key, update))
+    const handleDataUpdate = (data: unknown) => {
+      const key = Object.keys(data as Record<string, unknown>)[0]
+      const update: SimpleUpdate<unknown> = {
+        type: 'socket',
+        data: (data as Record<string, unknown>)[key],
+        timestamp: Date.now()
+      }
+      setUpdates((prev: Map<string, SimpleUpdate<unknown>>) => new Map(prev).set(key, update))
     }
 
-    socket.on('dataUpdate', handleUpdate)
-
-    // 모든 엔티티 구독
-    subscriptions.forEach(({ entity, entityId }) => {
-      socket.emit('subscribe', { entity, entityId })
+    configs.forEach((config) => {
+      if (config.autoSync) {
+        socket.on(config.endpoint, handleDataUpdate)
+      }
     })
 
     return () => {
-      socket.off('dataUpdate', handleUpdate)
-
-      // 모든 구독 해제
-      subscriptions.forEach(({ entity, entityId }) => {
-        socket.emit('unsubscribe', { entity, entityId })
+      configs.forEach((config) => {
+        if (config.autoSync) {
+          socket.off(config.endpoint, handleDataUpdate)
+        }
       })
     }
-  }, [socket, subscriptions])
+  }, [configs])
 
   return updates
 }

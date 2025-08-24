@@ -1,16 +1,16 @@
-import React from 'react'
-
 interface MenuPanelProps {
-  position: 'left' | 'right'
   children: React.ReactNode
+  title?: string
   className?: string
 }
 
-export const MenuPanel: React.FC<MenuPanelProps> = ({ position, children, className = '' }) => {
-  const baseClasses = 'menu-panel'
-  const positionClasses = position === 'left' ? 'menu-panel-left' : 'menu-panel-right'
-
-  return <div className={`${baseClasses} ${positionClasses} ${className}`}>{children}</div>
+export default function MenuPanel({ children, title, className = '' }: MenuPanelProps) {
+  return (
+    <div className={`menu-panel ${className}`}>
+      {title && <h3 className="menu-panel-title">{title}</h3>}
+      {children}
+    </div>
+  )
 }
 
 interface MenuSectionProps {

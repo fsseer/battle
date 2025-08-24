@@ -1,5 +1,3 @@
-import React from 'react'
-
 /**
  * 720p 이하 해상도에서 표시되는 해상도 요구사항 메시지
  */

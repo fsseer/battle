@@ -1,6 +1,6 @@
 /* ===== LANDSCAPE-SPECIFIC STYLES ===== */
 
-/* 기본 가로형 레이아웃 */
+/* 기본 가로형 레이아웃 - 중복 제거 */
 .landscape-layout {
   display: flex;
   width: 100%;
@@ -11,7 +11,7 @@
   padding-top: 70px; /* 상단 헤더 높이만큼 여백 */
 }
 
-/* 로비 씬 전용 스타일 */
+/* 로비 씬 전용 스타일 - 중복 제거 */
 .lobby-layout {
   width: 100%;
   height: 100vh;
@@ -19,10 +19,6 @@
   position: relative;
   background: var(--bg-dark);
   padding-top: 70px; /* 상단 헤더 높이만큼 여백 */
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 0;
 }
 
 /* 배경 이미지 위에 메뉴가 떠있는 방식 */
@@ -38,6 +34,7 @@
   z-index: 0;
 }
 
+/* 중앙 콘텐츠 영역 - 스크롤 제거 */
 .landscape-center-content {
   flex: 1;
   display: flex;
@@ -47,18 +44,19 @@
   position: relative;
   z-index: 0;
   min-height: calc(100vh - 100px);
+  overflow: hidden; /* 스크롤 제거 */
 }
 
 /* ===== 통일된 메뉴 패널 스타일 (로그인 씬 기준) ===== */
 .landscape-menu-panel {
-  width: 280px;
+  width: 320px; /* 너비 증가 */
   height: calc(100vh - 100px); /* 상단 헤더 높이와 여백 고려 */
   background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(15px);
   border: none;
   border-radius: 16px;
   padding: 24px;
-  overflow-y: auto; /* 내용이 많을 때만 스크롤 */
+  overflow: hidden; /* 스크롤 제거 */
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7);
   position: relative;
   z-index: 10;
@@ -241,6 +239,8 @@
   align-items: center;
   padding: 8px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  word-break: break-word; /* 긴 텍스트 처리 */
+  min-height: 40px; /* 최소 높이 보장 */
 }
 
 .list-item:last-child {
@@ -250,12 +250,19 @@
 .item-label {
   color: #ccc;
   font-size: 14px;
+  flex-shrink: 0; /* 라벨이 압축되지 않도록 */
+  margin-right: 12px;
 }
 
 .item-value {
   color: #fff;
   font-size: 14px;
   font-weight: 600;
+  text-align: right;
+  flex: 1; /* 남은 공간 차지 */
+  overflow: hidden;
+  text-overflow: ellipsis; /* 긴 텍스트 처리 */
+  white-space: nowrap; /* 줄바꿈 방지 */
 }
 
 .list-item.available .item-value {
@@ -303,92 +310,7 @@
   background-repeat: no-repeat;
 }
 
-/* ===== 로비 환영 메시지 ===== */
-.lobby-welcome {
-  text-align: center;
-  color: #fff;
-  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.8);
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.welcome-title {
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
-  color: #fbbf24;
-  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.9);
-  letter-spacing: 0.05em;
-}
-
-.welcome-subtitle {
-  font-size: 1.2rem;
-  margin-bottom: 2rem;
-  color: #e5e7eb;
-  opacity: 0.9;
-  font-style: italic;
-}
-
-.welcome-stats {
-  display: flex;
-  justify-content: center;
-  gap: 2rem;
-  margin-top: 2rem;
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1rem;
-  background: rgba(0, 0, 0, 0.6);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  min-width: 100px;
-}
-
-.stat-icon {
-  font-size: 1.5rem;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
-}
-
-.stat-label {
-  font-size: 0.9rem;
-  color: #d1d5db;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.stat-value {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: #fbbf24;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
-}
-
-/* ===== 메뉴 패널 스크롤바 스타일 ===== */
-.landscape-menu-panel::-webkit-scrollbar {
-  width: 8px;
-}
-
-.landscape-menu-panel::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-}
-
-.landscape-menu-panel::-webkit-scrollbar-thumb {
-  background: var(--bronze);
-  border-radius: 4px;
-}
-
-.landscape-menu-panel::-webkit-scrollbar-thumb:hover {
-  background: #d2691e;
-}
-
-/* Epic Seven 스타일 하단 메뉴 바 */
+/* ===== Epic Seven 스타일 하단 메뉴 바 ===== */
 .bottom-menu-bar {
   position: fixed;
   bottom: 0;
@@ -583,6 +505,7 @@
 .quest-icon {
   font-size: 24px;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+  flex-shrink: 0; /* 아이콘이 압축되지 않도록 */
 }
 
 .quest-info {
@@ -590,6 +513,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0; /* 텍스트 오버플로우 허용 */
 }
 
 .quest-title {
@@ -597,6 +521,9 @@
   font-weight: 600;
   color: #ffffff;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .quest-progress {
@@ -604,14 +531,25 @@
   color: #ffd700;
   font-weight: 500;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ===== 반응형 조정 ===== */
-@media (max-width: 1200px) {
+@media (max-width: 1400px) {
   .landscape-menu-panel {
-    width: 260px;
+    width: 300px;
     padding: 20px;
     margin: 16px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .landscape-menu-panel {
+    width: 280px;
+    padding: 18px;
+    margin: 14px;
   }
 
   .landscape-center-content {
@@ -625,7 +563,7 @@
 
 @media (max-width: 1000px) {
   .landscape-menu-panel {
-    width: 240px;
+    width: 260px;
     padding: 16px;
     margin: 12px;
   }
@@ -653,7 +591,7 @@
 
   .landscape-menu-panel {
     width: 90%;
-    max-width: 320px;
+    max-width: 360px; /* 최대 너비 증가 */
     margin: 8px;
   }
 

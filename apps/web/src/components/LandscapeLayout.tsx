@@ -20,13 +20,13 @@ export default function LandscapeLayout({
   return (
     <div className={`landscape-layout ${className}`}>
       {/* 좌측 메뉴 패널 */}
-      {leftPanel && <div className="landscape-menu-panel landscape-left-panel">{leftPanel}</div>}
+      {leftPanel && <div className="landscape-left-panel">{leftPanel}</div>}
 
       {/* 중앙 콘텐츠 영역 */}
       <div className="landscape-center-content">{children}</div>
 
       {/* 우측 메뉴 패널 */}
-      {rightPanel && <div className="landscape-menu-panel landscape-right-panel">{rightPanel}</div>}
+      {rightPanel && <div className="landscape-right-panel">{rightPanel}</div>}
     </div>
   )
 }

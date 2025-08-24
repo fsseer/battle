@@ -770,11 +770,11 @@ body,
   .header-content {
     gap: 16px;
   }
-  
+
   .right-section {
     min-width: 350px;
   }
-  
+
   .resource-item {
     min-width: 100px;
     padding: 6px 10px;
@@ -785,24 +785,24 @@ body,
   .game-header {
     padding: 0 16px;
   }
-  
+
   .character-info {
     min-width: 160px;
   }
-  
+
   .time-info {
     min-width: 160px;
   }
-  
+
   .right-section {
     min-width: 300px;
     gap: 16px;
   }
-  
+
   .player-resources {
     gap: 12px;
   }
-  
+
   .resource-item {
     min-width: 80px;
     padding: 4px 8px;
@@ -814,50 +814,50 @@ body,
     height: 60px;
     padding: 0 12px;
   }
-  
+
   .header-content {
     flex-direction: column;
     gap: 8px;
     height: 100%;
     justify-content: center;
   }
-  
+
   .character-info,
   .time-info,
   .right-section {
     min-width: auto;
   }
-  
+
   .character-name {
     font-size: 16px;
   }
-  
+
   .character-level {
     font-size: 12px;
   }
-  
+
   .date-display {
     font-size: 14px;
   }
-  
+
   .time-of-day {
     font-size: 16px;
   }
-  
+
   .right-section {
     flex-direction: column;
     gap: 8px;
   }
-  
+
   .player-resources {
     gap: 8px;
   }
-  
+
   .resource-item {
     min-width: 60px;
     padding: 4px 6px;
   }
-  
+
   .system-menu-btn {
     min-width: 60px;
     padding: 8px 12px;

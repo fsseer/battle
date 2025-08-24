@@ -111,7 +111,7 @@ export default function Lobby() {
   console.log('[Lobby] canDisplayGame:', canDisplayGame)
 
   return (
-    <div className="lobby-layout landscape-layout">
+    <div className="lobby-layout">
       {/* 상단 헤더 */}
       <GameHeader onSystemMenuClick={() => setShowSystemModal(true)} />
 
@@ -277,7 +277,10 @@ export default function Lobby() {
                 <LandscapeButton onClick={() => handleLocationMove('coliseum')} variant="secondary">
                   🏛️ 콜로세움
                 </LandscapeButton>
-                <LandscapeButton onClick={() => handleLocationMove('restaurant')} variant="secondary">
+                <LandscapeButton
+                  onClick={() => handleLocationMove('restaurant')}
+                  variant="secondary"
+                >
                   🍽️ 식당
                 </LandscapeButton>
               </div>
@@ -286,7 +289,7 @@ export default function Lobby() {
         }
       >
         {/* 중앙 배경 영역 - Epic Seven 스타일의 하단 메뉴 바 */}
-        <div className="center-background-area landscape-center-content">
+        <div className="center-background-area">
           {/* 하단 메뉴 바 - Epic Seven 스타일 */}
           <div className="bottom-menu-bar">
             {/* 좌측 메인 메뉴 아이콘들 */}
@@ -342,7 +345,9 @@ export default function Lobby() {
           <div className="system-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>시스템 메뉴</h3>
-              <button className="close-btn" onClick={() => setShowSystemModal(false)}>×</button>
+              <button className="close-btn" onClick={() => setShowSystemModal(false)}>
+                ×
+              </button>
             </div>
             <div className="modal-content">
               <button className="modal-btn" onClick={() => console.log('설정')}>

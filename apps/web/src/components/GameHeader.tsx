@@ -11,7 +11,7 @@ export default function GameHeader({ onSystemMenuClick }: GameHeaderProps) {
     year: 680,
     month: 1,
     day: 1,
-    timeOfDay: '아침' as '아침' | '오전' | '오후' | '저녁' | '심야'
+    timeOfDay: '아침' as '아침' | '오전' | '오후' | '저녁' | '심야',
   })
 
   // 사용자 자원 값 (-1로 표시하여 데이터 없음을 나타냄)
@@ -24,24 +24,30 @@ export default function GameHeader({ onSystemMenuClick }: GameHeaderProps) {
   // 게임 시간 업데이트 (1분마다)
   useEffect(() => {
     const interval = setInterval(() => {
-      setGameTime(prev => {
+      setGameTime((prev) => {
         // 간단한 게임 시간 진행 시스템
-        const timeOrder: ('아침' | '오전' | '오후' | '저녁' | '심야')[] = ['아침', '오전', '오후', '저녁', '심야']
+        const timeOrder: ('아침' | '오전' | '오후' | '저녁' | '심야')[] = [
+          '아침',
+          '오전',
+          '오후',
+          '저녁',
+          '심야',
+        ]
         const currentIndex = timeOrder.indexOf(prev.timeOfDay)
         const nextIndex = (currentIndex + 1) % timeOrder.length
-        
+
         if (nextIndex === 0) {
           // 심야에서 아침으로 넘어가면 다음 날
           return {
             ...prev,
             day: prev.day + 1,
-            timeOfDay: '아침'
+            timeOfDay: '아침',
           }
         }
-        
+
         return {
           ...prev,
-          timeOfDay: timeOrder[nextIndex]
+          timeOfDay: timeOrder[nextIndex],
         }
       })
     }, 60000) // 1분마다 시간 진행
@@ -52,12 +58,18 @@ export default function GameHeader({ onSystemMenuClick }: GameHeaderProps) {
   // 시기별 아이콘과 색상
   const getTimeOfDayInfo = (timeOfDay: string) => {
     switch (timeOfDay) {
-      case '아침': return { icon: '🌅', color: '#ffd700' }
-      case '오전': return { icon: '☀️', color: '#87ceeb' }
-      case '오후': return { icon: '🌤️', color: '#ffa500' }
-      case '저녁': return { icon: '🌆', color: '#ff8c00' }
-      case '심야': return { icon: '🌙', color: '#4169e1' }
-      default: return { icon: '⚔️', color: '#ffffff' }
+      case '아침':
+        return { icon: '🌅', color: '#ffd700' }
+      case '오전':
+        return { icon: '☀️', color: '#87ceeb' }
+      case '오후':
+        return { icon: '🌤️', color: '#ffa500' }
+      case '저녁':
+        return { icon: '🌆', color: '#ff8c00' }
+      case '심야':
+        return { icon: '🌙', color: '#4169e1' }
+      default:
+        return { icon: '⚔️', color: '#ffffff' }
     }
   }
 

@@ -72,13 +72,22 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
   animation: shimmer 2s infinite;
 }
 
 @keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .progress-labels {
@@ -120,6 +129,18 @@
   overflow-y: auto;
 }
 
+.no-checkpoints {
+  text-align: center;
+  padding: 30px;
+  color: #95a5a6;
+  font-style: italic;
+}
+
+.no-checkpoints p {
+  margin: 0;
+  font-size: 16px;
+}
+
 .checkpoint-result {
   background: rgba(255, 255, 255, 0.05);
   border-radius: 10px;
@@ -134,15 +155,28 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
-.checkpoint-result .checkpoint-icon {
-  font-size: 20px;
-  margin-right: 10px;
+.checkpoint-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.checkpoint-time {
+  color: #95a5a6;
+  font-size: 14px;
+  font-weight: bold;
 }
 
 .checkpoint-result-text {
   font-weight: bold;
   font-size: 16px;
-  margin-right: 15px;
+}
+
+.checkpoint-result .checkpoint-icon {
+  font-size: 20px;
+  margin: 10px 0;
+  display: block;
 }
 
 .checkpoint-message {
@@ -160,7 +194,8 @@
   margin-top: 10px;
 }
 
-.exp-effect, .stress-effect {
+.exp-effect,
+.stress-effect {
   font-size: 12px;
   padding: 5px 10px;
   border-radius: 15px;
@@ -264,19 +299,19 @@
     padding: 20px;
     margin: 20px;
   }
-  
+
   .progress-header h2 {
     font-size: 24px;
   }
-  
+
   .checkpoint-result {
     padding: 12px;
   }
-  
+
   .checkpoint-result-text {
     font-size: 14px;
   }
-  
+
   .checkpoint-effects {
     flex-direction: column;
     gap: 8px;

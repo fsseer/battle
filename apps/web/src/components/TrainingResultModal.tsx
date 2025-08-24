@@ -115,7 +115,10 @@ const TrainingResultModal: React.FC<TrainingResultModalProps> = ({
                     )}
                     {checkpoint.stressEffect !== 0 && (
                       <span className="stress-effect">
-                        Stress: {checkpoint.stressEffect > 0 ? `+${checkpoint.stressEffect}` : checkpoint.stressEffect}
+                        Stress:{' '}
+                        {checkpoint.stressEffect > 0
+                          ? `+${checkpoint.stressEffect}`
+                          : checkpoint.stressEffect}
                       </span>
                     )}
                   </div>

@@ -45,41 +45,43 @@ export default function TrainingProgressModal({
       return
     }
 
+    let currentTime = 0
     const interval = setInterval(() => {
-      setProgress((prevProgress) => {
-        const newProgress = prevProgress + (100 / duration)
+      currentTime += 1
+      const newProgress = (currentTime / duration) * 100
 
-        // 5초마다 점검 (시작점 제외, 중복 방지)
-        const currentTime = Math.floor((newProgress / 100) * duration)
-        if (currentTime % 5 === 0 && currentTime > 0 && currentTime <= duration) {
-          // 함수형 업데이트를 사용하여 최신 상태로 중복 체크
-          setCheckpoints((prevCheckpoints) => {
-            // 이미 해당 시간에 체크포인트가 있는지 확인
-            if (prevCheckpoints.some((c) => c.time === currentTime)) {
-              return prevCheckpoints
-            }
-
-            const checkpointResult = generateCheckpointResult(currentTime)
-            console.log(`[Training] ${currentTime}초 판정: ${checkpointResult.result}`)
-            return [...prevCheckpoints, checkpointResult]
-          })
-        }
-
-        // 훈련 완료
-        if (newProgress >= 100) {
-          setIsCompleted(true)
-          // 함수형 업데이트를 사용하여 최신 체크포인트 상태로 최종 결과 생성
-          setCheckpoints((prevCheckpoints) => {
-            const finalResult = generateFinalResult(prevCheckpoints)
-            const baseExp = getBaseExp()
-            // setTimeout을 사용하여 렌더링 중 상태 업데이트 방지
-            setTimeout(() => onComplete(finalResult, prevCheckpoints, baseExp), 0)
+      // 5초마다 점검 (시작점 제외, 중복 방지)
+      if (currentTime % 5 === 0 && currentTime > 0 && currentTime <= duration) {
+        console.log(`[Training] ${currentTime}초 체크포인트 체크`)
+        // 함수형 업데이트를 사용하여 최신 상태로 중복 체크
+        setCheckpoints((prevCheckpoints) => {
+          // 이미 해당 시간에 체크포인트가 있는지 확인
+          if (prevCheckpoints.some((c) => c.time === currentTime)) {
+            console.log(`[Training] ${currentTime}초 체크포인트 이미 존재`)
             return prevCheckpoints
-          })
-        }
+          }
 
-        return newProgress
-      })
+          const checkpointResult = generateCheckpointResult(currentTime)
+          console.log(`[Training] ${currentTime}초 판정 생성:`, checkpointResult)
+          return [...prevCheckpoints, checkpointResult]
+        })
+      }
+
+      // 훈련 완료
+      if (currentTime >= duration) {
+        console.log(`[Training] 훈련 완료, 총 체크포인트:`, checkpoints.length)
+        setIsCompleted(true)
+        // 함수형 업데이트를 사용하여 최신 체크포인트 상태로 최종 결과 생성
+        setCheckpoints((prevCheckpoints) => {
+          const finalResult = generateFinalResult(prevCheckpoints)
+          const baseExp = getBaseExp()
+          // setTimeout을 사용하여 렌더링 중 상태 업데이트 방지
+          setTimeout(() => onComplete(finalResult, prevCheckpoints, baseExp), 0)
+          return prevCheckpoints
+        })
+      }
+
+      setProgress(newProgress)
     }, 1000)
 
     return () => clearInterval(interval)
@@ -239,29 +241,44 @@ export default function TrainingProgressModal({
         </div>
 
         <div className="checkpoints-display">
-          <h3>중간 결과</h3>
+          <h3>중간 결과 ({checkpoints.length}/3)</h3>
           <div className="checkpoints-list">
-            {checkpoints.map((checkpoint, index) => (
-              <div
-                key={index}
-                className="checkpoint-result"
-                style={{ color: getResultColor(checkpoint.result) }}
-              >
-                <span className="checkpoint-icon">{getResultIcon(checkpoint.result)}</span>
-                <span className="checkpoint-result-text">{checkpoint.result}</span>
-                <span className="checkpoint-message">{checkpoint.message}</span>
-                <div className="checkpoint-effects">
-                  {checkpoint.expEffect !== 0 && (
-                    <span className="exp-effect">EXP: {formatEffect(checkpoint.expEffect)}</span>
-                  )}
-                  {checkpoint.stressEffect !== 0 && (
-                    <span className="stress-effect">
-                      Stress: {checkpoint.stressEffect > 0 ? `+${checkpoint.stressEffect}` : checkpoint.stressEffect}
-                    </span>
-                  )}
-                </div>
+            {checkpoints.length === 0 ? (
+              <div className="no-checkpoints">
+                <p>아직 중간 결과가 없습니다...</p>
               </div>
-            ))}
+            ) : (
+              checkpoints.map((checkpoint, index) => (
+                <div
+                  key={`${checkpoint.time}-${index}`}
+                  className="checkpoint-result"
+                  style={{ 
+                    color: getResultColor(checkpoint.result),
+                    borderLeftColor: getResultColor(checkpoint.result)
+                  }}
+                >
+                  <div className="checkpoint-header">
+                    <span className="checkpoint-time">{checkpoint.time}초</span>
+                    <span className="checkpoint-result-text">{checkpoint.result}</span>
+                  </div>
+                  <span className="checkpoint-icon">{getResultIcon(checkpoint.result)}</span>
+                  <span className="checkpoint-message">{checkpoint.message}</span>
+                  <div className="checkpoint-effects">
+                    {checkpoint.expEffect !== 0 && (
+                      <span className="exp-effect">EXP: {formatEffect(checkpoint.expEffect)}</span>
+                    )}
+                    {checkpoint.stressEffect !== 0 && (
+                      <span className="stress-effect">
+                        Stress:{' '}
+                        {checkpoint.stressEffect > 0
+                          ? `+${checkpoint.stressEffect}`
+                          : checkpoint.stressEffect}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 

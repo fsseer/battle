@@ -1009,6 +1009,14 @@ body,
   padding: 32px;
   width: 380px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  max-height: 90vh;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  padding: 28px;
+  margin: 0 auto;
+  overflow: hidden;
 }
 
 .login-card {

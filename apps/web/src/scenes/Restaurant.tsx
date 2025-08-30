@@ -23,6 +23,7 @@ export default function Restaurant() {
   const [gold, setGold] = useState<number | null>(null)
   const { syncUserResources } = useResourceSync()
   const [modalMsg, setModalMsg] = useState<string | null>(null)
+  const [inventory, setInventory] = useState<any[]>([])
 
   const didInitRef = useRef(false)
   useEffect(() => {
@@ -41,6 +42,11 @@ export default function Restaurant() {
         }
         const res = await getShopCatalog('restaurant')
         if (res.ok) setItems(res.items as ShopItem[])
+        // 식당도 인벤토리 영역을 간단 표시(판매는 없음)
+        const invRes = await fetch(`${location.origin}/inventory`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
+        }).then((r) => r.json()).catch(() => null as any)
+        if (invRes?.ok && Array.isArray(invRes.items)) setInventory(invRes.items)
       } catch (e) {
         setError('식당 메뉴를 불러오지 못했습니다.')
       } finally {
@@ -67,6 +73,13 @@ export default function Restaurant() {
           setGold(Number(synced.data.resources.gold))
         }
         setModalMsg('구매했습니다!')
+        // 간단히 인벤토리 다시 로드
+        try {
+          const invRes2 = await fetch(`${location.origin}/inventory`, {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
+          }).then((r) => r.json())
+          if (invRes2?.ok && Array.isArray(invRes2.items)) setInventory(invRes2.items)
+        } catch {}
       }
     } catch (e) {
       setModalMsg('구매에 실패했습니다.')

@@ -24,6 +24,9 @@ export default function Market() {
   const [error, setError] = useState<string | null>(null)
   const { syncUserResources } = useResourceSync()
 
+  const sortInventory = (list: any[]) =>
+    [...list].sort((a, b) => String(a.name).localeCompare(String(b.name)))
+
   const load = async () => {
     setLoading(true)
     try {
@@ -36,7 +39,10 @@ export default function Market() {
         setGold(Number(sync.data.resources.gold))
       }
       if (cat.ok) setCatalog(cat.items as ShopItem[])
-      if ((inv as any).ok) setInventory((inv as any).items)
+      if ((inv as any).ok) {
+        const items = ((inv as any).items || []).filter((it: any) => (it?.quantity ?? 0) > 0)
+        setInventory(sortInventory(items))
+      }
     } catch (e) {
       setError('시장을 불러오지 못했습니다.')
     } finally {
@@ -81,6 +87,14 @@ export default function Market() {
       if (res?.ok) {
         setGold(res.gold)
         if (updateUserResources) updateUserResources({ gold: res.gold })
+        // 낙관적 업데이트: 수량 0이면 제거, 그 외 수량 갱신 후 정렬
+        setInventory((prev) => {
+          const updated = prev
+            .map((it) => (it.itemId === itemId ? { ...it, quantity: res.remaining } : it))
+            .filter((it) => (it?.quantity ?? 0) > 0)
+          return sortInventory(updated)
+        })
+        // 서버 진실과 최종 동기화
         await load()
         setError(null)
       }
@@ -179,7 +193,6 @@ export default function Market() {
           </div>
         </div>
       </div>
-      
     </div>
   )
 }

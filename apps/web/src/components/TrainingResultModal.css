@@ -264,6 +264,50 @@
   font-weight: bold;
 }
 
+/* 능력치별 경험치 */
+.stat-exp-result {
+  margin-bottom: 25px;
+  padding: 20px;
+  background: rgba(46, 204, 113, 0.1);
+  border-radius: 15px;
+  border: 1px solid rgba(46, 204, 113, 0.3);
+}
+
+.stat-exp-result h4 {
+  color: #2ecc71;
+  margin: 0 0 15px 0;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.detail-value.stat-exp {
+  color: #2ecc71;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* 무기술별 경험치 */
+.weapon-exp-result {
+  margin-bottom: 25px;
+  padding: 20px;
+  background: rgba(155, 89, 182, 0.1);
+  border-radius: 15px;
+  border: 1px solid rgba(155, 89, 182, 0.3);
+}
+
+.weapon-exp-result h4 {
+  color: #9b59b6;
+  margin: 0 0 15px 0;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.detail-value.weapon-exp {
+  color: #9b59b6;
+  font-size: 18px;
+  font-weight: bold;
+}
+
 /* 액션 버튼 */
 .result-actions {
   text-align: center;

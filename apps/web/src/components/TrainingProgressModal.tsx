@@ -8,6 +8,8 @@ export interface TrainingResult {
   stressChange: number
   apCost: number
   goldCost: number
+  statExpGained?: number // 능력치별 경험치
+  weaponExpGained?: number // 무기술별 경험치
 }
 
 interface TrainingProgressModalProps {
@@ -15,7 +17,10 @@ interface TrainingProgressModalProps {
   onClose: () => void
   trainingName: string
   duration: number // 훈련 시간 (초)
+  apCost: number // AP 소모량
+  goldCost: number // 골드 소모량
   onComplete: (result: TrainingResult, checkpoints: CheckpointResult[], baseExp: number) => void
+  onResourceUpdate?: (apChange: number, goldChange: number, stressChange: number) => void
 }
 
 interface CheckpointResult {
@@ -26,12 +31,34 @@ interface CheckpointResult {
   stressEffect: number // 스트레스 효과 (+/-)
 }
 
+// 성장 모델: 경험치 요구량 (향후 레벨 계산에 사용 예정)
+const EXP_REQUIREMENTS = [
+  0, 10, 13, 36, 265, 3134, 46665, 823552, 16777225, 387420498, 10000000009, 285311670620, 8916100448265, 302875106592262
+]
+
+// 훈련 이름에서 능력치/무기술 타입 추출
+const getTrainingType = (trainingName: string): { type: 'stat' | 'weapon', category: string } => {
+  if (trainingName.includes('힘')) return { type: 'stat', category: 'strength' }
+  if (trainingName.includes('민첩')) return { type: 'stat', category: 'agility' }
+  if (trainingName.includes('지능')) return { type: 'stat', category: 'intelligence' }
+  if (trainingName.includes('한손검')) return { type: 'weapon', category: 'one_hand' }
+  if (trainingName.includes('양손검')) return { type: 'weapon', category: 'two_hand' }
+  if (trainingName.includes('쌍검')) return { type: 'weapon', category: 'dual' }
+  if (trainingName.includes('체력')) return { type: 'stat', category: 'constitution' }
+  
+  // 기본값
+  return { type: 'stat', category: 'general' }
+}
+
 export default function TrainingProgressModal({
   isOpen,
   onClose,
   trainingName,
   duration,
+  apCost,
+  goldCost,
   onComplete,
+  onResourceUpdate,
 }: TrainingProgressModalProps) {
   const [progress, setProgress] = useState(0)
   const [checkpoints, setCheckpoints] = useState<CheckpointResult[]>([])
@@ -63,6 +90,12 @@ export default function TrainingProgressModal({
 
           const checkpointResult = generateCheckpointResult(currentTime)
           console.log(`[Training] ${currentTime}초 판정 생성:`, checkpointResult)
+          
+          // 스트레스 변화가 있으면 부모 컴포넌트에 즉시 전달
+          if (checkpointResult.stressEffect !== 0 && onResourceUpdate) {
+            onResourceUpdate(0, 0, checkpointResult.stressEffect)
+          }
+          
           return [...prevCheckpoints, checkpointResult]
         })
       }
@@ -156,13 +189,26 @@ export default function TrainingProgressModal({
     // 최종 경험치 계산 (수정자 적용)
     const finalExp = Math.max(0, Math.round(baseExp * expModifier))
 
+    // 훈련 타입에 따른 경험치 분류
+    const trainingType = getTrainingType(trainingName)
+    let statExpGained = 0
+    let weaponExpGained = 0
+
+    if (trainingType.type === 'stat') {
+      statExpGained = finalExp
+    } else if (trainingType.type === 'weapon') {
+      weaponExpGained = finalExp
+    }
+
     return {
       success: true, // 성공/실패 구분 없음
       message: `${trainingName} 훈련이 완료되었습니다!`,
       expGained: finalExp,
       stressChange: totalStress,
-      apCost: 0, // 실제 AP 비용은 훈련 시작 시 이미 차감됨
-      goldCost: 0, // 실제 골드 비용은 훈련 시작 시 이미 차감됨
+      apCost: apCost,
+      goldCost: goldCost,
+      statExpGained,
+      weaponExpGained,
     }
   }
 
@@ -221,22 +267,15 @@ export default function TrainingProgressModal({
       <div className="progress-content">
         <div className="progress-header">
           <h2>🏋️ {trainingName} 훈련 진행 중...</h2>
+          <div className="resource-costs">
+            <span className="cost-item">AP: -{apCost}</span>
+            {goldCost > 0 && <span className="cost-item">골드: -{goldCost}</span>}
+          </div>
         </div>
 
         <div className="progress-bar-container">
           <div className="progress-bar">
             <div className="progress-fill" style={{ width: `${progress}%` }}></div>
-          </div>
-          <div className="progress-labels">
-            {Array.from({ length: Math.floor(duration / 5) }, (_, i) => (
-              <div
-                key={i}
-                className="progress-checkpoint"
-                style={{ left: `${(((i + 1) * 5) / duration) * 100}%` }}
-              >
-                <span className="checkpoint-dot"></span>
-              </div>
-            ))}
           </div>
         </div>
 
@@ -252,9 +291,9 @@ export default function TrainingProgressModal({
                 <div
                   key={`${checkpoint.time}-${index}`}
                   className="checkpoint-result"
-                  style={{ 
+                  style={{
                     color: getResultColor(checkpoint.result),
-                    borderLeftColor: getResultColor(checkpoint.result)
+                    borderLeftColor: getResultColor(checkpoint.result),
                   }}
                 >
                   <div className="checkpoint-header">

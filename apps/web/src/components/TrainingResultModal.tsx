@@ -8,6 +8,8 @@ interface TrainingResultModalProps {
     expGained: number
     stressChange: number
     success: boolean
+    statExpGained?: number
+    weaponExpGained?: number
   }
   checkpoints?: Array<{
     time: number
@@ -164,6 +166,28 @@ const TrainingResultModal: React.FC<TrainingResultModalProps> = ({
             </div>
           )}
         </div>
+
+        {/* 능력치별 경험치 */}
+        {result.statExpGained && result.statExpGained > 0 && (
+          <div className="stat-exp-result">
+            <h4>💪 능력치 성장</h4>
+            <div className="detail-item">
+              <span className="detail-label">능력치 경험치:</span>
+              <span className="detail-value stat-exp">+{result.statExpGained}</span>
+            </div>
+          </div>
+        )}
+
+        {/* 무기술별 경험치 */}
+        {result.weaponExpGained && result.weaponExpGained > 0 && (
+          <div className="weapon-exp-result">
+            <h4>⚔️ 무기술 성장</h4>
+            <div className="detail-item">
+              <span className="detail-label">무기술 경험치:</span>
+              <span className="detail-value weapon-exp">+{result.weaponExpGained}</span>
+            </div>
+          </div>
+        )}
 
         <div className="result-actions">
           <button className="continue-btn" onClick={onClose}>

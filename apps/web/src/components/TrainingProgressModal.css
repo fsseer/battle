@@ -34,10 +34,27 @@
 
 .progress-header h2 {
   color: #ffffff;
-  margin: 0;
+  margin: 0 0 15px 0;
   font-size: 28px;
   font-weight: bold;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.resource-costs {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.cost-item {
+  background: rgba(231, 76, 60, 0.2);
+  color: #e74c3c;
+  padding: 8px 15px;
+  border-radius: 20px;
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  font-weight: bold;
+  font-size: 14px;
 }
 
 /* 진행률 바 */

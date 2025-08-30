@@ -1250,10 +1250,7 @@ async function ensureShopTables() {
 }
 
 async function seedShopItems() {
-  const countRows = (await prisma.$queryRaw<any[]>`SELECT COUNT(*) as cnt FROM items`) as any[]
-  const total = Number(countRows?.[0]?.cnt || 0)
-  if (total > 0) return
-
+  // 누적 시드: 이미 존재하면 무시하고, 없으면 삽입합니다
   const now = new Date().toISOString()
   const batch: Array<any> = [
     // 식당 메뉴 (로마 노예 검투사 분위기)
@@ -1407,7 +1404,11 @@ async function seedShopItems() {
       now
     )
   }
-  console.log('[Shop] 기본 아이템 시드 완료')
+  // 과거 데이터 보정: 기존 consumable을 약국 분류로 교정
+  await prisma.$executeRawUnsafe(
+    "UPDATE items SET category='pharmacy' WHERE shop='market' AND name IN ('회복약','해독제','붕대') AND (category IS NULL OR category NOT IN ('pharmacy','wood','flower'));"
+  )
+  console.log('[Shop] 기본 아이템 시드(누적) 완료')
 }
 
 async function maybeGrantAllGold() {

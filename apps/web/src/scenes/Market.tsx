@@ -4,7 +4,6 @@ import { useAuthStore } from '../store/auth'
 import { getShopCatalog, buyItem, sellItem, getInventory } from '../lib/api'
 import { useResourceSync } from '../hooks/useResourceSync'
 import GameHeader from '../components/GameHeader'
-import GameModal from '../components/common/GameModal'
 
 type ShopItem = {
   id: string
@@ -17,14 +16,13 @@ type ShopItem = {
 
 export default function Market() {
   const navigate = useNavigate()
-  const { user } = useAuthStore()
+  const { user, updateUserResources } = useAuthStore()
   const [catalog, setCatalog] = useState<ShopItem[]>([])
   const [inventory, setInventory] = useState<any[]>([])
   const [gold, setGold] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { syncUserResources } = useResourceSync()
-  const [modalMsg, setModalMsg] = useState<string | null>(null)
 
   const load = async () => {
     setLoading(true)
@@ -61,18 +59,19 @@ export default function Market() {
   const handleBuy = async (itemId: string) => {
     const target = catalog.find((x) => x.id === itemId)
     if (gold != null && target && gold < target.price) {
-      setModalMsg('골드가 부족하여 구매할 수 없습니다.')
+      setError('골드가 부족하여 구매할 수 없습니다.')
       return
     }
     try {
       const res = (await buyItem(itemId, 1)) as any
       if (res?.ok) {
         setGold(res.gold)
+        if (updateUserResources) updateUserResources({ gold: res.gold })
         await load()
-        setModalMsg('구매했습니다!')
+        setError(null)
       }
     } catch (e) {
-      setModalMsg('구매에 실패했습니다.')
+      setError('구매에 실패했습니다.')
     }
   }
 
@@ -81,11 +80,12 @@ export default function Market() {
       const res = (await sellItem(itemId, 1)) as any
       if (res?.ok) {
         setGold(res.gold)
+        if (updateUserResources) updateUserResources({ gold: res.gold })
         await load()
-        setModalMsg('판매했습니다!')
+        setError(null)
       }
     } catch (e) {
-      setModalMsg('판매에 실패했습니다.')
+      setError('판매에 실패했습니다.')
     }
   }
 
@@ -179,11 +179,7 @@ export default function Market() {
           </div>
         </div>
       </div>
-      {modalMsg && (
-        <GameModal title="알림" onClose={() => setModalMsg(null)}>
-          {modalMsg}
-        </GameModal>
-      )}
+      
     </div>
   )
 }

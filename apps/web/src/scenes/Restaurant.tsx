@@ -16,7 +16,7 @@ type ShopItem = {
 
 export default function Restaurant() {
   const navigate = useNavigate()
-  const { user } = useAuthStore()
+  const { user, updateUserResources } = useAuthStore()
   const [items, setItems] = useState<ShopItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -61,6 +61,11 @@ export default function Restaurant() {
       const res = (await buyItem(itemId, 1)) as any
       if (res?.ok) {
         setGold(res.gold)
+        if (updateUserResources) updateUserResources({ gold: res.gold })
+        const synced = await syncUserResources()
+        if (synced?.success && synced.data?.resources?.gold != null) {
+          setGold(Number(synced.data.resources.gold))
+        }
         setModalMsg('구매했습니다!')
       }
     } catch (e) {

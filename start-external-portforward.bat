@@ -1,6 +1,5 @@
 @echo off
-chcp 65001 >nul
-setlocal enabledelayedexpansion
+setlocal
 
 title Vindex Arena - External Port Forwarding + Dynamic IP
 
@@ -28,10 +27,10 @@ set "ENV_FILE=%~dp0deploy\local\env.local"
 set "ENV_EXAMPLE=%~dp0deploy\local\env.example"
 
 rem Copy environment file if it doesn't exist
-if not exist "!ENV_FILE!" (
-    if exist "!ENV_EXAMPLE!" (
-        copy "!ENV_EXAMPLE!" "!ENV_FILE!" >nul
-        echo Environment file created: !ENV_FILE!
+if not exist "%ENV_FILE%" (
+    if exist "%ENV_EXAMPLE%" (
+        copy "%ENV_EXAMPLE%" "%ENV_FILE%" >nul
+        echo Environment file created: %ENV_FILE%
     ) else (
         echo Environment example file not found.
         echo Continuing with default values.
@@ -39,9 +38,9 @@ if not exist "!ENV_FILE!" (
 )
 
 rem Update env file to always use the DDNS hostname (never raw IP) - pure CMD
-if exist "!ENV_FILE!" (
-    call :set_kv "!ENV_FILE!" SSH_HOST "%DDNS_HOST%"
-    call :set_kv "!ENV_FILE!" VITE_SERVER_ORIGIN "http://%DDNS_HOST%:5174"
+if exist "%ENV_FILE%" (
+    call :set_kv "%ENV_FILE%" SSH_HOST "%DDNS_HOST%"
+    call :set_kv "%ENV_FILE%" VITE_SERVER_ORIGIN "http://%DDNS_HOST%:5174"
     echo Environment variables updated with DDNS host.
 )
 
@@ -96,9 +95,7 @@ popd
 set SURL=http://localhost:5174/health
 echo [server] Waiting for server response %SURL% ...
 for /l %%i in (1,1,60) do (
-  set "HC="
-  for /f "delims=" %%H in ('curl -s -o NUL -w "%%{http_code}" "%SURL%"') do set "HC=%%H"
-  if "!HC!"=="200" goto :web_start
+  for /f "delims=" %%H in ('curl -s -o NUL -w "%%{http_code}" "%SURL%"') do if "%%H"=="200" goto :web_start
   timeout /t 1 >nul
 )
 echo [server] Server response timeout. Proceeding to start web server...
@@ -120,9 +117,9 @@ popd
 rem ===== Update Environment Variables =====
 echo Updating environment variables with DDNS host and ports...
 set "ENV_FILE=%~dp0deploy\local\env.local"
-if exist "!ENV_FILE!" (
-    call :set_kv "!ENV_FILE!" VITE_SERVER_ORIGIN "http://%DDNS_HOST%:5174"
-    call :set_kv "!ENV_FILE!" SSH_HOST "%DDNS_HOST%"
+if exist "%ENV_FILE%" (
+    call :set_kv "%ENV_FILE%" VITE_SERVER_ORIGIN "http://%DDNS_HOST%:5174"
+    call :set_kv "%ENV_FILE%" SSH_HOST "%DDNS_HOST%"
     echo Environment variables updated.
 )
 

@@ -21,6 +21,7 @@ model User {
   character       Character?
   gameSessions    GameSession[]
   nicknameChanges NicknameChange[]
+  inventory       InventoryItem[]
 
   @@map("users")
 }
@@ -132,4 +133,37 @@ model GameSession {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("game_sessions")
+}
+
+// 기본 상점 아이템 (식당/시장 공용 카탈로그)
+model Item {
+  id          String   @id @default(cuid())
+  shop        String   // 'restaurant' | 'market'
+  name        String
+  description String?
+  category    String   // 'food' | 'consumable' 등
+  price       Int      // 구매가
+  sellPrice   Int?     // 판매가 (시장용)
+  effect      Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  inventoryItems InventoryItem[]
+
+  @@unique([shop, name])
+  @@map("items")
+}
+
+// 사용자 인벤토리 (서버 보관)
+model InventoryItem {
+  id       String @id @default(cuid())
+  userId   String
+  itemId   String
+  quantity Int    @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemId])
+  @@map("inventory_items")
 }

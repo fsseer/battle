@@ -226,3 +226,46 @@ export async function checkIdAvailability(
     return { ok: false }
   }
 }
+
+export async function getShopCatalog(shop: 'restaurant' | 'market') {
+  return fetchJsonWithTimeout<{ ok: boolean; shop: string; items: any[] }>(
+    `${SERVER_ORIGIN}/shop/catalog?shop=${encodeURIComponent(shop)}`,
+    { method: 'GET', cache: 'no-store', credentials: 'omit' },
+    7000
+  )
+}
+
+export async function getInventory() {
+  return get('/inventory') as Promise<{
+    ok: boolean
+    items: Array<{
+      inventoryItemId: string
+      itemId: string
+      name: string
+      description: string
+      category: string
+      price: number
+      sellPrice: number
+      quantity: number
+    }>
+  }>
+}
+
+export async function buyItem(itemId: string, quantity = 1) {
+  return call('/shop/buy', { itemId, quantity }, 'POST') as Promise<{
+    ok: boolean
+    itemId: string
+    quantity: number
+    gold: number
+  }>
+}
+
+export async function sellItem(itemId: string, quantity = 1) {
+  return call('/shop/sell', { itemId, quantity }, 'POST') as Promise<{
+    ok: boolean
+    itemId: string
+    quantity: number
+    remaining: number
+    gold: number
+  }>
+}

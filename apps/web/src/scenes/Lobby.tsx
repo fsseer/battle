@@ -68,16 +68,14 @@ export default function Lobby() {
         console.log('대장간으로 이동')
         break
       case 'market':
-        // TODO: 시장 씬 구현
-        console.log('시장으로 이동')
+        navigate('/market')
         break
       case 'coliseum':
-        // TODO: 콜로세움 씬 구현
-        console.log('콜로세움으로 이동')
+        // 콜로세움 → 매칭 준비(서버에 매칭 요청) 화면으로 이동
+        navigate('/match')
         break
       case 'restaurant':
-        // TODO: 식당 씬 구현
-        console.log('식당으로 이동')
+        navigate('/restaurant')
         break
       case 'stats':
         // TODO: 능력치 씬 구현

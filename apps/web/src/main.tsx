@@ -14,6 +14,8 @@ import Training from './scenes/Training'
 import Battle from './scenes/Battle'
 import Result from './scenes/Result'
 import Skills from './scenes/Skills'
+import Restaurant from './scenes/Restaurant'
+import Market from './scenes/Market'
 
 // 전역 소켓 이벤트 리스너 설정
 socket.on('session.terminated', (data) => {
@@ -131,6 +133,22 @@ const router = createBrowserRouter([
     element: (
       <RequireAuth>
         <Skills />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/restaurant',
+    element: (
+      <RequireAuth>
+        <Restaurant />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/market',
+    element: (
+      <RequireAuth>
+        <Market />
       </RequireAuth>
     ),
   },

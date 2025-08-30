@@ -331,6 +331,20 @@ server.on('request', async (req, res) => {
 
           console.log(`[Register] 사용자 생성 성공: ${id}`)
 
+          // 기본 캐릭터 생성 (초기 자원 세팅)
+          await prisma.character.create({
+            data: {
+              userId: user.id,
+              name: nickname || id,
+              level: 1,
+              ap: 100,
+              apMax: 100,
+              gold: 1000,
+              stress: 0,
+              stressMax: 200,
+            },
+          })
+
           // 회원가입 성공 시 JWT 토큰 생성
           const { accessToken, refreshToken } = await generateTokens(user.loginId)
           res.writeHead(200, { 'Content-Type': 'application/json' })
@@ -531,7 +545,9 @@ server.on('request', async (req, res) => {
       const url = new URL(req.url, `http://${req.headers.host}`)
       const shop = (url.searchParams.get('shop') || 'market').toLowerCase()
 
-      const items = (await prisma.$queryRaw<any[]>`SELECT id, shop, name, description, category, price, sellPrice, effect FROM items WHERE shop = ${shop} ORDER BY price ASC`) as any[]
+      const items = (await prisma.$queryRaw<
+        any[]
+      >`SELECT id, shop, name, description, category, price, sellPrice, effect FROM items WHERE shop = ${shop} ORDER BY price ASC`) as any[]
 
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(
@@ -574,14 +590,19 @@ server.on('request', async (req, res) => {
         return
       }
 
-      const user = await prisma.user.findFirst({ where: { loginId: (decoded as any).sub }, select: { id: true } })
+      const user = await prisma.user.findFirst({
+        where: { loginId: (decoded as any).sub },
+        select: { id: true },
+      })
       if (!user) {
         res.writeHead(404, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ ok: false, error: 'User not found' }))
         return
       }
 
-      const rows = (await prisma.$queryRaw<any[]>`SELECT ii.id, ii.itemId, ii.quantity, i.name, i.description, i.category, i.price, i.sellPrice FROM inventory_items ii JOIN items i ON i.id = ii.itemId WHERE ii.userId = ${user.id} ORDER BY i.name ASC`) as any[]
+      const rows = (await prisma.$queryRaw<
+        any[]
+      >`SELECT ii.id, ii.itemId, ii.quantity, i.name, i.description, i.category, i.price, i.sellPrice FROM inventory_items ii JOIN items i ON i.id = ii.itemId WHERE ii.userId = ${user.id} ORDER BY i.name ASC`) as any[]
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(
         JSON.stringify({
@@ -626,7 +647,9 @@ server.on('request', async (req, res) => {
 
           if (!itemId) {
             res.writeHead(400, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ ok: false, error: 'INVALID_INPUT', message: 'itemId가 필요합니다.' }))
+            res.end(
+              JSON.stringify({ ok: false, error: 'INVALID_INPUT', message: 'itemId가 필요합니다.' })
+            )
             return
           }
 
@@ -637,14 +660,19 @@ server.on('request', async (req, res) => {
             return
           }
 
-          const user = await prisma.user.findFirst({ where: { loginId: (decoded as any).sub }, select: { id: true } })
+          const user = await prisma.user.findFirst({
+            where: { loginId: (decoded as any).sub },
+            select: { id: true },
+          })
           if (!user) {
             res.writeHead(404, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ ok: false, error: 'User not found' }))
             return
           }
 
-          const item = (await prisma.$queryRaw<any[]>`SELECT id, name, price FROM items WHERE id = ${itemId} LIMIT 1`) as any[]
+          const item = (await prisma.$queryRaw<
+            any[]
+          >`SELECT id, name, price FROM items WHERE id = ${itemId} LIMIT 1`) as any[]
           if (!item.length) {
             res.writeHead(404, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ ok: false, error: 'ITEM_NOT_FOUND' }))
@@ -658,11 +686,15 @@ server.on('request', async (req, res) => {
           const character = await ensureCharacter(user.id, String((decoded as any).sub))
 
           // 보유 골드 확인 및 구매 처리
-          const rows = (await prisma.$queryRaw<any[]>`SELECT gold FROM characters WHERE userId = ${user.id} LIMIT 1`) as any[]
+          const rows = (await prisma.$queryRaw<
+            any[]
+          >`SELECT gold FROM characters WHERE userId = ${user.id} LIMIT 1`) as any[]
           const currentGold = Number(rows?.[0]?.gold || 0)
           if (currentGold < totalCost) {
             res.writeHead(400, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ ok: false, error: 'NOT_ENOUGH_GOLD' }))
+            res.end(
+              JSON.stringify({ ok: false, error: 'NOT_ENOUGH_GOLD', message: '골드가 부족합니다.' })
+            )
             return
           }
 
@@ -682,7 +714,9 @@ server.on('request', async (req, res) => {
             ),
           ])
 
-          const updated = (await prisma.$queryRaw<any[]>`SELECT gold FROM characters WHERE userId = ${user.id} LIMIT 1`) as any[]
+          const updated = (await prisma.$queryRaw<
+            any[]
+          >`SELECT gold FROM characters WHERE userId = ${user.id} LIMIT 1`) as any[]
 
           res.writeHead(200, { 'Content-Type': 'application/json' })
           res.end(
@@ -722,7 +756,9 @@ server.on('request', async (req, res) => {
 
           if (!itemId) {
             res.writeHead(400, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ ok: false, error: 'INVALID_INPUT', message: 'itemId가 필요합니다.' }))
+            res.end(
+              JSON.stringify({ ok: false, error: 'INVALID_INPUT', message: 'itemId가 필요합니다.' })
+            )
             return
           }
 
@@ -733,14 +769,19 @@ server.on('request', async (req, res) => {
             return
           }
 
-          const user = await prisma.user.findFirst({ where: { loginId: (decoded as any).sub }, select: { id: true } })
+          const user = await prisma.user.findFirst({
+            where: { loginId: (decoded as any).sub },
+            select: { id: true },
+          })
           if (!user) {
             res.writeHead(404, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ ok: false, error: 'User not found' }))
             return
           }
 
-          const item = (await prisma.$queryRaw<any[]>`SELECT id, name, price, sellPrice FROM items WHERE id = ${itemId} LIMIT 1`) as any[]
+          const item = (await prisma.$queryRaw<
+            any[]
+          >`SELECT id, name, price, sellPrice FROM items WHERE id = ${itemId} LIMIT 1`) as any[]
           if (!item.length) {
             res.writeHead(404, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ ok: false, error: 'ITEM_NOT_FOUND' }))
@@ -749,7 +790,9 @@ server.on('request', async (req, res) => {
           const sellPrice = Number(item[0].sellPrice ?? Math.floor(Number(item[0].price || 0) / 2))
 
           // 인벤토리 수량 확인
-          const inv = (await prisma.$queryRaw<any[]>`SELECT id, quantity FROM inventory_items WHERE userId = ${user.id} AND itemId = ${itemId} LIMIT 1`) as any[]
+          const inv = (await prisma.$queryRaw<
+            any[]
+          >`SELECT id, quantity FROM inventory_items WHERE userId = ${user.id} AND itemId = ${itemId} LIMIT 1`) as any[]
           const curQty = Number(inv?.[0]?.quantity || 0)
           if (curQty < quantity) {
             res.writeHead(400, { 'Content-Type': 'application/json' })
@@ -774,8 +817,12 @@ server.on('request', async (req, res) => {
             ),
           ])
 
-          const updatedInv = (await prisma.$queryRaw<any[]>`SELECT quantity FROM inventory_items WHERE userId = ${user.id} AND itemId = ${itemId} LIMIT 1`) as any[]
-          const updatedGold = (await prisma.$queryRaw<any[]>`SELECT gold FROM characters WHERE userId = ${user.id} LIMIT 1`) as any[]
+          const updatedInv = (await prisma.$queryRaw<
+            any[]
+          >`SELECT quantity FROM inventory_items WHERE userId = ${user.id} AND itemId = ${itemId} LIMIT 1`) as any[]
+          const updatedGold = (await prisma.$queryRaw<
+            any[]
+          >`SELECT gold FROM characters WHERE userId = ${user.id} LIMIT 1`) as any[]
 
           res.writeHead(200, { 'Content-Type': 'application/json' })
           res.end(
@@ -1020,50 +1067,61 @@ server.on('request', async (req, res) => {
         return
       }
 
-      // 사용자 정보 및 자원 정보 반환
+      // 사용자 정보 및 자원 정보 반환 (DB 연동)
       try {
         const decoded = await verifyToken(token)
-        console.log('[Resources] 토큰 디코딩 결과:', decoded)
-
-        if (decoded && typeof decoded === 'object' && 'sub' in decoded) {
-          console.log('[Resources] 사용자 ID로 검색:', decoded.sub)
-
-          // 실제 사용자 정보 조회
-          const user = await prisma.user.findFirst({
-            where: { loginId: decoded.sub },
-            select: { id: true, loginId: true, nickname: true },
-          })
-
-          console.log('[Resources] 데이터베이스 검색 결과:', user)
-
-          if (user) {
-            res.writeHead(200, { 'Content-Type': 'application/json' })
-            res.end(
-              JSON.stringify({
-                ok: true,
-                character: {
-                  level: 1,
-                  exp: 0,
-                  reputation: 0,
-                },
-                resources: {
-                  ap: 100,
-                  gold: 1000,
-                  stress: 0,
-                  lastApUpdate: Date.now(),
-                },
-              })
-            )
-          } else {
-            res.writeHead(404, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ ok: false, error: 'User not found' }))
-          }
-        } else {
+        if (!decoded || typeof decoded !== 'object' || !('sub' in decoded)) {
           res.writeHead(401, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ ok: false, error: 'Invalid token' }))
+          return
         }
+
+        // 사용자와 캐릭터 조회/보장
+        const user = await prisma.user.findFirst({
+          where: { loginId: (decoded as any).sub },
+          select: { id: true, loginId: true, nickname: true },
+        })
+        if (!user) {
+          res.writeHead(404, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: false, error: 'User not found' }))
+          return
+        }
+
+        let character = await prisma.character.findFirst({ where: { userId: user.id } })
+        if (!character) {
+          character = await prisma.character.create({
+            data: {
+              userId: user.id,
+              name: user.nickname || user.loginId,
+              level: 1,
+              ap: 100,
+              apMax: 100,
+              gold: 1000,
+              stress: 0,
+              stressMax: 200,
+            },
+          })
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(
+          JSON.stringify({
+            ok: true,
+            character: {
+              level: character.level,
+              exp: character.exp,
+              reputation: 0,
+            },
+            resources: {
+              ap: character.ap,
+              gold: character.gold,
+              stress: character.stress,
+              lastApUpdate: Date.now(),
+            },
+          })
+        )
       } catch (tokenError) {
-        console.error('[Resources] 토큰 검증 오류:', tokenError)
+        console.error('[Resources] 토큰 검증/조회 오류:', tokenError)
         res.writeHead(401, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ ok: false, error: 'Invalid token' }))
       }
@@ -1165,13 +1223,67 @@ async function seedShopItems() {
   const now = new Date().toISOString()
   const batch: Array<any> = [
     // 식당 메뉴
-    { id: cryptoRandomId(), shop: 'restaurant', name: '갈비 스튜', description: '든든한 스튜. AP 소량 회복', category: 'food', price: 30, sellPrice: null, effect: JSON.stringify({ ap: +10 }) },
-    { id: cryptoRandomId(), shop: 'restaurant', name: '빵', description: '간단한 식사', category: 'food', price: 10, sellPrice: null, effect: JSON.stringify({ ap: +4 }) },
-    { id: cryptoRandomId(), shop: 'restaurant', name: '포도주', description: '마시면 기분이 좋아진다', category: 'food', price: 20, sellPrice: null, effect: JSON.stringify({ stress: -5 }) },
+    {
+      id: cryptoRandomId(),
+      shop: 'restaurant',
+      name: '갈비 스튜',
+      description: '든든한 스튜. AP 소량 회복',
+      category: 'food',
+      price: 30,
+      sellPrice: null,
+      effect: JSON.stringify({ ap: +10 }),
+    },
+    {
+      id: cryptoRandomId(),
+      shop: 'restaurant',
+      name: '빵',
+      description: '간단한 식사',
+      category: 'food',
+      price: 10,
+      sellPrice: null,
+      effect: JSON.stringify({ ap: +4 }),
+    },
+    {
+      id: cryptoRandomId(),
+      shop: 'restaurant',
+      name: '포도주',
+      description: '마시면 기분이 좋아진다',
+      category: 'food',
+      price: 20,
+      sellPrice: null,
+      effect: JSON.stringify({ stress: -5 }),
+    },
     // 시장 소모품
-    { id: cryptoRandomId(), shop: 'market', name: '회복약', description: '체력을 회복한다', category: 'consumable', price: 50, sellPrice: 25, effect: JSON.stringify({ heal: 50 }) },
-    { id: cryptoRandomId(), shop: 'market', name: '해독제', description: '중독을 해제한다', category: 'consumable', price: 40, sellPrice: 20, effect: JSON.stringify({ cure: 'poison' }) },
-    { id: cryptoRandomId(), shop: 'market', name: '붕대', description: '출혈을 멈춘다', category: 'consumable', price: 20, sellPrice: 10, effect: JSON.stringify({ cure: 'bleed' }) },
+    {
+      id: cryptoRandomId(),
+      shop: 'market',
+      name: '회복약',
+      description: '체력을 회복한다',
+      category: 'consumable',
+      price: 50,
+      sellPrice: 25,
+      effect: JSON.stringify({ heal: 50 }),
+    },
+    {
+      id: cryptoRandomId(),
+      shop: 'market',
+      name: '해독제',
+      description: '중독을 해제한다',
+      category: 'consumable',
+      price: 40,
+      sellPrice: 20,
+      effect: JSON.stringify({ cure: 'poison' }),
+    },
+    {
+      id: cryptoRandomId(),
+      shop: 'market',
+      name: '붕대',
+      description: '출혈을 멈춘다',
+      category: 'consumable',
+      price: 20,
+      sellPrice: 10,
+      effect: JSON.stringify({ cure: 'bleed' }),
+    },
   ]
 
   for (const it of batch) {

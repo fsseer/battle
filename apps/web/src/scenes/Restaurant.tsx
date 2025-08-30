@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/auth'
 import { getShopCatalog, buyItem } from '../lib/api'
 import { useResourceSync } from '../hooks/useResourceSync'
 import GameHeader from '../components/GameHeader'
+import GameModal from '../components/common/GameModal'
 
 type ShopItem = {
   id: string
@@ -21,6 +22,7 @@ export default function Restaurant() {
   const [error, setError] = useState<string | null>(null)
   const [gold, setGold] = useState<number | null>(null)
   const { syncUserResources } = useResourceSync()
+  const [modalMsg, setModalMsg] = useState<string | null>(null)
 
   const didInitRef = useRef(false)
   useEffect(() => {
@@ -52,26 +54,30 @@ export default function Restaurant() {
   const handleBuy = async (itemId: string) => {
     const target = items.find((x) => x.id === itemId)
     if (gold != null && target && gold < target.price) {
-      alert('골드가 부족하여 구매할 수 없습니다.')
+      setModalMsg('골드가 부족하여 구매할 수 없습니다.')
       return
     }
     try {
       const res = (await buyItem(itemId, 1)) as any
       if (res?.ok) {
         setGold(res.gold)
-        alert('구매했습니다!')
+        setModalMsg('구매했습니다!')
       }
     } catch (e) {
-      alert('구매에 실패했습니다.')
+      setModalMsg('구매에 실패했습니다.')
     }
   }
 
   return (
     <div className="lobby-layout">
       <GameHeader onSystemMenuClick={() => {}} />
+      <div
+        className="lobby-background"
+        style={{ backgroundImage: 'url(/images/lobby-background.jpg)' }}
+      />
       <div className="center-content-wrapper">
         <div className="center-background-area">
-          <h2 style={{ color: '#fff' }}>식당</h2>
+          <h2 style={{ color: '#fff', textAlign: 'center' }}>식당</h2>
           {gold !== null && <div style={{ color: '#ffd700' }}>보유 골드: {gold}</div>}
           {loading && <div style={{ color: '#fff' }}>불러오는 중...</div>}
           {error && <div style={{ color: 'tomato' }}>{error}</div>}
@@ -104,6 +110,7 @@ export default function Restaurant() {
           </div>
         </div>
       </div>
+      {modalMsg && <GameModal title="알림" onClose={() => setModalMsg(null)}>{modalMsg}</GameModal>}
     </div>
   )
 }

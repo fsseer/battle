@@ -236,6 +236,34 @@ server.on('request', async (req, res) => {
     return
   }
 
+  // 관리자: 모든 캐릭터에 골드 지급 (임시 테스트용)
+  if (req.url?.startsWith('/admin/grant-gold') && req.method === 'POST') {
+    try {
+      let body = ''
+      req.on('data', (chunk) => (body += chunk.toString()))
+      req.on('end', async () => {
+        try {
+          const data = safeParseBody(body)
+          const amount = Math.max(0, parseInt(String((data as any).amount ?? '1000'), 10) || 0)
+
+          await prisma.$executeRawUnsafe('UPDATE characters SET gold = gold + ?;', amount)
+
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: true, amount }))
+        } catch (e) {
+          console.error('[Admin] grant-gold 실패:', e)
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: false }))
+        }
+      })
+    } catch (error) {
+      console.error('[Admin] grant-gold 처리 오류:', error)
+      res.writeHead(500, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false }))
+    }
+    return
+  }
+
   // ID 중복 확인 API
   if (req.url?.startsWith('/auth/check-id') && req.method === 'GET') {
     try {

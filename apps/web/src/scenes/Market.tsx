@@ -38,6 +38,10 @@ export default function Market() {
   const sortInventory = (list: any[]) =>
     [...list].sort((a, b) => String(a.name).localeCompare(String(b.name)))
 
+  const [openPharmacy, setOpenPharmacy] = useState(true)
+  const [openWood, setOpenWood] = useState(true)
+  const [openFlower, setOpenFlower] = useState(true)
+
   const load = async () => {
     setLoading(true)
     try {
@@ -126,62 +130,83 @@ export default function Market() {
           <LandscapeMenuPanel title="🛒 시장 - 구매" subtitle="카테고리별 상품">
             <LandscapeSection title="약국">
               <LandscapeCard>
-                <div className="landscape-grid">
-                  {categorized.약국.map((it) => (
-                    <div key={it.id} className="landscape-grid-row">
-                      <div>
-                        <div style={{ color: '#fff', fontWeight: 600 }}>{it.name}</div>
-                        <div style={{ color: '#ccc', fontSize: 12 }}>{it.description}</div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <span style={{ color: '#ffd700' }}>{it.price} G</span>
-                        <LandscapeButton onClick={() => handleBuy(it.id)} variant="primary">
-                          구매
-                        </LandscapeButton>
-                      </div>
-                    </div>
-                  ))}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+                  <LandscapeButton variant="secondary" onClick={() => setOpenPharmacy(!openPharmacy)}>
+                    {openPharmacy ? '접기' : '펼치기'}
+                  </LandscapeButton>
                 </div>
+                {openPharmacy && (
+                  <div className="landscape-grid">
+                    {categorized.약국.map((it) => (
+                      <div key={it.id} className="landscape-grid-row">
+                        <div>
+                          <div style={{ color: '#fff', fontWeight: 600 }}>{it.name}</div>
+                          <div style={{ color: '#ccc', fontSize: 12 }}>{it.description}</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <span style={{ color: '#ffd700' }}>{it.price} G</span>
+                          <LandscapeButton onClick={() => handleBuy(it.id)} variant="primary">
+                            구매
+                          </LandscapeButton>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </LandscapeCard>
             </LandscapeSection>
             <LandscapeSection title="목공소">
               <LandscapeCard>
-                <div className="landscape-grid">
-                  {categorized.목공소.map((it) => (
-                    <div key={it.id} className="landscape-grid-row">
-                      <div>
-                        <div style={{ color: '#fff', fontWeight: 600 }}>{it.name}</div>
-                        <div style={{ color: '#ccc', fontSize: 12 }}>{it.description}</div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <span style={{ color: '#ffd700' }}>{it.price} G</span>
-                        <LandscapeButton onClick={() => handleBuy(it.id)} variant="primary">
-                          구매
-                        </LandscapeButton>
-                      </div>
-                    </div>
-                  ))}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+                  <LandscapeButton variant="secondary" onClick={() => setOpenWood(!openWood)}>
+                    {openWood ? '접기' : '펼치기'}
+                  </LandscapeButton>
                 </div>
+                {openWood && (
+                  <div className="landscape-grid">
+                    {categorized.목공소.map((it) => (
+                      <div key={it.id} className="landscape-grid-row">
+                        <div>
+                          <div style={{ color: '#fff', fontWeight: 600 }}>{it.name}</div>
+                          <div style={{ color: '#ccc', fontSize: 12 }}>{it.description}</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <span style={{ color: '#ffd700' }}>{it.price} G</span>
+                          <LandscapeButton onClick={() => handleBuy(it.id)} variant="primary">
+                            구매
+                          </LandscapeButton>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </LandscapeCard>
             </LandscapeSection>
             <LandscapeSection title="꽃집">
               <LandscapeCard>
-                <div className="landscape-grid">
-                  {categorized.꽃집.map((it) => (
-                    <div key={it.id} className="landscape-grid-row">
-                      <div>
-                        <div style={{ color: '#fff', fontWeight: 600 }}>{it.name}</div>
-                        <div style={{ color: '#ccc', fontSize: 12 }}>{it.description}</div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <span style={{ color: '#ffd700' }}>{it.price} G</span>
-                        <LandscapeButton onClick={() => handleBuy(it.id)} variant="primary">
-                          구매
-                        </LandscapeButton>
-                      </div>
-                    </div>
-                  ))}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+                  <LandscapeButton variant="secondary" onClick={() => setOpenFlower(!openFlower)}>
+                    {openFlower ? '접기' : '펼치기'}
+                  </LandscapeButton>
                 </div>
+                {openFlower && (
+                  <div className="landscape-grid">
+                    {categorized.꽃집.map((it) => (
+                      <div key={it.id} className="landscape-grid-row">
+                        <div>
+                          <div style={{ color: '#fff', fontWeight: 600 }}>{it.name}</div>
+                          <div style={{ color: '#ccc', fontSize: 12 }}>{it.description}</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <span style={{ color: '#ffd700' }}>{it.price} G</span>
+                          <LandscapeButton onClick={() => handleBuy(it.id)} variant="primary">
+                            구매
+                          </LandscapeButton>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </LandscapeCard>
             </LandscapeSection>
           </LandscapeMenuPanel>
@@ -219,22 +244,7 @@ export default function Market() {
             </LandscapeSection>
           </LandscapeMenuPanel>
         }
-      >
-        <div className="training-center-area landscape-center-content">
-          <div className="training-info">
-            <h2>시장</h2>
-            <p>좌측에서 소모품을 구입하고, 우측에서 남는 소모품을 판매하세요.</p>
-            <div className="resource-display">
-              <div className="resource-item">
-                <span className="resource-label">골드:</span>
-                <span className="resource-value">{gold ?? 0}</span>
-              </div>
-            </div>
-            {loading && <div style={{ color: '#fff' }}>불러오는 중...</div>}
-            {error && <div style={{ color: 'tomato' }}>{error}</div>}
-          </div>
-        </div>
-      </LandscapeLayout>
+      />
     </div>
   )
 }

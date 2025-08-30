@@ -195,7 +195,9 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     try {
       // 서버에 토큰 유효성 검증 요청
-      const response = await fetch('http://127.0.0.1:5174/api/auth/validate', {
+      // 서버 주소는 공통 상수에서 가져와 환경(외부/로컬)에 따라 자동 결정
+      const { SERVER_ORIGIN } = await import('../lib/api')
+      const response = await fetch(`${SERVER_ORIGIN}/api/auth/validate`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,

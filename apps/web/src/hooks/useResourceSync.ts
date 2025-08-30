@@ -12,11 +12,9 @@ export function useResourceSync(autoLogoutOnFailure = true, maxRetries = 3, retr
     try {
       console.log('[ResourceSync] 자원 동기화 시작')
 
-      // 외부 도메인 감지 및 서버 주소 설정
-      const isExternalDomain = window.location.hostname.includes('iptime.org')
-      const serverUrl = isExternalDomain
-        ? 'http://vindexarena.iptime.org:5174'
-        : 'http://127.0.0.1:5174'
+      // 공통 API 설정에서 서버 주소 사용 (환경에 따라 자동 결정)
+      const { SERVER_ORIGIN } = await import('../lib/api')
+      const serverUrl = SERVER_ORIGIN
 
       // useAuthStore의 토큰을 우선 사용, 없으면 localStorage에서 복원
       const token = user?.token || restoreToken()

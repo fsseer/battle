@@ -62,9 +62,6 @@ echo [3/4] Freeing ports 5174(server) and 5173(web)...
 call :kill_on_port 5174
 call :kill_on_port 5173
 
-rem ===== Windows Firewall Setup (skipped: fixed router forwarding) =====
-echo [skipped] Windows Firewall rule configuration is not required.
-
 rem ===== Start Server and Web Server =====
 echo [4/4] Starting server and web server...
 
@@ -92,13 +89,8 @@ set PUBLIC_HOST=%DDNS_HOST%
 start "battle-server-dev" cmd /k "set AP_REGEN_MS=%AP_REGEN_MS% && set CORS_ORIGIN=%CORS_ORIGIN% && npm run dev -- --port 5174"
 popd
 
-set SURL=http://localhost:5174/health
-echo [server] Waiting for server response %SURL% ...
-for /l %%i in (1,1,60) do (
-  for /f "delims=" %%H in ('curl -s -o NUL -w "%%{http_code}" "%SURL%"') do if "%%H"=="200" goto :web_start
-  timeout /t 1 >nul
-)
-echo [server] Server response timeout. Proceeding to start web server...
+rem brief wait before web start
+timeout /t 2 >nul
 goto :web_start
 
 :web_start
@@ -111,7 +103,7 @@ if not exist node_modules (
 set VITE_SERVER_ORIGIN=http://%DDNS_HOST%:5174
 set ALLOWED_HOSTS=%DDNS_HOST%
 set PUBLIC_HOST=%DDNS_HOST%
-start "battle-web-dev" cmd /k "set VITE_SERVER_ORIGIN=%VITE_SERVER_ORIGIN% && set ALLOWED_HOSTS=%ALLOWED_HOSTS% && npm run dev -- --host 0.0.0.0 --strictPort --port 5173"
+start "battle-web-dev" cmd /k "set VITE_SERVER_ORIGIN=%VITE_SERVER_ORIGIN% && set ALLOWED_HOSTS=%ALLOWED_HOSTS% && npm run dev -- --host 0.0.0.0 --origin http://%DDNS_HOST%:5173 --strictPort --port 5173"
 popd
 
 rem ===== Update Environment Variables =====
@@ -123,27 +115,10 @@ if exist "%ENV_FILE%" (
     echo Environment variables updated.
 )
 
-set URL_LOCAL=http://127.0.0.1:5173
-set URL_EXT=http://%PUBLIC_HOST%:5173
-echo [open] Local:   %URL_LOCAL%
-echo [open] External: %URL_EXT%
-start "" %URL_LOCAL%
-start "" %URL_EXT%
+rem browser auto-open removed
 
 echo.
-echo ========================================
-echo    Vindex Arena Server Started!
-echo ========================================
-echo.
-echo Server started successfully on original ports!
-echo DDNS Host: %DDNS_HOST%
-echo Web Server: http://%DDNS_HOST%:5173 (port 5173)
-echo API Server: http://%DDNS_HOST%:5174 (port 5174)
-echo.
-echo Router port forwarding should be:
-echo External 5173 -> Internal 192.168.0.6:5173
-echo External 5174 -> Internal 192.168.0.6:5174
-echo.
+echo Ready. Web: http://%DDNS_HOST%:5173  API: http://%DDNS_HOST%:5174
 
 goto :eof
 

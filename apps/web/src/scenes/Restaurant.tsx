@@ -110,7 +110,11 @@ export default function Restaurant() {
           </div>
         </div>
       </div>
-      {modalMsg && <GameModal title="알림" onClose={() => setModalMsg(null)}>{modalMsg}</GameModal>}
+      {modalMsg && (
+        <GameModal title="알림" onClose={() => setModalMsg(null)}>
+          {modalMsg}
+        </GameModal>
+      )}
     </div>
   )
 }

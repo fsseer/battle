@@ -174,6 +174,7 @@ server.listen(5174, '0.0.0.0', async () => {
     // 상점 테이블 보장 및 시드
     await ensureShopTables()
     await seedShopItems()
+    await maybeGrantAllGold()
 
     // 사용자 수 확인
     const userCount = await prisma.user.count()
@@ -1330,4 +1331,14 @@ async function seedShopItems() {
     )
   }
   console.log('[Shop] 기본 아이템 시드 완료')
+}
+
+async function maybeGrantAllGold() {
+  const env = process.env.GRANT_GOLD_ON_BOOT
+  const amountStr = process.env.GRANT_GOLD_AMOUNT || '1000'
+  if (!env || env.toLowerCase() !== 'true') return
+  const amount = Math.max(0, parseInt(amountStr, 10) || 0)
+  if (amount <= 0) return
+  await prisma.$executeRawUnsafe('UPDATE characters SET gold = gold + ?;', amount)
+  console.log(`[Admin] 서버 시작 시 전 계정에 골드 ${amount} 지급 완료`)
 }

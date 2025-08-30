@@ -79,6 +79,9 @@ if not exist .env (
 ) else (
   findstr /b /c:"DATABASE_URL=" .env >nul || (echo DATABASE_URL=file:./prisma/dev.db>> .env)
 )
+rem 자동 테스트용 골드 지급 환경변수 설정
+findstr /b /c:"GRANT_GOLD_ON_BOOT=" .env >nul || (echo GRANT_GOLD_ON_BOOT=true>> .env)
+findstr /b /c:"GRANT_GOLD_AMOUNT=" .env >nul || (echo GRANT_GOLD_AMOUNT=1000>> .env)
 echo [server] Prisma migrate deploy...
 call npx --yes prisma migrate deploy || (echo [server][ERROR] migrate failed & pause>nul & goto :eof)
 echo [server] Prisma generate...

@@ -38,9 +38,10 @@ if not exist "!ENV_FILE!" (
     )
 )
 
-rem Update env file to always use the DDNS hostname (never raw IP)
+rem Update env file to always use the DDNS hostname (never raw IP) - pure CMD
 if exist "!ENV_FILE!" (
-    powershell -Command "(Get-Content '!ENV_FILE!') -replace '^SSH_HOST=.*', 'SSH_HOST=%DDNS_HOST%' -replace '^VITE_SERVER_ORIGIN=.*', 'VITE_SERVER_ORIGIN=http://%DDNS_HOST%:5174' | Set-Content '!ENV_FILE!'" >nul 2>&1
+    call :set_kv "!ENV_FILE!" SSH_HOST "%DDNS_HOST%"
+    call :set_kv "!ENV_FILE!" VITE_SERVER_ORIGIN "http://%DDNS_HOST%:5174"
     echo Environment variables updated with DDNS host.
 )
 
@@ -59,8 +60,8 @@ for %%T in (battle-server-dev battle-web-dev) do (
 )
 
 echo [3/4] Freeing ports 5174(server) and 5173(web)...
-powershell -NoProfile -Command "try { Get-Process -Id (Get-NetTCPConnection -LocalPort 5174 -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique) -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue } catch { }"
-powershell -NoProfile -Command "try { Get-Process -Id (Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique) -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue } catch { }"
+call :kill_on_port 5174
+call :kill_on_port 5173
 
 rem ===== Windows Firewall Setup (skipped: fixed router forwarding) =====
 echo [skipped] Windows Firewall rule configuration is not required.
@@ -95,8 +96,9 @@ popd
 set SURL=http://localhost:5174/health
 echo [server] Waiting for server response %SURL% ...
 for /l %%i in (1,1,60) do (
-  powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing -Uri '%SURL%' -Method Get -TimeoutSec 2; if ($r.StatusCode -eq 200) { exit 0 } else { exit 1 } } catch { exit 1 }"
-  if %errorlevel%==0 goto :web_start
+  set "HC="
+  for /f "delims=" %%H in ('curl -s -o NUL -w "%%{http_code}" "%SURL%"') do set "HC=%%H"
+  if "!HC!"=="200" goto :web_start
   timeout /t 1 >nul
 )
 echo [server] Server response timeout. Proceeding to start web server...
@@ -119,8 +121,8 @@ rem ===== Update Environment Variables =====
 echo Updating environment variables with DDNS host and ports...
 set "ENV_FILE=%~dp0deploy\local\env.local"
 if exist "!ENV_FILE!" (
-    powershell -Command "(Get-Content '!ENV_FILE!') -replace 'VITE_SERVER_ORIGIN=.*', 'VITE_SERVER_ORIGIN=http://%DDNS_HOST%:5174' | Set-Content '!ENV_FILE!'" >nul 2>&1
-    powershell -Command "(Get-Content '!ENV_FILE!') -replace 'SSH_HOST=.*', 'SSH_HOST=%DDNS_HOST%' | Set-Content '!ENV_FILE!'" >nul 2>&1
+    call :set_kv "!ENV_FILE!" VITE_SERVER_ORIGIN "http://%DDNS_HOST%:5174"
+    call :set_kv "!ENV_FILE!" SSH_HOST "%DDNS_HOST%"
     echo Environment variables updated.
 )
 
@@ -145,6 +147,32 @@ echo Router port forwarding should be:
 echo External 5173 -> Internal 192.168.0.6:5173
 echo External 5174 -> Internal 192.168.0.6:5174
 echo.
+
+goto :eof
+
+:kill_on_port
+set "_PORT=%~1"
+for /f "tokens=5" %%P in ('netstat -ano ^| find ":%_PORT%" ^| find "LISTENING"') do (
+  if not "%%P"=="" taskkill /F /PID %%P >nul 2>nul
+)
+goto :eof
+
+:set_kv
+set "_FILE=%~1"
+set "_KEY=%~2"
+set "_VAL=%~3"
+if not exist "%_FILE%" (
+  >"%_FILE%" echo %_KEY%=%_VAL%
+  goto :eof
+)
+break > "%_FILE%.tmp"
+for /f "usebackq delims=" %%L in ("%_FILE%") do (
+  echo %%L | findstr /b /c:"%_KEY%=" >nul
+  if errorlevel 1 >>"%_FILE%.tmp" echo %%L
+)
+>>"%_FILE%.tmp" echo %_KEY%=%_VAL%
+move /y "%_FILE%.tmp" "%_FILE%" >nul
+goto :eof
 
 endlocal
 pause

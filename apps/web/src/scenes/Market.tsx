@@ -25,10 +25,23 @@ export default function Market() {
   const { user, updateUserResources } = useAuthStore()
   const [catalog, setCatalog] = useState<ShopItem[]>([])
   const [inventory, setInventory] = useState<any[]>([])
+  const matchName = (name: string, keys: string[]) =>
+    keys.some((k) => name?.toLowerCase().includes(k))
+
   const categorized = {
-    약국: catalog.filter((i) => i.category === 'pharmacy'),
-    목공소: catalog.filter((i) => i.category === 'wood'),
-    꽃집: catalog.filter((i) => i.category === 'flower'),
+    약국: catalog.filter(
+      (i) =>
+        i.category === 'pharmacy' ||
+        matchName(i.name || '', ['회복약', '해독제', '붕대'])
+    ),
+    목공소: catalog.filter(
+      (i) => i.category === 'wood' || matchName(i.name || '', ['나무 '])
+    ),
+    꽃집: catalog.filter(
+      (i) =>
+        i.category === 'flower' ||
+        matchName(i.name || '', ['장미', '월계수', '들꽃'])
+    ),
   }
   const [gold, setGold] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
@@ -131,7 +144,10 @@ export default function Market() {
             <LandscapeSection title="약국">
               <LandscapeCard>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-                  <LandscapeButton variant="secondary" onClick={() => setOpenPharmacy(!openPharmacy)}>
+                  <LandscapeButton
+                    variant="secondary"
+                    onClick={() => setOpenPharmacy(!openPharmacy)}
+                  >
                     {openPharmacy ? '접기' : '펼치기'}
                   </LandscapeButton>
                 </div>
@@ -245,6 +261,11 @@ export default function Market() {
           </LandscapeMenuPanel>
         }
       />
+      <div style={{ position: 'fixed', right: 16, bottom: 16, zIndex: 1000 }}>
+        <LandscapeButton variant="secondary" onClick={() => navigate('/lobby')}>
+          🏠 로비로 돌아가기
+        </LandscapeButton>
+      </div>
     </div>
   )
 }

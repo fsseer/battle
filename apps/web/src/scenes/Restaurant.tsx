@@ -156,6 +156,11 @@ export default function Restaurant() {
           </div>
         </div>
       </LandscapeLayout>
+      <div style={{ position: 'fixed', right: 16, bottom: 16, zIndex: 1000 }}>
+        <LandscapeButton variant="secondary" onClick={() => navigate('/lobby')}>
+          🏠 로비로 돌아가기
+        </LandscapeButton>
+      </div>
       {modalMsg && (
         <GameModal title="알림" onClose={() => setModalMsg(null)}>
           {modalMsg}

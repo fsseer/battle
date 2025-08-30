@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/auth'
 import { getShopCatalog, buyItem, sellItem, getInventory } from '../lib/api'
 import { useResourceSync } from '../hooks/useResourceSync'
 import GameHeader from '../components/GameHeader'
+import LandscapeLayout, { LandscapeMenuPanel, LandscapeSection, LandscapeCard, LandscapeButton } from '../components/LandscapeLayout'
 
 type ShopItem = {
   id: string
@@ -104,95 +105,83 @@ export default function Market() {
   }
 
   return (
-    <div className="lobby-layout">
-      <GameHeader onSystemMenuClick={() => {}} />
+    <div className="training-layout landscape-layout">
+      <GameHeader />
       <div
-        className="lobby-background"
-        style={{ backgroundImage: 'url(/images/lobby-background.jpg)' }}
+        className="training-background"
+        style={{ backgroundImage: 'url(/images/trainning-background.jpg)' }}
       />
-      <div className="center-content-wrapper">
-        <div className="center-background-area">
-          <h2 style={{ color: '#fff', textAlign: 'center' }}>시장</h2>
-          {gold !== null && <div style={{ color: '#ffd700' }}>보유 골드: {gold}</div>}
-          {loading && <div style={{ color: '#fff' }}>불러오는 중...</div>}
-          {error && <div style={{ color: 'tomato' }}>{error}</div>}
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 12 }}>
-            <div>
-              <h3 style={{ color: '#fff' }}>구매</h3>
-              {catalog.map((it) => (
-                <div
-                  key={it.id}
-                  style={{
-                    background: 'rgba(0,0,0,0.5)',
-                    padding: 12,
-                    borderRadius: 8,
-                    marginBottom: 8,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <div>
-                      <div style={{ color: '#fff', fontWeight: 600 }}>{it.name}</div>
-                      <div style={{ color: '#ccc', fontSize: 12 }}>{it.description}</div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <span style={{ color: '#ffd700' }}>{it.price} G</span>
-                      <button className="menu-icon-btn" onClick={() => handleBuy(it.id)}>
-                        구매
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div>
-              <h3 style={{ color: '#fff' }}>판매</h3>
-              {inventory.length === 0 && (
-                <div style={{ color: '#ccc' }}>보유 소모품이 없습니다.</div>
-              )}
-              {inventory.map((it) => (
-                <div
-                  key={it.itemId}
-                  style={{
-                    background: 'rgba(0,0,0,0.5)',
-                    padding: 12,
-                    borderRadius: 8,
-                    marginBottom: 8,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <div>
-                      <div style={{ color: '#fff', fontWeight: 600 }}>
-                        {it.name} x{it.quantity}
+      <LandscapeLayout
+        leftPanel={
+          <LandscapeMenuPanel title="🛒 시장 - 구매" subtitle="소모품을 구입하세요">
+            <LandscapeSection title="상품 목록">
+              <LandscapeCard>
+                <div className="landscape-grid">
+                  {catalog.map((it) => (
+                    <div key={it.id} className="landscape-grid-row">
+                      <div>
+                        <div style={{ color: '#fff', fontWeight: 600 }}>{it.name}</div>
+                        <div style={{ color: '#ccc', fontSize: 12 }}>{it.description}</div>
                       </div>
-                      <div style={{ color: '#ccc', fontSize: 12 }}>{it.description}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ color: '#ffd700' }}>{it.price} G</span>
+                        <LandscapeButton onClick={() => handleBuy(it.id)} variant="primary">
+                          구매
+                        </LandscapeButton>
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <span style={{ color: '#9acd32' }}>{it.sellPrice} G</span>
-                      <button className="menu-icon-btn" onClick={() => handleSell(it.itemId)}>
-                        1개 판매
-                      </button>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              </LandscapeCard>
+            </LandscapeSection>
+          </LandscapeMenuPanel>
+        }
+        rightPanel={
+          <LandscapeMenuPanel title="📦 판매" subtitle="보유 소모품 판매">
+            <LandscapeSection title="인벤토리">
+              <LandscapeCard>
+                {inventory.length === 0 ? (
+                  <div style={{ color: '#ccc' }}>보유 소모품이 없습니다.</div>
+                ) : (
+                  <div className="landscape-grid">
+                    {inventory.map((it) => (
+                      <div key={it.itemId} className="landscape-grid-row">
+                        <div>
+                          <div style={{ color: '#fff', fontWeight: 600 }}>
+                            {it.name} x{it.quantity}
+                          </div>
+                          <div style={{ color: '#ccc', fontSize: 12 }}>{it.description}</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <span style={{ color: '#9acd32' }}>{it.sellPrice} G</span>
+                          <LandscapeButton onClick={() => handleSell(it.itemId)} variant="secondary">
+                            1개 판매
+                          </LandscapeButton>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </LandscapeCard>
+            </LandscapeSection>
+          </LandscapeMenuPanel>
+        }
+      >
+        <div className="training-center-area landscape-center-content">
+          <div className="training-info">
+            <h2>시장</h2>
+            <p>좌측에서 소모품을 구입하고, 우측에서 남는 소모품을 판매하세요.</p>
+            <div className="resource-display">
+              <div className="resource-item">
+                <span className="resource-label">골드:</span>
+                <span className="resource-value">{gold ?? 0}</span>
+              </div>
             </div>
+            {loading && <div style={{ color: '#fff' }}>불러오는 중...</div>}
+            {error && <div style={{ color: 'tomato' }}>{error}</div>}
           </div>
         </div>
-      </div>
+      </LandscapeLayout>
     </div>
   )
 }

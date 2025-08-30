@@ -5,6 +5,7 @@ import { getShopCatalog, buyItem } from '../lib/api'
 import { useResourceSync } from '../hooks/useResourceSync'
 import GameHeader from '../components/GameHeader'
 import GameModal from '../components/common/GameModal'
+import LandscapeLayout, { LandscapeMenuPanel, LandscapeSection, LandscapeCard, LandscapeButton } from '../components/LandscapeLayout'
 
 type ShopItem = {
   id: string
@@ -23,7 +24,7 @@ export default function Restaurant() {
   const [gold, setGold] = useState<number | null>(null)
   const { syncUserResources } = useResourceSync()
   const [modalMsg, setModalMsg] = useState<string | null>(null)
-  const [inventory, setInventory] = useState<any[]>([])
+  // 식당은 인벤토리를 표시/관리하지 않습니다
 
   const didInitRef = useRef(false)
   useEffect(() => {
@@ -42,11 +43,7 @@ export default function Restaurant() {
         }
         const res = await getShopCatalog('restaurant')
         if (res.ok) setItems(res.items as ShopItem[])
-        // 식당도 인벤토리 영역을 간단 표시(판매는 없음)
-        const invRes = await fetch(`${location.origin}/inventory`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
-        }).then((r) => r.json()).catch(() => null as any)
-        if (invRes?.ok && Array.isArray(invRes.items)) setInventory(invRes.items)
+        // 인벤토리 연동 없음 (즉시 소비 컨셉)
       } catch (e) {
         setError('식당 메뉴를 불러오지 못했습니다.')
       } finally {
@@ -73,13 +70,7 @@ export default function Restaurant() {
           setGold(Number(synced.data.resources.gold))
         }
         setModalMsg('구매했습니다!')
-        // 간단히 인벤토리 다시 로드
-        try {
-          const invRes2 = await fetch(`${location.origin}/inventory`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
-          }).then((r) => r.json())
-          if (invRes2?.ok && Array.isArray(invRes2.items)) setInventory(invRes2.items)
-        } catch {}
+        // 인벤토리 갱신 없음 (즉시 소비)
       }
     } catch (e) {
       setModalMsg('구매에 실패했습니다.')
@@ -87,47 +78,69 @@ export default function Restaurant() {
   }
 
   return (
-    <div className="lobby-layout">
-      <GameHeader onSystemMenuClick={() => {}} />
+    <div className="training-layout landscape-layout">
+      <GameHeader />
       <div
-        className="lobby-background"
+        className="training-background"
         style={{ backgroundImage: 'url(/images/lobby-background.jpg)' }}
       />
-      <div className="center-content-wrapper">
-        <div className="center-background-area">
-          <h2 style={{ color: '#fff', textAlign: 'center' }}>식당</h2>
-          {gold !== null && <div style={{ color: '#ffd700' }}>보유 골드: {gold}</div>}
-          {loading && <div style={{ color: '#fff' }}>불러오는 중...</div>}
-          {error && <div style={{ color: 'tomato' }}>{error}</div>}
-          <div style={{ display: 'grid', gap: 12, marginTop: 12 }}>
-            {items.map((it) => (
-              <div
-                key={it.id}
-                style={{ background: 'rgba(0,0,0,0.5)', padding: 12, borderRadius: 8 }}
-              >
-                <div
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                >
-                  <div>
-                    <div style={{ color: '#fff', fontWeight: 600 }}>{it.name}</div>
-                    <div style={{ color: '#ccc', fontSize: 12 }}>{it.description}</div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span style={{ color: '#ffd700' }}>{it.price} G</span>
-                    <button
-                      className="menu-icon-btn"
-                      disabled={gold != null && gold < it.price}
-                      onClick={() => handleBuy(it.id)}
-                    >
-                      구매
-                    </button>
+      <LandscapeLayout
+        leftPanel={
+          <LandscapeMenuPanel title="🍽️ 식당 - 저녁 배식" subtitle="훈련 전후 식사를 선택">
+            <LandscapeSection title="메뉴">
+              <LandscapeCard>
+                <div className="landscape-grid">
+                  {items.map((it) => (
+                    <div key={it.id} className="landscape-grid-row">
+                      <div>
+                        <div style={{ color: '#fff', fontWeight: 600 }}>{it.name}</div>
+                        <div style={{ color: '#ccc', fontSize: 12 }}>{it.description}</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ color: '#ffd700' }}>{it.price} G</span>
+                        <LandscapeButton
+                          disabled={gold != null && gold < it.price}
+                          onClick={() => handleBuy(it.id)}
+                          variant="primary"
+                        >
+                          주문
+                        </LandscapeButton>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </LandscapeCard>
+            </LandscapeSection>
+          </LandscapeMenuPanel>
+        }
+        rightPanel={
+          <LandscapeMenuPanel title="ℹ️ 식사 안내" subtitle="로마 검투사 식단">
+            <LandscapeSection title="오늘의 배식">
+              <LandscapeCard>
+                <p style={{ color: '#ccc' }}>
+                  노예단은 저녁마다 보리·콩 죽과 보리빵을 배식받습니다. 주인의 허락이 있는 날엔
+                  염장육과 치즈, 포도주가 곁들여집니다.
+                </p>
+                <div className="resource-display">
+                  <div className="resource-item">
+                    <span className="resource-label">골드:</span>
+                    <span className="resource-value">{gold ?? 0}</span>
                   </div>
                 </div>
-              </div>
-            ))}
+                {loading && <div style={{ color: '#fff' }}>불러오는 중...</div>}
+                {error && <div style={{ color: 'tomato' }}>{error}</div>}
+              </LandscapeCard>
+            </LandscapeSection>
+          </LandscapeMenuPanel>
+        }
+      >
+        <div className="training-center-area landscape-center-content">
+          <div className="training-info">
+            <h2>식당</h2>
+            <p>훈련으로 지친 몸을 달래고, 내일을 준비하세요.</p>
           </div>
         </div>
-      </div>
+      </LandscapeLayout>
       {modalMsg && (
         <GameModal title="알림" onClose={() => setModalMsg(null)}>
           {modalMsg}

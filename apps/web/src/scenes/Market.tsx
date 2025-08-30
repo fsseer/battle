@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
 import { getShopCatalog, buyItem, sellItem, getInventory } from '../lib/api'
@@ -44,13 +44,17 @@ export default function Market() {
     }
   }
 
+  const didInitRef = useRef(false)
   useEffect(() => {
+    if (didInitRef.current) return
+    didInitRef.current = true
     if (!user) {
       navigate('/login')
       return
     }
     load()
-  }, [user, navigate])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleBuy = async (itemId: string) => {
     const target = catalog.find((x) => x.id === itemId)

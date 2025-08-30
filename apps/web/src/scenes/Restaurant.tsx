@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
 import { getShopCatalog, buyItem } from '../lib/api'
@@ -22,7 +22,10 @@ export default function Restaurant() {
   const [gold, setGold] = useState<number | null>(null)
   const { syncUserResources } = useResourceSync()
 
+  const didInitRef = useRef(false)
   useEffect(() => {
+    if (didInitRef.current) return
+    didInitRef.current = true
     if (!user) {
       navigate('/login')
       return
@@ -30,7 +33,6 @@ export default function Restaurant() {
     ;(async () => {
       try {
         setLoading(true)
-        // 진입 시 1회 자원 싱크
         const synced = await syncUserResources()
         if (synced?.success && synced.data?.resources?.gold != null) {
           setGold(Number(synced.data.resources.gold))
@@ -43,7 +45,9 @@ export default function Restaurant() {
         setLoading(false)
       }
     })()
-  }, [user, navigate, syncUserResources])
+    // 의도적으로 빈 의존성 배열: 마운트 1회만 로드 (루프 방지)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleBuy = async (itemId: string) => {
     const target = items.find((x) => x.id === itemId)

@@ -1232,6 +1232,9 @@ async function ensureShopTables() {
     );`
   )
   await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS idx_items_shop ON items(shop);')
+  await prisma.$executeRawUnsafe(
+    'CREATE UNIQUE INDEX IF NOT EXISTS uniq_items_shop_name ON items(shop, name);'
+  )
 
   await prisma.$executeRawUnsafe(
     `CREATE TABLE IF NOT EXISTS inventory_items (
@@ -1251,44 +1254,54 @@ async function seedShopItems() {
 
   const now = new Date().toISOString()
   const batch: Array<any> = [
-    // 식당 메뉴
+    // 식당 메뉴 (로마 노예 검투사 분위기)
     {
       id: cryptoRandomId(),
       shop: 'restaurant',
-      name: '갈비 스튜',
-      description: '든든한 스튜. AP 소량 회복',
+      name: '꿀꿀이죽',
+      description: '훈련장 공동 그릇에서 떠먹는 보리·콩 죽. 노예단 무료 배식',
       category: 'food',
-      price: 30,
+      price: 0,
       sellPrice: null,
-      effect: JSON.stringify({ ap: +10 }),
+      effect: JSON.stringify({}),
     },
     {
       id: cryptoRandomId(),
       shop: 'restaurant',
-      name: '빵',
-      description: '간단한 식사',
+      name: '기본적인 저녁식사',
+      description: '보리빵과 올리브, 묽은 포리지. 배를 채우는 기본 식사',
       category: 'food',
       price: 10,
       sellPrice: null,
-      effect: JSON.stringify({ ap: +4 }),
+      effect: JSON.stringify({}),
     },
     {
       id: cryptoRandomId(),
       shop: 'restaurant',
-      name: '포도주',
-      description: '마시면 기분이 좋아진다',
+      name: '든든한 저녁식사',
+      description: '염장육과 치즈, 허브를 넣은 걸쭉한 수프. 내일 훈련을 위해',
       category: 'food',
-      price: 20,
+      price: 25,
       sellPrice: null,
-      effect: JSON.stringify({ stress: -5 }),
+      effect: JSON.stringify({}),
     },
-    // 시장 소모품
+    {
+      id: cryptoRandomId(),
+      shop: 'restaurant',
+      name: '저녁 만찬',
+      description: '주인의 허락이 떨어진 날 올리브유·포도주를 곁들인 풍성한 식탁',
+      category: 'food',
+      price: 50,
+      sellPrice: null,
+      effect: JSON.stringify({}),
+    },
+    // 시장 - 약국(의약품)
     {
       id: cryptoRandomId(),
       shop: 'market',
       name: '회복약',
-      description: '체력을 회복한다',
-      category: 'consumable',
+      description: '부상 치료용 약물. 출혈과 통증을 누그러뜨린다',
+      category: 'pharmacy',
       price: 50,
       sellPrice: 25,
       effect: JSON.stringify({ heal: 50 }),
@@ -1297,8 +1310,8 @@ async function seedShopItems() {
       id: cryptoRandomId(),
       shop: 'market',
       name: '해독제',
-      description: '중독을 해제한다',
-      category: 'consumable',
+      description: '약초를 섞어 만든 해독제. 독 증상을 완화한다',
+      category: 'pharmacy',
       price: 40,
       sellPrice: 20,
       effect: JSON.stringify({ cure: 'poison' }),
@@ -1307,11 +1320,73 @@ async function seedShopItems() {
       id: cryptoRandomId(),
       shop: 'market',
       name: '붕대',
-      description: '출혈을 멈춘다',
-      category: 'consumable',
+      description: '삼천으로 짠 붕대. 상처를 눌러 지혈한다',
+      category: 'pharmacy',
       price: 20,
       sellPrice: 10,
       effect: JSON.stringify({ cure: 'bleed' }),
+    },
+    // 시장 - 목공소(훈련용 목제 무기)
+    {
+      id: cryptoRandomId(),
+      shop: 'market',
+      name: '나무 칼',
+      description: '훈련용 목검. 초심자 검술 연습에 사용',
+      category: 'wood',
+      price: 30,
+      sellPrice: 15,
+      effect: JSON.stringify({}),
+    },
+    {
+      id: cryptoRandomId(),
+      shop: 'market',
+      name: '나무 방패',
+      description: '가벼운 목제 방패. 방어 폼 훈련에 적합',
+      category: 'wood',
+      price: 35,
+      sellPrice: 18,
+      effect: JSON.stringify({}),
+    },
+    {
+      id: cryptoRandomId(),
+      shop: 'market',
+      name: '나무 창',
+      description: '무게를 줄인 목제 창. 투창 및 폼 훈련',
+      category: 'wood',
+      price: 40,
+      sellPrice: 20,
+      effect: JSON.stringify({}),
+    },
+    // 시장 - 꽃집(선물 용도)
+    {
+      id: cryptoRandomId(),
+      shop: 'market',
+      name: '들꽃 한 줌',
+      description: '훈련장 주변에서 꺾은 소박한 들꽃',
+      category: 'flower',
+      price: 5,
+      sellPrice: 2,
+      effect: JSON.stringify({}),
+    },
+    {
+      id: cryptoRandomId(),
+      shop: 'market',
+      name: '장미 한 송이',
+      description: '가시가 돋친 붉은 장미 한 송이',
+      category: 'flower',
+      price: 15,
+      sellPrice: 7,
+      effect: JSON.stringify({}),
+    },
+    {
+      id: cryptoRandomId(),
+      shop: 'market',
+      name: '월계수 화관',
+      description: '승자를 상징하는 월계수 잎 화관',
+      category: 'flower',
+      price: 60,
+      sellPrice: 30,
+      effect: JSON.stringify({}),
     },
   ]
 

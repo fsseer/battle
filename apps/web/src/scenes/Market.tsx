@@ -4,7 +4,12 @@ import { useAuthStore } from '../store/auth'
 import { getShopCatalog, buyItem, sellItem, getInventory } from '../lib/api'
 import { useResourceSync } from '../hooks/useResourceSync'
 import GameHeader from '../components/GameHeader'
-import LandscapeLayout, { LandscapeMenuPanel, LandscapeSection, LandscapeCard, LandscapeButton } from '../components/LandscapeLayout'
+import LandscapeLayout, {
+  LandscapeMenuPanel,
+  LandscapeSection,
+  LandscapeCard,
+  LandscapeButton,
+} from '../components/LandscapeLayout'
 
 type ShopItem = {
   id: string
@@ -20,6 +25,11 @@ export default function Market() {
   const { user, updateUserResources } = useAuthStore()
   const [catalog, setCatalog] = useState<ShopItem[]>([])
   const [inventory, setInventory] = useState<any[]>([])
+  const categorized = {
+    약국: catalog.filter((i) => i.category === 'pharmacy'),
+    목공소: catalog.filter((i) => i.category === 'wood'),
+    꽃집: catalog.filter((i) => i.category === 'flower'),
+  }
   const [gold, setGold] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -113,11 +123,51 @@ export default function Market() {
       />
       <LandscapeLayout
         leftPanel={
-          <LandscapeMenuPanel title="🛒 시장 - 구매" subtitle="소모품을 구입하세요">
-            <LandscapeSection title="상품 목록">
+          <LandscapeMenuPanel title="🛒 시장 - 구매" subtitle="카테고리별 상품">
+            <LandscapeSection title="약국">
               <LandscapeCard>
                 <div className="landscape-grid">
-                  {catalog.map((it) => (
+                  {categorized.약국.map((it) => (
+                    <div key={it.id} className="landscape-grid-row">
+                      <div>
+                        <div style={{ color: '#fff', fontWeight: 600 }}>{it.name}</div>
+                        <div style={{ color: '#ccc', fontSize: 12 }}>{it.description}</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ color: '#ffd700' }}>{it.price} G</span>
+                        <LandscapeButton onClick={() => handleBuy(it.id)} variant="primary">
+                          구매
+                        </LandscapeButton>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </LandscapeCard>
+            </LandscapeSection>
+            <LandscapeSection title="목공소">
+              <LandscapeCard>
+                <div className="landscape-grid">
+                  {categorized.목공소.map((it) => (
+                    <div key={it.id} className="landscape-grid-row">
+                      <div>
+                        <div style={{ color: '#fff', fontWeight: 600 }}>{it.name}</div>
+                        <div style={{ color: '#ccc', fontSize: 12 }}>{it.description}</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ color: '#ffd700' }}>{it.price} G</span>
+                        <LandscapeButton onClick={() => handleBuy(it.id)} variant="primary">
+                          구매
+                        </LandscapeButton>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </LandscapeCard>
+            </LandscapeSection>
+            <LandscapeSection title="꽃집">
+              <LandscapeCard>
+                <div className="landscape-grid">
+                  {categorized.꽃집.map((it) => (
                     <div key={it.id} className="landscape-grid-row">
                       <div>
                         <div style={{ color: '#fff', fontWeight: 600 }}>{it.name}</div>
@@ -154,7 +204,10 @@ export default function Market() {
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <span style={{ color: '#9acd32' }}>{it.sellPrice} G</span>
-                          <LandscapeButton onClick={() => handleSell(it.itemId)} variant="secondary">
+                          <LandscapeButton
+                            onClick={() => handleSell(it.itemId)}
+                            variant="secondary"
+                          >
                             1개 판매
                           </LandscapeButton>
                         </div>

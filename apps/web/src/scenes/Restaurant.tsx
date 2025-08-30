@@ -5,7 +5,12 @@ import { getShopCatalog, buyItem } from '../lib/api'
 import { useResourceSync } from '../hooks/useResourceSync'
 import GameHeader from '../components/GameHeader'
 import GameModal from '../components/common/GameModal'
-import LandscapeLayout, { LandscapeMenuPanel, LandscapeSection, LandscapeCard, LandscapeButton } from '../components/LandscapeLayout'
+import LandscapeLayout, {
+  LandscapeMenuPanel,
+  LandscapeSection,
+  LandscapeCard,
+  LandscapeButton,
+} from '../components/LandscapeLayout'
 
 type ShopItem = {
   id: string
@@ -89,9 +94,19 @@ export default function Restaurant() {
           <LandscapeMenuPanel title="🍽️ 식당 - 저녁 배식" subtitle="훈련 전후 식사를 선택">
             <LandscapeSection title="메뉴">
               <LandscapeCard>
-                <div className="landscape-grid">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {items.map((it) => (
-                    <div key={it.id} className="landscape-grid-row">
+                    <div
+                      key={it.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: 12,
+                        background: 'rgba(0,0,0,0.5)',
+                        borderRadius: 8,
+                      }}
+                    >
                       <div>
                         <div style={{ color: '#fff', fontWeight: 600 }}>{it.name}</div>
                         <div style={{ color: '#ccc', fontSize: 12 }}>{it.description}</div>

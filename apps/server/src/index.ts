@@ -21,6 +21,7 @@ const io = new Server(server, {
       'http://127.0.0.1:5173',
       'http://vindexarena.iptime.org:5173',
       'http://192.168.0.2:5173',
+      'http://192.168.0.6:5173',
     ],
     methods: ['GET', 'POST'],
     credentials: true,
@@ -207,6 +208,7 @@ server.on('request', async (req, res) => {
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     'http://192.168.0.2:5173',
+    'http://192.168.0.6:5173',
   ])
   const originToUse = allowedOrigins.has(requestOrigin)
     ? requestOrigin

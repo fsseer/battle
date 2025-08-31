@@ -22,7 +22,7 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
       // 캐시 확인
       const cached = smartCache.get(cacheKey)
       if (cached) {
-        logger.debug('캐시된 캐릭터 정보 반환', { characterId: id })
+        logger.debug('Return cached character', { characterId: id })
         return createSuccessResponse(cached)
       }
 
@@ -37,8 +37,8 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
 
       return createSuccessResponse(character)
     } catch (error) {
-      logger.error('캐릭터 정보 조회 실패', { error })
-      return createErrorResponse('CHARACTER_FETCH_ERROR', '캐릭터 정보 조회에 실패했습니다.')
+      logger.error('Character fetch failed', { error })
+      return createErrorResponse('CHARACTER_FETCH_ERROR', 'Failed to fetch character.')
     }
   })
 
@@ -51,7 +51,7 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
       // 캐시 확인
       const cached = smartCache.get(cacheKey)
       if (cached) {
-        logger.debug('캐시된 자원 정보 반환', { characterId })
+        logger.debug('Return cached resources', { characterId })
         return createSuccessResponse(cached)
       }
 
@@ -66,8 +66,8 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
 
       return createSuccessResponse(resources)
     } catch (error) {
-      logger.error('자원 정보 조회 실패', { error })
-      return createErrorResponse('RESOURCES_FETCH_ERROR', '자원 정보 조회에 실패했습니다.')
+      logger.error('Resources fetch failed', { error })
+      return createErrorResponse('RESOURCES_FETCH_ERROR', 'Failed to fetch resources.')
     }
   })
 
@@ -95,11 +95,11 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
         'training'
       )
 
-      logger.info('훈련 실행 완료', { characterId, trainingType, result })
+      logger.info('Training executed', { characterId, trainingType, result })
       return createSuccessResponse(result)
     } catch (error) {
-      logger.error('훈련 실행 실패', { error })
-      return createErrorResponse('TRAINING_EXECUTION_ERROR', '훈련 실행에 실패했습니다.')
+      logger.error('Training execution failed', { error })
+      return createErrorResponse('TRAINING_EXECUTION_ERROR', 'Failed to execute training.')
     }
   })
 
@@ -113,8 +113,8 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
 
       return createSuccessResponse(battleState)
     } catch (error) {
-      logger.error('전투 상태 조회 실패', { error })
-      return createErrorResponse('BATTLE_FETCH_ERROR', '전투 상태 조회에 실패했습니다.')
+      logger.error('Battle fetch failed', { error })
+      return createErrorResponse('BATTLE_FETCH_ERROR', 'Failed to fetch battle state.')
     }
   })
 
@@ -127,7 +127,7 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
       // 캐시 확인
       const cached = smartCache.get(cacheKey)
       if (cached) {
-        logger.debug('캐시된 게임 상태 반환', { characterId })
+        logger.debug('Return cached game state', { characterId })
         return createSuccessResponse(cached)
       }
 
@@ -147,9 +147,9 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
           exp: character.exp,
         },
         resources: {
-          ap: resources.currentValue,
-          gold: resources.currentValue,
-          stress: resources.currentValue,
+          ap: (resources as any).ap ?? 0,
+          gold: (resources as any).gold ?? 0,
+          stress: (resources as any).stress ?? 0,
         },
         training: trainingProgress,
         lastUpdate: new Date().toISOString(),
@@ -163,18 +163,18 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
 
       return createSuccessResponse(gameState)
     } catch (error) {
-      logger.error('게임 상태 조회 실패', { error })
-      return createErrorResponse('GAME_STATE_FETCH_ERROR', '게임 상태 조회에 실패했습니다.')
+      logger.error('Game state fetch failed', { error })
+      return createErrorResponse('GAME_STATE_FETCH_ERROR', 'Failed to fetch game state.')
     }
   })
 
   // 훈련 카탈로그 조회
   fastify.get('/training/catalog', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      logger.debug('훈련 카탈로그 조회 요청')
-      
+      logger.debug('Training catalog requested')
+
       // 클라이언트가 기대하는 형식으로 데이터 변환
-      const catalogItems = TRAINING_CATALOG.map(item => ({
+      const catalogItems = TRAINING_CATALOG.map((item) => ({
         id: item.id,
         name: item.name,
         description: item.description || '',
@@ -183,13 +183,13 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
         goldCost: item.goldCost || 0,
         stressDelta: item.stressDelta,
         weaponKind: item.weaponKind,
-        weaponXp: item.weaponXp
+        weaponXp: item.weaponXp,
       }))
 
       return createSuccessResponse({ items: catalogItems })
     } catch (error) {
-      logger.error('훈련 카탈로그 조회 실패', { error })
-      return createErrorResponse('TRAINING_CATALOG_ERROR', '훈련 카탈로그 조회에 실패했습니다.')
+      logger.error('Training catalog fetch failed', { error })
+      return createErrorResponse('TRAINING_CATALOG_ERROR', 'Failed to fetch training catalog.')
     }
   })
 
@@ -198,18 +198,18 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
     try {
       const { id: trainingId } = request.body as { id: string }
       const token = request.headers.authorization?.replace('Bearer ', '')
-      
+
       if (!token) {
-        return createErrorResponse('UNAUTHORIZED', '인증이 필요합니다.')
+        return createErrorResponse('UNAUTHORIZED', 'Authentication required.')
       }
 
       // TODO: 토큰에서 사용자 ID 추출 및 검증
       const userId = 'temp-user-id' // 실제로는 JWT에서 추출
 
       // 훈련 아이템 찾기
-      const trainingItem = TRAINING_CATALOG.find(item => item.id === trainingId)
+      const trainingItem = TRAINING_CATALOG.find((item) => item.id === trainingId)
       if (!trainingItem) {
-        return createErrorResponse('TRAINING_NOT_FOUND', '존재하지 않는 훈련입니다.')
+        return createErrorResponse('TRAINING_NOT_FOUND', 'Training not found.')
       }
 
       // TODO: 실제 훈련 실행 로직 구현
@@ -219,14 +219,14 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
         apCost: trainingItem.apCost,
         stressDelta: trainingItem.stressDelta,
         goldCost: trainingItem.goldCost || 0,
-        message: `${trainingItem.name} 훈련이 완료되었습니다.`
+        message: `${trainingItem.name} 훈련이 완료되었습니다.`,
       }
 
-      logger.info('훈련 실행 완료', { userId, trainingId, result })
+      logger.info('Training executed', { userId, trainingId, result })
       return createSuccessResponse(result)
     } catch (error) {
-      logger.error('훈련 실행 실패', { error })
-      return createErrorResponse('TRAINING_EXECUTION_ERROR', '훈련 실행에 실패했습니다.')
+      logger.error('Training execution failed', { error })
+      return createErrorResponse('TRAINING_EXECUTION_ERROR', 'Failed to execute training.')
     }
   })
 
@@ -235,9 +235,9 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
     try {
       const { type } = request.body as { type: 'gold' | 'stress' }
       const token = request.headers.authorization?.replace('Bearer ', '')
-      
+
       if (!token) {
-        return createErrorResponse('UNAUTHORIZED', '인증이 필요합니다.')
+        return createErrorResponse('UNAUTHORIZED', 'Authentication required.')
       }
 
       // TODO: 토큰에서 사용자 ID 추출 및 검증
@@ -249,24 +249,24 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
           success: true,
           apCost: 5,
           goldGain: 10,
-          message: 'AP 5를 소모하여 골드 10을 획득했습니다.'
+          message: 'Consumed AP 5 and gained Gold 10.',
         }
       } else if (type === 'stress') {
         result = {
           success: true,
           apCost: 2,
           stressReduction: 5,
-          message: 'AP 2를 소모하여 스트레스 5를 감소시켰습니다.'
+          message: 'Consumed AP 2 and reduced Stress by 5.',
         }
       } else {
-        return createErrorResponse('INVALID_ACTION', '잘못된 액션 타입입니다.')
+        return createErrorResponse('INVALID_ACTION', 'Invalid action type.')
       }
 
-      logger.info('빠른 액션 실행 완료', { userId, type, result })
+      logger.info('Quick action executed', { userId, type, result })
       return createSuccessResponse(result)
     } catch (error) {
-      logger.error('빠른 액션 실행 실패', { error })
-      return createErrorResponse('QUICK_ACTION_ERROR', '빠른 액션 실행에 실패했습니다.')
+      logger.error('Quick action execution failed', { error })
+      return createErrorResponse('QUICK_ACTION_ERROR', 'Failed to execute quick action.')
     }
   })
 
@@ -300,11 +300,11 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
         invalidated = smartCache.deletePattern(new RegExp(pattern))
       }
 
-      logger.info('캐시 무효화 실행', { pattern, key, invalidated })
+      logger.info('Cache invalidation executed', { pattern, key, invalidated })
       return createSuccessResponse({ invalidated })
     } catch (error) {
-      logger.error('캐시 무효화 실패', { error })
-      return createErrorResponse('CACHE_INVALIDATE_ERROR', '캐시 무효화에 실패했습니다.')
+      logger.error('Cache invalidation failed', { error })
+      return createErrorResponse('CACHE_INVALIDATE_ERROR', 'Failed to invalidate cache.')
     }
   })
 }

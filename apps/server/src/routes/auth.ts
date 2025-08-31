@@ -8,6 +8,7 @@ import {
   invalidateUserTokens,
 } from '../utils/jwt'
 import { loginRateLimiter } from '../middleware/rateLimit'
+import { loginSchema, registerSchema } from './auth.schemas'
 
 const prisma = new PrismaClient()
 
@@ -15,12 +16,12 @@ const prisma = new PrismaClient()
 async function authenticate(request: FastifyRequest, reply: FastifyReply) {
   const token = request.headers.authorization?.replace('Bearer ', '')
   if (!token) {
-    return reply.code(401).send({ error: 'UNAUTHORIZED', message: '토큰이 필요합니다.' })
+    return reply.code(401).send({ error: 'UNAUTHORIZED', message: 'Token is required.' })
   }
 
   const decoded = verifyToken(token)
   if (!decoded) {
-    return reply.code(401).send({ error: 'UNAUTHORIZED', message: '토큰이 유효하지 않습니다.' })
+    return reply.code(401).send({ error: 'UNAUTHORIZED', message: 'Invalid token.' })
   }
 
   // request에 사용자 정보 추가
@@ -33,6 +34,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
     '/auth/register',
     {
       preHandler: [loginRateLimiter],
+      schema: registerSchema,
     },
     async (request, reply) => {
       try {
@@ -45,27 +47,19 @@ export async function registerRoutes(fastify: FastifyInstance) {
 
         // 입력 검증
         if (!loginId || !password || !confirm) {
-          return reply.code(400).send({
-            error: 'VALIDATION_ERROR',
-            message: '모든 필드를 입력해주세요.',
-          })
+          return reply.code(400).send({ code: 'VALIDATION_ERROR', message: 'All required fields must be provided.' })
         }
 
         if (password !== confirm) {
-          return reply.code(400).send({
-            error: 'VALIDATION_ERROR',
-            message: '비밀번호가 일치하지 않습니다.',
-          })
+          return reply.code(400).send({ code: 'VALIDATION_ERROR', message: 'Password confirmation does not match.' })
         }
 
         // 비밀번호 정책 검증
         const passwordValidation = validatePassword(password)
         if (!passwordValidation.isValid) {
-          return reply.code(400).send({
-            error: 'PASSWORD_POLICY_VIOLATION',
-            message: '비밀번호가 정책에 맞지 않습니다.',
-            details: passwordValidation.errors,
-          })
+          return reply
+            .code(400)
+            .send({ code: 'PASSWORD_POLICY_VIOLATION', message: 'Password does not meet the policy requirements.', details: passwordValidation.errors })
         }
 
         // 기존 사용자 확인
@@ -77,15 +71,9 @@ export async function registerRoutes(fastify: FastifyInstance) {
 
         if (existingUser) {
           if (existingUser.loginId === loginId) {
-            return reply.code(409).send({
-              error: 'DUPLICATE_LOGIN_ID',
-              message: '이미 사용 중인 로그인 ID입니다.',
-            })
+            return reply.code(409).send({ code: 'DUPLICATE_LOGIN_ID', message: 'Login ID already in use.' })
           } else {
-            return reply.code(409).send({
-              error: 'DUPLICATE_NICKNAME',
-              message: '이미 사용 중인 닉네임입니다.',
-            })
+            return reply.code(409).send({ code: 'DUPLICATE_NICKNAME', message: 'Nickname already in use.' })
           }
         }
 
@@ -130,10 +118,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
         }
       } catch (error) {
         request.log.error(error)
-        return reply.code(500).send({
-          error: 'INTERNAL_SERVER_ERROR',
-          message: '서버 오류가 발생했습니다.',
-        })
+        return reply.code(500).send({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error.' })
       }
     }
   )
@@ -143,6 +128,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
     '/auth/login',
     {
       preHandler: [loginRateLimiter],
+      schema: loginSchema,
     },
     async (request, reply) => {
       try {
@@ -152,10 +138,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
         }
 
         if (!loginId || !password) {
-          return reply.code(400).send({
-            error: 'VALIDATION_ERROR',
-            message: '로그인 ID와 비밀번호를 입력해주세요.',
-          })
+          return reply.code(400).send({ code: 'VALIDATION_ERROR', message: 'Login ID and password are required.' })
         }
 
         // 사용자 조회
@@ -165,10 +148,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
         })
 
         if (!user) {
-          return reply.code(401).send({
-            error: 'INVALID_CREDENTIALS',
-            message: '로그인 ID 또는 비밀번호가 올바르지 않습니다.',
-          })
+          return reply.code(401).send({ code: 'INVALID_CREDENTIALS', message: 'Invalid login ID or password.' })
         }
 
         // 비밀번호 검증
@@ -180,19 +160,12 @@ export async function registerRoutes(fastify: FastifyInstance) {
             data: { loginAttempts: { increment: 1 } },
           })
 
-          return reply.code(401).send({
-            error: 'INVALID_CREDENTIALS',
-            message: '로그인 ID 또는 비밀번호가 올바르지 않습니다.',
-          })
+          return reply.code(401).send({ code: 'INVALID_CREDENTIALS', message: 'Invalid login ID or password.' })
         }
 
         // 계정 잠금 확인
         if (user.lockedUntil && user.lockedUntil > new Date()) {
-          return reply.code(423).send({
-            error: 'ACCOUNT_LOCKED',
-            message: '계정이 잠겨있습니다. 잠금 해제까지 기다려주세요.',
-            lockedUntil: user.lockedUntil,
-          })
+          return reply.code(423).send({ code: 'ACCOUNT_LOCKED', message: 'Account is locked. Please wait until it is unlocked.', lockedUntil: user.lockedUntil })
         }
 
         // 기존 토큰 무효화 (중복 로그인 방지)
@@ -222,10 +195,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
         }
       } catch (error) {
         request.log.error(error)
-        return reply.code(500).send({
-          error: 'INTERNAL_SERVER_ERROR',
-          message: '서버 오류가 발생했습니다.',
-        })
+        return reply.code(500).send({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error.' })
       }
     }
   )
@@ -236,18 +206,12 @@ export async function registerRoutes(fastify: FastifyInstance) {
       const { refreshToken } = request.body as { refreshToken?: string }
 
       if (!refreshToken) {
-        return reply.code(400).send({
-          error: 'VALIDATION_ERROR',
-          message: '리프레시 토큰이 필요합니다.',
-        })
+        return reply.code(400).send({ code: 'VALIDATION_ERROR', message: 'Refresh token is required.' })
       }
 
       const newAccessToken = await generateTokens(refreshToken)
       if (!newAccessToken) {
-        return reply.code(401).send({
-          error: 'INVALID_REFRESH_TOKEN',
-          message: '리프레시 토큰이 유효하지 않습니다.',
-        })
+        return reply.code(401).send({ code: 'INVALID_REFRESH_TOKEN', message: 'Invalid refresh token.' })
       }
 
       return {
@@ -256,10 +220,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
       }
     } catch (error) {
       request.log.error(error)
-      return reply.code(500).send({
-        error: 'INTERNAL_SERVER_ERROR',
-        message: '서버 오류가 발생했습니다.',
-      })
+      return reply.code(500).send({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error.' })
     }
   })
 
@@ -276,13 +237,10 @@ export async function registerRoutes(fastify: FastifyInstance) {
         // 토큰 무효화
         invalidateUserTokens(user.sub)
 
-        return { ok: true, message: '로그아웃되었습니다.' }
+        return { ok: true, message: 'Logged out.' }
       } catch (error) {
         request.log.error(error)
-        return reply.code(500).send({
-          error: 'INTERNAL_SERVER_ERROR',
-          message: '서버 오류가 발생했습니다.',
-        })
+        return reply.code(500).send({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error.' })
       }
     }
   )
@@ -303,10 +261,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
         })
 
         if (!userData) {
-          return reply.code(404).send({
-            error: 'USER_NOT_FOUND',
-            message: '사용자를 찾을 수 없습니다.',
-          })
+          return reply.code(404).send({ code: 'USER_NOT_FOUND', message: 'User not found.' })
         }
 
         return {
@@ -319,10 +274,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
         }
       } catch (error) {
         request.log.error(error)
-        return reply.code(500).send({
-          error: 'INTERNAL_SERVER_ERROR',
-          message: '서버 오류가 발생했습니다.',
-        })
+        return reply.code(500).send({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error.' })
       }
     }
   )
@@ -339,7 +291,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
 
         return {
           ok: true,
-          message: '토큰이 유효합니다.',
+          message: 'Token is valid.',
           user: {
             id: user.sub,
             exp: user.exp,
@@ -347,10 +299,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
         }
       } catch (error) {
         request.log.error(error)
-        return reply.code(500).send({
-          error: 'INTERNAL_SERVER_ERROR',
-          message: '서버 오류가 발생했습니다.',
-        })
+        return reply.code(500).send({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error.' })
       }
     }
   )

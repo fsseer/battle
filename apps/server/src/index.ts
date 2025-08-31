@@ -1,16 +1,19 @@
 import { PrismaClient } from '@prisma/client'
+import type { FastifyInstance } from 'fastify'
 import { Server } from 'socket.io'
 import msgpackParser from 'socket.io-msgpack-parser'
 import { createServer } from 'http'
 import { HybridSyncService } from './services/hybridSync'
 import { ResourceManager } from './services/resourceManager'
 import { SmartCache } from './services/smartCache'
+import { buildApp } from './app'
 import { logger, type LogContext } from './utils/logger'
 import { hashPassword, verifyPassword } from './utils/security'
 import { generateTokens, verifyToken } from './utils/jwt'
 import { TRAINING_CATALOG } from './training.registry'
 
 const prisma = new PrismaClient()
+let fastifyApp: FastifyInstance | undefined
 const server = createServer()
 
 const io = new Server(server, {
@@ -162,6 +165,18 @@ io.on('connection', (socket) => {
 
 // HTTP 서버 설정 완료
 
+// Fastify 애플리케이션 바인딩
+const bootstrap = async () => {
+  const app = await buildApp({ smartCache, resourceManager, hybrid: hybridSync })
+  await app.ready()
+  fastifyApp = app
+}
+
+bootstrap().catch((e) => {
+  console.error('[Bootstrap] Fastify app init failed:', e)
+  process.exit(1)
+})
+
 // HTTP 서버를 0.0.0.0에 바인딩
 server.listen(5174, '0.0.0.0', async () => {
   console.log('[HTTP Server] 0.0.0.0:5174에 바인딩됨')
@@ -197,10 +212,13 @@ server.listen(5174, '0.0.0.0', async () => {
   }
 })
 
-// HTTP 서버 직접 처리 준비 완료
-
-// HTTP 요청을 직접 처리 (Fastify 대신)
+// HTTP 서버 직접 처리 준비 완료 (이전 수기 라우팅은 Fastify로 대체)
 server.on('request', async (req, res) => {
+  // Fastify가 준비되면 Fastify로 모든 요청을 위임
+  if (fastifyApp) {
+    ;(fastifyApp as any).routing(req, res)
+    return
+  }
   // CORS 헤더 설정
   const requestOrigin = req.headers.origin || ''
   const allowedOrigins = new Set([
@@ -226,18 +244,7 @@ server.on('request', async (req, res) => {
     return
   }
 
-  // 헬스체크
-  if (req.url === '/health' && req.method === 'GET') {
-    res.writeHead(200, { 'Content-Type': 'application/json' })
-    res.end(
-      JSON.stringify({
-        ok: true,
-        timestamp: new Date().toISOString(),
-        message: 'Server running on 0.0.0.0:5174',
-      })
-    )
-    return
-  }
+  // 헬스체크는 Fastify 라우트로 처리됨
 
   // 관리자: 모든 캐릭터에 골드 지급 (임시 테스트용)
   if (req.url?.startsWith('/admin/grant-gold') && req.method === 'POST') {
@@ -267,7 +274,7 @@ server.on('request', async (req, res) => {
     return
   }
 
-  // ID 중복 확인 API
+  // ID 중복 확인 API (이전 수기 구현 유지 — 추후 Fastify로 이동 가능)
   if (req.url?.startsWith('/auth/check-id') && req.method === 'GET') {
     try {
       const url = new URL(req.url, `http://${req.headers.host}`)
@@ -303,7 +310,7 @@ server.on('request', async (req, res) => {
     return
   }
 
-  // 회원가입 API
+  // 회원가입 API (이전 수기 구현 유지 — 추후 Fastify로 이동 가능)
   if (req.url === '/auth/register' && req.method === 'POST') {
     try {
       let body = ''
@@ -401,7 +408,7 @@ server.on('request', async (req, res) => {
     return
   }
 
-  // 로그인 API
+  // 로그인 API (이전 수기 구현 유지 — 추후 Fastify로 이동 가능)
   if (req.url === '/auth/login' && req.method === 'POST') {
     try {
       let body = ''
@@ -417,7 +424,7 @@ server.on('request', async (req, res) => {
 
           if (!id || !password) {
             res.writeHead(400, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ ok: false, error: 'ID와 비밀번호가 필요합니다.' }))
+            res.end(JSON.stringify({ ok: false, error: 'ID and password are required.' }))
             return
           }
 
@@ -480,23 +487,23 @@ server.on('request', async (req, res) => {
           } catch (error) {
             console.error('[Login] 로그인 처리 오류:', error)
             res.writeHead(500, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ ok: false, error: '서버 오류가 발생했습니다.' }))
+            res.end(JSON.stringify({ ok: false, error: 'Internal server error.' }))
           }
         } catch (error) {
           console.error('[Login] 처리 오류:', error)
           res.writeHead(500, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ ok: false, error: '서버 오류가 발생했습니다.' }))
+          res.end(JSON.stringify({ ok: false, error: 'Internal server error.' }))
         }
       })
     } catch (error) {
       console.error('[Login] 요청 처리 오류:', error)
       res.writeHead(500, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ ok: false, error: '서버 오류가 발생했습니다.' }))
+      res.end(JSON.stringify({ ok: false, error: 'Internal server error.' }))
     }
     return
   }
 
-  // 토큰 검증 API
+  // 토큰 검증 API (이전 수기 구현 유지 — 추후 Fastify로 이동 가능)
   if (req.url === '/api/auth/validate' && req.method === 'GET') {
     try {
       const token = req.headers.authorization?.replace('Bearer ', '')
@@ -537,7 +544,7 @@ server.on('request', async (req, res) => {
     return
   }
 
-  // 훈련 카탈로그 API
+  // 훈련 카탈로그 API (이전 수기 구현 유지 — 추후 Fastify로 이동 가능)
   if (req.url === '/training/catalog' && req.method === 'GET') {
     try {
       console.log('[Training] 카탈로그 조회 요청')
@@ -570,7 +577,7 @@ server.on('request', async (req, res) => {
     return
   }
 
-  // 상점 카탈로그 API
+  // 상점 카탈로그 API (이전 수기 구현 유지 — 추후 Fastify로 이동 가능)
   if (req.url?.startsWith('/shop/catalog') && req.method === 'GET') {
     try {
       const url = new URL(req.url, `http://${req.headers.host}`)
@@ -604,7 +611,7 @@ server.on('request', async (req, res) => {
     return
   }
 
-  // 인벤토리 조회 API
+  // 인벤토리 조회 API (이전 수기 구현 유지 — 추후 Fastify로 이동 가능)
   if (req.url === '/inventory' && req.method === 'GET') {
     try {
       const token = req.headers.authorization?.replace('Bearer ', '')
@@ -658,7 +665,7 @@ server.on('request', async (req, res) => {
     return
   }
 
-  // 상점 구매 API
+  // 상점 구매 API (이전 수기 구현 유지 — 추후 Fastify로 이동 가능)
   if (req.url === '/shop/buy' && req.method === 'POST') {
     try {
       const token = req.headers.authorization?.replace('Bearer ', '')
@@ -767,7 +774,7 @@ server.on('request', async (req, res) => {
     return
   }
 
-  // 상점 판매 API (시장)
+  // 상점 판매 API (시장) (이전 수기 구현 유지 — 추후 Fastify로 이동 가능)
   if (req.url === '/shop/sell' && req.method === 'POST') {
     try {
       const token = req.headers.authorization?.replace('Bearer ', '')
@@ -879,7 +886,7 @@ server.on('request', async (req, res) => {
     return
   }
 
-  // 훈련 실행 API
+  // 훈련 실행 API (이전 수기 구현 유지 — 추후 Fastify로 이동 가능)
   if (req.url === '/training/run' && req.method === 'POST') {
     console.log('[Training] 훈련 실행 API 호출됨')
     console.log('[Training] 요청 URL:', req.url)
@@ -998,7 +1005,7 @@ server.on('request', async (req, res) => {
     return
   }
 
-  // 빠른 액션 API
+  // 빠른 액션 API (이전 수기 구현 유지 — 추후 Fastify로 이동 가능)
   if (req.url === '/training/quick' && req.method === 'POST') {
     try {
       let body = ''
@@ -1087,7 +1094,7 @@ server.on('request', async (req, res) => {
     return
   }
 
-  // 사용자 자원 API
+  // 사용자 자원 API (이전 수기 구현 유지 — 추후 Fastify로 이동 가능)
   if (req.url === '/api/user/resources' && req.method === 'GET') {
     try {
       const token = req.headers.authorization?.replace('Bearer ', '')
@@ -1145,8 +1152,10 @@ server.on('request', async (req, res) => {
             },
             resources: {
               ap: character.ap,
+              apMax: character.apMax ?? 60,
               gold: character.gold,
               stress: character.stress,
+              stressMax: character.stressMax ?? 100,
               lastApUpdate: Date.now(),
             },
           })

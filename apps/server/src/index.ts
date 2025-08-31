@@ -69,9 +69,23 @@ io.on('connection', (socket) => {
   })
 
   // 인증 핸들러
-  socket.on('auth.login', async (userId: string) => {
+  socket.on('auth.login', async (data: { token: string }) => {
     try {
-      console.log('[Socket] auth.login 요청:', userId, '소켓 ID:', socket.id)
+      console.log('[Socket] auth.login 요청:', socket.id)
+      
+      if (!data.token) {
+        socket.emit('auth.error', { code: 'TOKEN_REQUIRED', message: 'Authentication token is required.' })
+        return
+      }
+
+      // JWT 토큰 검증
+      const decoded = await verifyToken(data.token)
+      if (!decoded || typeof decoded !== 'object' || !('sub' in decoded)) {
+        socket.emit('auth.error', { code: 'INVALID_TOKEN', message: 'Invalid authentication token.' })
+        return
+      }
+
+      const userId = (decoded as any).sub
       socket.data.userId = userId
       socket.data.authenticated = true
 
@@ -81,7 +95,7 @@ io.on('connection', (socket) => {
         const oldSocket = io.sockets.sockets.get(existing.socketId)
         if (oldSocket) {
           console.log('[Auth] 기존 세션 만료 알림:', existing.socketId)
-          oldSocket.emit('duplicate.login', { error: 'DUPLICATE_LOGIN' })
+          oldSocket.emit('duplicate.login', { code: 'DUPLICATE_LOGIN', message: 'Another device has logged in.' })
           // 실제 연결은 바로 끊지 않고 비실시간 만료(사용자 확인 전까지 유지)
         }
       }
@@ -93,7 +107,7 @@ io.on('connection', (socket) => {
       socket.emit('auth.success', { userId })
     } catch (error) {
       console.error('[Socket] 인증 실패:', error)
-      socket.emit('auth.error', { message: '인증에 실패했습니다.' })
+      socket.emit('auth.error', { code: 'AUTH_FAILED', message: 'Authentication failed.' })
     }
   })
 

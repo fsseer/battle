@@ -22,11 +22,19 @@ export default fp(async function responsePlugin(app: FastifyInstance) {
   // 에러 통일 처리
   app.setErrorHandler((err, req, reply) => {
     const status = err.statusCode || 500
-    const code = (err as any).code || (status === 400 ? 'BAD_REQUEST' : status === 401 ? 'UNAUTHORIZED' : status === 403 ? 'FORBIDDEN' : status === 404 ? 'NOT_FOUND' : 'INTERNAL_SERVER_ERROR')
+    const code =
+      (err as any).code ||
+      (status === 400
+        ? 'BAD_REQUEST'
+        : status === 401
+        ? 'UNAUTHORIZED'
+        : status === 403
+        ? 'FORBIDDEN'
+        : status === 404
+        ? 'NOT_FOUND'
+        : 'INTERNAL_SERVER_ERROR')
     const message = err.message || 'Internal server error.'
     const traceId = (req as any).traceId
     reply.code(status).send({ code, message, traceId })
   })
 })
-
-

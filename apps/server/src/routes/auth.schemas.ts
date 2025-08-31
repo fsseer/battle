@@ -23,5 +23,3 @@ export const loginSchema = {
     additionalProperties: false,
   },
 } as const
-
-

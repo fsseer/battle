@@ -4,6 +4,14 @@ import { SmartCache } from '../services/smartCache'
 import { ResourceManager } from '../services/resourceManager'
 import { logger } from '../utils/logger'
 import { TRAINING_CATALOG } from '../training.registry'
+import {
+  trainingRunSchema,
+  trainingQuickSchema,
+  characterParamsSchema,
+  resourcesParamsSchema,
+  battleParamsSchema,
+  gameStateParamsSchema,
+} from './game.schemas'
 
 interface GameRoutesOptions {
   smartCache: SmartCache
@@ -14,7 +22,7 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
   const { smartCache, resourceManager } = options
 
   // 캐릭터 정보 조회 (폴링 기반, 캐싱 적용)
-  fastify.get('/character/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/character/:id', characterParamsSchema, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string }
       const cacheKey = `character:${id}`
@@ -43,7 +51,7 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
   })
 
   // 자원 상태 조회 (이벤트 기반, 캐싱 적용)
-  fastify.get('/resources/:characterId', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/resources/:characterId', resourcesParamsSchema, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { characterId } = request.params as { characterId: string }
       const cacheKey = `resources:${characterId}`
@@ -72,7 +80,7 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
   })
 
   // 훈련 실행 (즉시 처리, 캐시 무효화)
-  fastify.post('/training/:characterId', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/training/:characterId', characterParamsSchema, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { characterId } = request.params as { characterId: string }
       const { trainingType } = request.body as { trainingType: string }
@@ -104,7 +112,7 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
   })
 
   // 전투 상태 조회 (실시간, 캐싱 없음)
-  fastify.get('/battle/:battleId', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/battle/:battleId', battleParamsSchema, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { battleId } = request.params as { battleId: string }
 
@@ -119,7 +127,7 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
   })
 
   // 게임 상태 일괄 조회 (폴링 기반, 압축된 응답)
-  fastify.get('/game-state/:characterId', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/game-state/:characterId', gameStateParamsSchema, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { characterId } = request.params as { characterId: string }
       const cacheKey = `gameState:${characterId}`
@@ -194,7 +202,7 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
   })
 
   // 훈련 실행
-  fastify.post('/training/run', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/training/run', trainingRunSchema, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id: trainingId } = request.body as { id: string }
       const token = request.headers.authorization?.replace('Bearer ', '')
@@ -231,7 +239,7 @@ export async function registerGameRoutes(fastify: FastifyInstance, options: Game
   })
 
   // 빠른 액션 (AP 소모로 골드 획득 또는 스트레스 감소)
-  fastify.post('/training/quick', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/training/quick', trainingQuickSchema, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { type } = request.body as { type: 'gold' | 'stress' }
       const token = request.headers.authorization?.replace('Bearer ', '')

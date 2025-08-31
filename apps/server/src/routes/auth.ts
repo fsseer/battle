@@ -47,11 +47,15 @@ export async function registerRoutes(fastify: FastifyInstance) {
 
         // 입력 검증
         if (!loginId || !password || !confirm) {
-          return reply.code(400).send({ code: 'VALIDATION_ERROR', message: 'All required fields must be provided.' })
+          return reply
+            .code(400)
+            .send({ code: 'VALIDATION_ERROR', message: 'All required fields must be provided.' })
         }
 
         if (password !== confirm) {
-          return reply.code(400).send({ code: 'VALIDATION_ERROR', message: 'Password confirmation does not match.' })
+          return reply
+            .code(400)
+            .send({ code: 'VALIDATION_ERROR', message: 'Password confirmation does not match.' })
         }
 
         // 비밀번호 정책 검증
@@ -59,7 +63,11 @@ export async function registerRoutes(fastify: FastifyInstance) {
         if (!passwordValidation.isValid) {
           return reply
             .code(400)
-            .send({ code: 'PASSWORD_POLICY_VIOLATION', message: 'Password does not meet the policy requirements.', details: passwordValidation.errors })
+            .send({
+              code: 'PASSWORD_POLICY_VIOLATION',
+              message: 'Password does not meet the policy requirements.',
+              details: passwordValidation.errors,
+            })
         }
 
         // 기존 사용자 확인
@@ -71,9 +79,13 @@ export async function registerRoutes(fastify: FastifyInstance) {
 
         if (existingUser) {
           if (existingUser.loginId === loginId) {
-            return reply.code(409).send({ code: 'DUPLICATE_LOGIN_ID', message: 'Login ID already in use.' })
+            return reply
+              .code(409)
+              .send({ code: 'DUPLICATE_LOGIN_ID', message: 'Login ID already in use.' })
           } else {
-            return reply.code(409).send({ code: 'DUPLICATE_NICKNAME', message: 'Nickname already in use.' })
+            return reply
+              .code(409)
+              .send({ code: 'DUPLICATE_NICKNAME', message: 'Nickname already in use.' })
           }
         }
 
@@ -118,7 +130,9 @@ export async function registerRoutes(fastify: FastifyInstance) {
         }
       } catch (error) {
         request.log.error(error)
-        return reply.code(500).send({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error.' })
+        return reply
+          .code(500)
+          .send({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error.' })
       }
     }
   )
@@ -138,7 +152,9 @@ export async function registerRoutes(fastify: FastifyInstance) {
         }
 
         if (!loginId || !password) {
-          return reply.code(400).send({ code: 'VALIDATION_ERROR', message: 'Login ID and password are required.' })
+          return reply
+            .code(400)
+            .send({ code: 'VALIDATION_ERROR', message: 'Login ID and password are required.' })
         }
 
         // 사용자 조회
@@ -148,7 +164,9 @@ export async function registerRoutes(fastify: FastifyInstance) {
         })
 
         if (!user) {
-          return reply.code(401).send({ code: 'INVALID_CREDENTIALS', message: 'Invalid login ID or password.' })
+          return reply
+            .code(401)
+            .send({ code: 'INVALID_CREDENTIALS', message: 'Invalid login ID or password.' })
         }
 
         // 비밀번호 검증
@@ -160,12 +178,20 @@ export async function registerRoutes(fastify: FastifyInstance) {
             data: { loginAttempts: { increment: 1 } },
           })
 
-          return reply.code(401).send({ code: 'INVALID_CREDENTIALS', message: 'Invalid login ID or password.' })
+          return reply
+            .code(401)
+            .send({ code: 'INVALID_CREDENTIALS', message: 'Invalid login ID or password.' })
         }
 
         // 계정 잠금 확인
         if (user.lockedUntil && user.lockedUntil > new Date()) {
-          return reply.code(423).send({ code: 'ACCOUNT_LOCKED', message: 'Account is locked. Please wait until it is unlocked.', lockedUntil: user.lockedUntil })
+          return reply
+            .code(423)
+            .send({
+              code: 'ACCOUNT_LOCKED',
+              message: 'Account is locked. Please wait until it is unlocked.',
+              lockedUntil: user.lockedUntil,
+            })
         }
 
         // 기존 토큰 무효화 (중복 로그인 방지)
@@ -195,7 +221,9 @@ export async function registerRoutes(fastify: FastifyInstance) {
         }
       } catch (error) {
         request.log.error(error)
-        return reply.code(500).send({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error.' })
+        return reply
+          .code(500)
+          .send({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error.' })
       }
     }
   )
@@ -206,12 +234,16 @@ export async function registerRoutes(fastify: FastifyInstance) {
       const { refreshToken } = request.body as { refreshToken?: string }
 
       if (!refreshToken) {
-        return reply.code(400).send({ code: 'VALIDATION_ERROR', message: 'Refresh token is required.' })
+        return reply
+          .code(400)
+          .send({ code: 'VALIDATION_ERROR', message: 'Refresh token is required.' })
       }
 
       const newAccessToken = await generateTokens(refreshToken)
       if (!newAccessToken) {
-        return reply.code(401).send({ code: 'INVALID_REFRESH_TOKEN', message: 'Invalid refresh token.' })
+        return reply
+          .code(401)
+          .send({ code: 'INVALID_REFRESH_TOKEN', message: 'Invalid refresh token.' })
       }
 
       return {
@@ -220,7 +252,9 @@ export async function registerRoutes(fastify: FastifyInstance) {
       }
     } catch (error) {
       request.log.error(error)
-      return reply.code(500).send({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error.' })
+      return reply
+        .code(500)
+        .send({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error.' })
     }
   })
 
@@ -240,7 +274,9 @@ export async function registerRoutes(fastify: FastifyInstance) {
         return { ok: true, message: 'Logged out.' }
       } catch (error) {
         request.log.error(error)
-        return reply.code(500).send({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error.' })
+        return reply
+          .code(500)
+          .send({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error.' })
       }
     }
   )
@@ -274,7 +310,9 @@ export async function registerRoutes(fastify: FastifyInstance) {
         }
       } catch (error) {
         request.log.error(error)
-        return reply.code(500).send({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error.' })
+        return reply
+          .code(500)
+          .send({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error.' })
       }
     }
   )
@@ -299,7 +337,9 @@ export async function registerRoutes(fastify: FastifyInstance) {
         }
       } catch (error) {
         request.log.error(error)
-        return reply.code(500).send({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error.' })
+        return reply
+          .code(500)
+          .send({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error.' })
       }
     }
   )

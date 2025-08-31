@@ -1,5 +1,7 @@
 /* ===== MAIN CSS IMPORTS ===== */
 @import './theme.css';
+@import './landscape.css';
+@import './arena.css';
 @import './components/menu-panel.css';
 @import './components/training.css';
 @import './components/battle.css';

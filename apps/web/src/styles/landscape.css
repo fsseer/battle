@@ -47,6 +47,13 @@
   overflow: hidden; /* 스크롤 제거 */
 }
 
+/* 중앙 영역을 가득 채우는 옵션 */
+.landscape-center-content.center-full {
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
+}
+
 /* ===== 통일된 메뉴 패널 스타일 (로그인 씬 기준) ===== */
 .landscape-menu-panel {
   width: 320px; /* 너비 증가 */
@@ -337,7 +344,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  z-index: 1000;
+  z-index: 2001; /* 헤더(1000)보다 위로 */
   box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.8);
 }
 

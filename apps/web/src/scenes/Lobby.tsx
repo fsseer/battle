@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
 import { useResourceSync } from '../hooks/useResourceSync'
 import { useTokenValidation } from '../hooks/useTokenValidation'
-import GameHeader from '../components/GameHeader'
+import ArenaLayout from '../components/Arena/ArenaLayout'
+import PageFade from '../components/Arena/PageFade'
 // import { useApRecovery } from '../hooks/useApRecovery' // 성능 문제로 완전 비활성화
 import { useLandscapeLayout } from '../hooks/useLandscapeLayout'
 
@@ -103,21 +104,12 @@ export default function Lobby() {
   console.log('[Lobby] canDisplayGame:', canDisplayGame)
 
   return (
-    <div className="lobby-layout">
-      {/* 상단 헤더 */}
-      <GameHeader onSystemMenuClick={() => setShowSystemModal(true)} />
-
-      {/* 배경 이미지 */}
-      <div
-        className="lobby-background"
-        style={{ backgroundImage: 'url(/images/lobby-background.jpg)' }}
-      />
-
-      {/* 메인 콘텐츠 - 중앙 콘텐츠만 표시 */}
-      <div className="center-content-wrapper">
-        {/* 중앙 배경 영역 - Epic Seven 스타일의 하단 메뉴 바 */}
-        <div className="center-background-area">
-          {/* 하단 메뉴 바 - Epic Seven 스타일 */}
+    <PageFade>
+      <ArenaLayout
+        centerFull
+        backgroundImage={'/images/lobby-background.jpg'}
+        onSystemMenuClick={() => setShowSystemModal(true)}
+        footer={
           <div className="bottom-menu-bar">
             {/* 좌측 메인 메뉴 아이콘들 */}
             <div className="main-menu-icons">
@@ -163,8 +155,10 @@ export default function Lobby() {
               </button>
             </div>
           </div>
-        </div>
-      </div>
+        }
+      >
+        <div className="center-background-area" style={{ width: '100%', height: '100%' }} />
+      </ArenaLayout>
 
       {/* 시스템 모달 */}
       {showSystemModal && (
@@ -187,6 +181,6 @@ export default function Lobby() {
           </div>
         </div>
       )}
-    </div>
+    </PageFade>
   )
 }

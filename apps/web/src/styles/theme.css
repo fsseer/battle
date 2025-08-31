@@ -886,7 +886,8 @@ body,
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  z-index: -1; /* 배경으로 설정 */
+  z-index: 0; /* 콘텐츠 아래, 본문 위 */
+  pointer-events: none; /* 클릭 차단 방지 */
 }
 
 .content-overlay {
